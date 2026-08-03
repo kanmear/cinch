@@ -1,0 +1,49 @@
+# Target shape for .agent/manifest.yml — the single source of every
+# project-specific binding. Merge into your existing manifest; do not replace it
+# wholesale.
+#
+# Two schema constraints hold (Foundation §1):
+#   1. every `cmd` id resolves to a key under development.commands   (checked: C3)
+#   2. there is NO `domains:` key — the domain list is the filesystem (checked: C5)
+
+harness_version: 0.1.0        # pinned core version; bump -> re-render -> cinch check
+
+paths:
+  business: .agent/business   # domain list = this dir's files, minus overview.md
+  tests:
+    integration: backend/tests
+    unit: frontend/tests
+    e2e: frontend/e2e
+
+development:
+  commands:
+    check: make check
+    test-backend: make test-backend
+    test-frontend: make test-frontend
+    test-e2e: make test-e2e
+    # D028 — introspection producers. Core defines the JSON contract;
+    # the repo implements it. Needed by C6/C7, not by wave one.
+    introspect-types: go run ./cmd/introspect-types    # static parse
+    introspect-routes: go run ./cmd/introspect-routes  # builds router, prints table
+
+taxonomy:
+  layers: [backend-model, backend-handler, frontend-state, frontend-ui]
+  test_tiers:
+    - {id: integration, tdd: rule-tests, cmd: test-backend}
+    - {id: unit,        tdd: optional,   cmd: test-frontend}
+    - {id: e2e,         tdd: never,      opt_in: true, cmd: test-e2e, notes: frontend/e2e.md}
+    - {id: manual,      automatable: false}
+
+# D038 — seam tiers are data, not prose. This is what makes one design serve a
+# 27B consumer and a frontier one: the procedure is identical, the knobs differ.
+# Declaration + schema check ship in P1/P3; enforcement is P5 and is per-harness
+# glue (Claude Code hook permissions, a local runner allowlist). A declaration
+# here gates nothing by itself.
+seams:
+  planner:        {tier: strong, max_task_layers: 1}
+  executor:       {tier: any,    max_task_layers: 1}
+  doc_maintainer: {tier: mid}
+  auditor:        {tier: strong}   # semantic judgment; never cheap, at any target
+
+# Templates reference these as {{commands.check}}, {{paths.tests.integration}},
+# {{taxonomy.layers}}. `commands.*` is an alias for `development.commands.*`.

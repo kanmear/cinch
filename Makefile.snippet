@@ -1,0 +1,15 @@
+# Append to the project Makefile.
+# cinch is a separate repo cloned to ~/.cinch and pinned by harness_version in
+# .agent/manifest.yml (D008).
+
+CINCH ?= $(HOME)/.cinch/bin/cinch
+
+.PHONY: docs-index render check-harness
+docs-index:            ## regenerate .agent/index.md
+	$(CINCH) index
+
+render:                ## render templates -> .agent/workflows
+	$(CINCH) render
+
+check-harness:         ## run the harness checkers (zero model tokens)
+	$(CINCH) check
