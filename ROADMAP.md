@@ -120,8 +120,9 @@ Three waves (D030):
 **Wave 1** — pure filesystem, YAML, markdown. No adapters, nothing to retrofit.
 C1 index ↔ filesystem · C2 render staleness + tamper · C3 `cmd` id resolution · C4 manifest paths
 exist · C5 domain files ↔ `overview.md` · C9 plan hygiene · C11 cross-reference integrity ·
-C12 seam schema (every seam declares a known tier; `auditor` is not `cheap`).
-*(C1–C11 shipped in the starter package; C12 is new.)*
+C12 seam schema (every seam declares a known tier; `auditor` must be `strong`; `max_task_layers`
+a positive integer when declared).
+*(C1–C12 ship in the starter package.)*
 
 **Wave 2** — C6 `models/*.md` ↔ real types; C7 `api/*.md` ↔ registered routes. Static introspection
 for types, runtime for routes (D028). cinch defines the JSON contract; the project implements the
@@ -179,7 +180,7 @@ Needs P1, P2; benefits from P3.
   (Claude Code hook permissions, local runner allowlist) and must be built. No doc may imply that
   declaration is enforcement.
 
-Order within: declare seams → wire the Auditor split → Executor fan-out → permissions.
+Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
 
 ---
 

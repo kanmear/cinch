@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11.
+// Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11, C12.
 // C6/C7 (introspection) and C8 (rule markers) land later.
 //
 // D009 — the direction rule: only doc-upstream and lateral checks belong here.
@@ -42,14 +42,14 @@ func cmdCheck(root string) error {
 		return emit(r)
 	}
 
-	checkIndex(root, r)         // C1
-	checkRendered(root, m, r)   // C2
-	checkCommandIDs(m, r)       // C3
+	checkIndex(root, r)            // C1
+	checkRendered(root, m, r)      // C2
+	checkCommandIDs(m, r)          // C3
 	checkManifestPaths(root, m, r) // C4
-	checkDomains(root, m, r)    // C5
-	checkPlans(root, r)         // C9
-	checkLinks(root, r)         // C11
-	checkSeams(m, r)            // C12
+	checkDomains(root, m, r)       // C5
+	checkPlans(root, r)            // C9
+	checkLinks(root, r)            // C11
+	checkSeams(m, r)               // C12
 
 	return emit(r)
 }
@@ -261,10 +261,31 @@ func checkSeams(m *Manifest, r *report) {
 		if !known[tier] {
 			r.errf("C12", "seam %q declares unknown tier %q (cheap|mid|strong|any)", name, tier)
 		}
+		// max_task_layers is the one knob whose right answer differs by tier
+		// (task granularity) — that is why it is data rather than procedure. A
+		// typo here silently changes granularity, so schema-check it.
+		if v, declared := decl["max_task_layers"]; declared {
+			n, ok := yamlInt(v)
+			if !ok || n < 1 {
+				r.errf("C12", "seam %q max_task_layers must be a positive integer", name)
+			}
+		}
 		// The auditor assignment is not a tuning knob: a false positive here
 		// silently corrupts the rules->tests closure, at any target tier.
-		if name == "auditor" && (tier == "cheap" || tier == "any") {
-			r.errf("C12", "seam \"auditor\" must be strong — semantic coverage judgment is where a false pass is most costly")
+		if name == "auditor" && tier != "strong" {
+			r.errf("C12", "seam %q must be strong — semantic coverage judgment is where a false pass is most costly", name)
 		}
 	}
+}
+
+// yamlInt reads an integer out of a YAML-decoded scalar (yaml.v3 yields int or
+// int64 depending on width).
+func yamlInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case int:
+		return n, true
+	case int64:
+		return int(n), true
+	}
+	return 0, false
 }
