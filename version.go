@@ -1,10 +1,9 @@
 package main
 
-// cinch version — the port of project_deltadocs' scripts/update-version.js as
-// a Go subcommand (core is Go; a node dependency would be wrong here).
+// cinch version — the version bump/show script as a Go subcommand (core is
+// Go; a node dependency would be wrong here).
 //
-// The scheme is unchanged from upstream: one field per file, never grouped
-// into a single const/struct — a dev-branch bump (minor/patch) and a
+// The scheme: one field per file, never grouped into a single const/struct — a dev-branch bump (minor/patch) and a
 // main-branch hotfix bump happen on different branches and land in the same
 // directory at the main -> dev sync merge; git's default 3-line diff context
 // is wide enough that two single-line edits inside one small const block still

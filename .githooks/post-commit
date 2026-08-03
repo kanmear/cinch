@@ -2,11 +2,8 @@
 # Auto-bumps the cinch version fields (version/{major,minor,patch,hotfix}.go)
 # and folds the change into the commit that triggered it via amend. See
 # conventions/git-conventions.md for the full scheme; .githooks/commit-msg enforces
-# the message format this relies on.
-#
-# Ported from project_deltadocs and adapted for a single-service Go repo: the
-# per-service loop (frontend/ backend/) collapses to one product path check,
-# and the node bump script is replaced by `cinch version bump` (core is Go).
+# the message format this relies on. Single product: one path check, and the
+# bump logic lives in the binary (`cinch version bump`) — core is Go.
 
 git_dir=$(git rev-parse --git-dir)
 lock_file="$git_dir/.version-hook-running"

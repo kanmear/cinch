@@ -11,10 +11,6 @@
 # The --no-ff merge stays manual on purpose (you want to see any conflicts);
 # this script only performs the mechanical, near-permanent tail — creating the
 # release tag and fast-forwarding dev. See conventions/git-conventions.md.
-#
-# Ported from project_deltadocs (scripts/release.sh): the upstream version
-# loops over per-service tags; cinch is a single service, so there is exactly
-# one tag, cinch-vX.Y.Z.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"

@@ -15,7 +15,7 @@ fixtures: build
 
 # Versioning (see conventions/git-conventions.md — minor/patch/hotfix bump
 # automatically via .githooks/post-commit on dev/main squash-merges; major is
-# manual-only). Ported from project_deltadocs, single-service adaptation.
+# manual-only).
 setup-hooks:
 	git config core.hooksPath .githooks
 	chmod +x .githooks/commit-msg .githooks/post-commit
