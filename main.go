@@ -14,17 +14,30 @@ import (
 const usage = `cinch — agent harness tooling
 
 usage:
-  cinch render    render .agent/templates/**.md -> .agent/workflows/**.md
-  cinch index     regenerate .agent/index.md
-  cinch check     run all harness checks (exit 1 on error)
+  cinch render      render .agent/templates/**.md -> .agent/workflows/**.md
+  cinch index       regenerate .agent/index.md
+  cinch check       run all harness checks (exit 1 on error)
+  cinch version     print the version (x.y.z[letter])
+  cinch version bump <major|minor|patch|hotfix>
+                    rewrite version/ and print old -> new
 
-paths are resolved from the git repository root.
+paths are resolved from the git repository root; the version is resolved next
+to the binary (version/ in the cinch clone), so it works from any directory.
 `
 
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
+	}
+
+	// version is binary-relative and needs no git repository.
+	if os.Args[1] == "version" || os.Args[1] == "--version" {
+		if err := cmdVersion(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
+			os.Exit(1)
+		}
+		return
 	}
 
 	root, err := repoRoot()

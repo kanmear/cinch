@@ -4,7 +4,8 @@
 
 CINCH ?= $(HOME)/.cinch/bin/cinch
 
-.PHONY: docs-index render check-harness
+.PHONY: docs-index render check-harness version-show
+
 docs-index:            ## regenerate .agent/index.md
 	$(CINCH) index
 
@@ -13,3 +14,6 @@ render:                ## render templates -> .agent/workflows
 
 check-harness:         ## run the harness checkers (zero model tokens)
 	$(CINCH) check
+
+version-show:          ## print the installed cinch version (compare against harness_version)
+	$(CINCH) version show
