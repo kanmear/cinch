@@ -2,7 +2,7 @@
 # Enforces the `merge: <branch>` commit message format for squash-merge commits
 # landing on dev/main — this is the signal .githooks/post-commit relies on to
 # decide which part of the version (minor/patch/hotfix) to bump. See
-# docs/git-conventions.md for the full scheme.
+# conventions/git-conventions.md for the full scheme.
 #
 # Only squash-merge commits are validated (SQUASH_MSG exists only during that
 # staged-but-uncommitted window); regular commits on other branches are untouched.
