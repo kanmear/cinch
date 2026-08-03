@@ -1,7 +1,7 @@
 #!/bin/sh
 # Auto-bumps the cinch version fields (version/{major,minor,patch,hotfix}.go)
 # and folds the change into the commit that triggered it via amend. See
-# conventions/git-conventions.md for the full scheme; .githooks/commit-msg enforces
+# ops/git-conventions.md for the full scheme; .githooks/commit-msg enforces
 # the message format this relies on. Single product: one path check, and the
 # bump logic lives in the binary (`cinch version bump`) — core is Go.
 
@@ -21,7 +21,7 @@ fi
 # Skip merge commits (e.g. the main -> dev sync merge after a hotfix): only
 # single-parent commits (squash-merge results) drive a bump. Git auto-resolves
 # the version fields on the sync merge itself since each one lives in its own
-# file (see conventions/git-conventions.md for why that matters).
+# file (see ops/git-conventions.md for why that matters).
 parent_count=$(git rev-list --parents -1 HEAD | wc -w)
 if [ "$parent_count" -gt 2 ]; then
 	exit 0

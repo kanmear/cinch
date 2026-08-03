@@ -12,7 +12,7 @@ A portable agent harness: templates plus a Go CLI that renders them against a pr
 - `fixtures/` — toy repos CI renders into, one per stack. The portability test.
 - `docs/` — core/philosophy only: `ROADMAP.md` (phased plan), `RATIONALE.md` (why the design is
   what it is), `PHILOSOPHY.md`, decisions log.
-- `conventions/` — operational docs, not core: git workflow, versioning, release. Anything that
+- `ops/` — operational docs, not core: git workflow, versioning, release. Anything that
   describes how this repo is *run* goes here, never in `docs/`.
 - `decisions.jsonl` — append-only decision log. Read it before proposing a change to a settled
   question; append a superseding entry rather than diverging silently.

@@ -13,7 +13,7 @@ fixtures: build
 		( cd $$f && ../../bin/cinch render && ../../bin/cinch check ) || exit 1; \
 	done
 
-# Versioning (see conventions/git-conventions.md — minor/patch/hotfix bump
+# Versioning (see ops/git-conventions.md — minor/patch/hotfix bump
 # automatically via .githooks/post-commit on dev/main squash-merges; major is
 # manual-only).
 setup-hooks:
