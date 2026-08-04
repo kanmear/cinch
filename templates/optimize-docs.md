@@ -14,7 +14,16 @@ Scan all `.agent/` docs and fix violations.
 - Read `.agent/index.md` (the generated doc map) for the full doc index
 - Read `manifest.yml` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
-### 2. Audit each doc file
+### 2. Prune first — the admission test applied retroactively
+Apply the admission test (doc-philosophy, The Admission Test) to every existing doc, not just new content:
+- Any content an agent could recover by reading the source is **removed — not trimmed, not refreshed**.
+  Deletion is the fix, and the corpus must only shrink here.
+- What survives: business rules in `domain/` (the non-derivable residue, IDed and guarded by the
+  rule-ID closure and the change-coupling warning) and generated workflows (C2-owned).
+- After pruning, re-run the checkers and regenerate the index — deletion must leave the corpus
+  green, not just smaller.
+
+### 3. Audit each doc file
 Read every `.md` file under `.agent/`. For each, check:
 
 **Speculative content** (principle 5)
@@ -48,9 +57,12 @@ Read every `.md` file under `.agent/`. For each, check:
   judgment: a hand-authored doc pointing at a command or path that moved.
 - Check: do referenced paths and commands still exist?
 
-### 3. Report findings
-List violations grouped by file, with the principle violated and suggested fix.
+### 4. Report findings
+List violations grouped by file, with the principle violated and suggested fix. Name everything
+removed in the pruning pass and confirm each deleted fact is still recoverable from source —
+spot-check with a search before moving on.
 
-### 4. Apply fixes
-- For each violation, apply the minimal fix (trim, cross-reference, or remove)
+### 5. Apply fixes
+- For content that fails the admission test, the fix is **removal** — never refresh or trim.
+- For content that passes the test but is redundant, apply the minimal fix (trim or cross-reference)
 - Re-read modified files to confirm they're still useful

@@ -161,14 +161,16 @@ updated, `check-rules` still passes — and the rule text is now false.
   outside git or with no owns lists. D065.)*
 - **[project] 4.3** Derivability gate as an explicit admission test: *can an agent recover this from
   source?* If yes, it is not written. Freshness is a write-time constraint, not a sync process
-  (D012).
+  (D012). *(Landed — the gate is two questions at the head of `doc-philosophy.md`: recoverable → not
+  written, point at source; falsifiable → business rule → `domain/` doc with an ID. D066.)*
 - **[project] 4.4** `optimize-docs` gets a deletion mandate — it must *remove*, applying 4.3
-  retroactively (D013).
+  retroactively (D013). *(Landed — it prunes first, remove-not-refresh, with `domain/` and generated
+  workflows carved out; the first run deleted the superseded v4-flash review. D066.)*
 
 **Exit:** every rule has an ID resolving to a marked test (untestable rules declared
 `cinch:ignore`, listed by `cinch ignores` — D064); a behaviour-changing commit that leaves
 its domain doc untouched warns *(live — C10, D065)*; `optimize-docs` has deleted something
-on first run.
+on first run *(done — the superseded analysis review was pruned, D066)*.
 
 ---
 
