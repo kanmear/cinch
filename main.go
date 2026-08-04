@@ -17,6 +17,7 @@ usage:
   cinch render      render .agent/templates/**.md -> .agent/workflows/**.md
   cinch index       regenerate .agent/index.md
   cinch check       run all harness checks (exit 1 on error)
+  cinch ignores     list every rule declared cinch:ignore in domain/*.md
   cinch version     print the version (x.y.z[letter])
   cinch version bump <major|minor|patch|hotfix>
                     rewrite version/ and print old -> new
@@ -53,6 +54,8 @@ func main() {
 		err = cmdIndex(root)
 	case "check":
 		err = cmdCheck(root)
+	case "ignores":
+		err = cmdIgnores(root)
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)

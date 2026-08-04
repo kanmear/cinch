@@ -16,8 +16,8 @@ import (
 )
 
 // Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11, C12.
-// Wave two: C6/C7 (introspection, D028). C8 (rule markers, D027) lands with
-// the P4.1 migration.
+// Wave two: C6/C7 (introspection, D028). C8 (rule markers, D027) landed with
+// the P4.1 migration (D057/D064) — see rule.go.
 //
 // D009 — the direction rule: only doc-upstream and lateral checks belong here.
 // A check that validates a doc's copy of a machine-readable fact is
@@ -55,6 +55,7 @@ func cmdCheck(root string) error {
 	checkDomains(root, m, r)       // C5
 	checkTypes(root, m, r)         // C6
 	checkRoutes(root, m, r)        // C7
+	checkRules(root, m, r)         // C8
 	checkPlans(root, r)            // C9
 	checkLinks(root, r)            // C11
 	checkSeams(m, r)               // C12
@@ -103,6 +104,7 @@ func checkIndex(root string, r *report) {
 // C2 — rendered workflows must match a fresh render (staleness), and their body
 // hash must match their header (tamper). The two are distinguished so the
 // message tells you which happened.
+// cinch:rule HARNESS-004 — rendered output is never hand-edited (C2 tamper branch)
 func checkRendered(root string, m *Manifest, r *report) {
 	files, err := renderAll(root, m)
 	if err != nil {
@@ -327,6 +329,7 @@ func checkLinks(root string, r *report) {
 // C12 — seam declarations are well-formed (D038). Tier is data so that one
 // design serves a 27B consumer and a frontier one; this checks the data.
 // Absent seams: section is legitimate — a repo may not have declared them yet.
+// cinch:rule HARNESS-002 — the auditor seam is never cheap (C12)
 func checkSeams(m *Manifest, r *report) {
 	seams, ok := m.Raw["seams"].(map[string]any)
 	if !ok {

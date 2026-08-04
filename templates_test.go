@@ -24,6 +24,7 @@ import (
 // rendered/bound state against cinch's contracts, and templates/ has no
 // consumer-side referent (templates resolve next to the cinch binary, D047).
 // This validates cinch's own source, so it's a plain test.
+// cinch:rule HARNESS-003 — templates name no stack and no harness (C13 purity patterns)
 func TestTemplatePurity(t *testing.T) {
 	// Command-shaped inline-code token: backtick, slash, one lowercase-
 	// hyphenated word, backtick. The exact shape of a slash-command
