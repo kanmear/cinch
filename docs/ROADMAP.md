@@ -231,6 +231,25 @@ anytime  session-start signals, episodic memory   [project]
 
 ---
 
+## Session loads
+
+What a phase session should have in front of it — a relevance filter, not a budget ceiling (D035).
+The failure this prevents is a cinch session loading the project's business rules, or a project
+session loading cinch's design history. Anytime-track sessions load the anytime section and nothing
+else.
+
+| Phase | Side | Load |
+| --- | --- | --- |
+| 1 | cinch | roadmap §P1 · `render.go` `manifest.go` · one workflow as the port pilot · D005 D008 |
+| 1 | project | roadmap §P1 · `manifest.example.yml` · current `manifest.yml` · D001 D010 |
+| 2 | cinch | roadmap §P2 · `task-primitive.md` `fix-bug.md` `execute-plan.md` · D036 D039 |
+| 3 | cinch | roadmap §P3 · `check.go` · consumer `manifest.yml` · D009 D011 D027 D028 D030 |
+| 4 | project | roadmap §P4 · `business/overview.md` · one `business/<domain>.md` · `doc-philosophy.md` · D012 D013 D027 |
+| 4 | cinch | roadmap §P4.2 · `check.go` · D009 |
+| 5 | both | roadmap §P5 · `manifest.yml` · workflow list · D014 D015 |
+
+---
+
 ## Open
 
 **O005** — cinch under a GitHub org or a personal repo. Blocks P0.1, and only that.
