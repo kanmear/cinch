@@ -192,14 +192,14 @@ Needs P1, P2; benefits from P3.
   declared. The D020 deferral stands; re-verify when a consumer actually gains fan-out. D068.)*
 - **Permissions.** Declare per-seam allowances in `manifest.yml`. Enforcement is per-harness glue
   (Claude Code hook permissions, local runner allowlist) and must be built. No doc may imply that
-  declaration is enforcement. *(Declared — `allow:` command-id lists in both manifests,
-  C12-validated (non-empty, C3-resolved). First glue piece landed: the project's opencode auditor
-  agent envelope (read-only, checker commands only). Claude Code hook enforcement still to build.
-  D067.)*
+  declaration is enforcement. *(Enforced — `allow:` command-id lists in both manifests,
+  C12-validated (non-empty, C3-resolved). Both glue pieces landed: the project's opencode auditor
+  agent envelope (D067) and the Claude Code auditor agent whose PreToolUse guard derives its
+  allowance from the manifest at runtime — declaration and enforcement cannot drift (D069).)*
 
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
 *Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,
-permissions declared with the first glue piece (D067/D068).*
+permissions declared and enforced in both harnesses (D067/D069).*
 
 ---
 
@@ -213,7 +213,9 @@ Shell calls the binary and does nothing else (D024).
 
 **Episodic memory.** Append-only `.agent/events/*.jsonl` for project decisions, dead ends, accepted
 risks. Minimal schema — see `docs/decisions-log.md` for the convention. Append-only means no merge
-semantics, no rewrite path, no pruning pressure, and it cannot drift.
+semantics, no rewrite path, no pruning pressure, and it cannot drift. *(Landed —
+`project_deltadocs` carries `.agent/events/events.jsonl` seeded with E001, plus an AGENTS.md
+recording rule; index-inert, so no checker touches it.)*
 
 Then reconsider the multi-slot handoff (D020): the log covers much of the
 parallel-lines-within-one-plan case without branching the slot. Decide after living with it, and
