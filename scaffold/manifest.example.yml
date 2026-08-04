@@ -21,6 +21,9 @@ development:
     test-backend: make test-backend
     test-frontend: make test-frontend
     test-e2e: make test-e2e
+    docs-index: make docs-index # regenerates .agent/index.md (cinch index)
+    start-backend: make start-backend # dev server, backend
+    start-frontend: make start-frontend # dev server, frontend
     # D028 — introspection producers. Core defines the JSON contract;
     # the repo implements it. Needed by C6/C7, not by wave one.
     introspect-types: go run ./cmd/introspect-types # static parse
