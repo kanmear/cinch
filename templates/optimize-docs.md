@@ -41,8 +41,12 @@ Read every `.md` file under `.agent/`. For each, check:
 - Check: is this specific to THIS project?
 
 **Stale references**
-- Links to files/skills/commands that don't exist
-- Check: do referenced paths, commands, and skills actually exist?
+- Links and manifest bindings that don't resolve — mechanically covered by
+  checkers: C11 checks every markdown link under `.agent/`, C4 checks every
+  manifest `paths.*` binding, and rendered workflow command references are
+  generated from the manifest (C2 guards the rendering). What remains is
+  judgment: a hand-authored doc pointing at a command or path that moved.
+- Check: do referenced paths and commands still exist?
 
 ### 3. Report findings
 List violations grouped by file, with the principle violated and suggested fix.
