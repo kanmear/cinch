@@ -152,22 +152,15 @@ Make targets here).
 ## Phase 3: Atomic Task Decomposition — via the task primitive
 
 With the Business Rules and Test Plan sections confirmed and filled in, decompose the
-implementation using `.agent/workflows/task-primitive.md`. It supplies, unchanged for feature work:
-
-- **Atomicity** — one independently verifiable concern, affected layers declared from
-  `manifest.taxonomy.layers`, and any inseparable cross-layer work justified.
-- **Context manifest** — load only the docs a task needs; split when the manifest feels like "load
-  everything."
-- **Verification tiers** — Tier 1 (fails without change) → Tier 2 (passes) → Tier 3 (commands
-  covering every affected layer).
-- **Task template** — the `### T<N>` block for the plan file's `## Tasks` section.
-- **Pre-flight gate** and **Completion ritual** — use the **feature** lifecycle: the plan file
-  **persists** with status `complete`.
+implementation using `.agent/workflows/task-primitive.md`. It supplies, unchanged for feature
+work: Atomicity, Context manifest, Verification tiers, Task template, Pre-flight gate, Completion
+ritual, and Compaction anchor — see that file's matching sections.
 
 **Feature-specific inputs to the primitive's gate/ritual:**
 
 - Planning checkpoints to clear: Phase 1 (rules confirmed) and Phase 2 (test plan confirmed).
 - Plan location: `.agent/plans/<feature-slug>.md`, saved with status `in-progress`.
+- Completion uses the **feature** lifecycle: the plan file **persists** with status `complete`.
 
 Task execution — working through `T1`, `T2`, … — happens via `.agent/workflows/execute-plan.md`,
 not inline here.

@@ -211,8 +211,8 @@ Wait for confirmation.
 
 With reproduction, root cause, and the regression test plan confirmed, decompose the fix using
 `.agent/workflows/task-primitive.md` — the same atomicity, context-manifest, verification-tier,
-task-template, pre-flight-gate, and completion machinery that feature planning uses. A bug fix
-typically needs fewer tasks than a feature:
+task-template, pre-flight-gate, completion, and compaction-anchor machinery that feature planning
+uses. A bug fix typically needs fewer tasks than a feature:
 
 | Typical fix size | Tasks |
 | ----------------- | ------- |
@@ -236,7 +236,3 @@ combined ⛔ checkpoint and the regression test are the whole record, with no pe
 
 Task execution — working through `T1`, `T2`, … — happens via `.agent/workflows/execute-plan.md`,
 not inline here.
-
-*(Where this differs from feature planning: the Phase 1/2 front is reproduce + root cause instead of
-domain rules + test plan; new rules are written only if the bug reveals a gap; there are usually
-few tasks; and completion deletes the plan file and updates troubleshooting.)*

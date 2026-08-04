@@ -37,6 +37,12 @@ either way. Two markers:
   `## Session Handoff` section, and end the session — leaving the commit itself for the user to
   review and run manually.
 
+A third event isn't a marker the workflow raises — it's a mid-session summarization the running
+agent's own context management triggers unasked, potentially erasing this file's instructions
+before a task finishes. If that happens, reload `.agent/workflows/task-primitive.md` §
+Compaction anchor before continuing — the current task ID, its context manifest, and the
+completion ritual come from source, not from what the compacted summary retained.
+
 **Session Handoff template** (overwrite, don't append, at every stop):
 
 ```markdown
@@ -87,10 +93,9 @@ For each `T<N>` in dependency order:
 2. Confirm the previous task's Tier 3 still passes (skip for the first task).
 3. Load **only** that task's `Context` manifest — the Commit Conventions section above is already
    in effective context for the whole session and isn't part of any task's manifest.
-4. TDD per the task's Verify tiers: Tier 1 (test fails without the change) → implement → Tier 2
-   (test passes) → Tier 3 for every layer the task declares, consolidating duplicate commands or
-   using the project-wide check when layers cannot be isolated. Some tasks defer Tier 3 to a later
-   regression-checkpoint task — follow that task's own Verify spec.
+4. Run the task's Verify tiers in order, per `.agent/workflows/task-primitive.md` § Verification
+   tiers (Tier 1 → Tier 2 → Tier 3). Some tasks defer Tier 3 to a later regression-checkpoint task —
+   follow that task's own Verify spec.
 5. Mark the task's `**Status:**` `[x]` in the plan file.
 6. Propose a commit message (per conventions.md § Git). **Do not run `git commit`.** The user reviews the diff and commits manually.
 7. Update `## Session Handoff` (template above).

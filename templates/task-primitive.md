@@ -222,3 +222,29 @@ discretion, never a required gate.
   archive. Plus a **post-fix troubleshooting update**: if the bug was non-obvious to diagnose (more
   than a few minutes of tracing), add a **Symptom → Root Cause → Fix → Prevention** entry to
   `.agent/backend/troubleshooting.md` or `.agent/frontend/troubleshooting.md`.
+
+---
+
+## Compaction anchor
+
+A workflow session can end two ways: a deliberate SESSION STOP
+(`.agent/workflows/execute-plan.md` § Session Boundaries) between tasks, or a mid-session
+summarization event the running agent's own context management triggers unasked — compacting away
+the instructions this file loaded at session start. The first is a cold boundary the Session
+Handoff template already covers. The second is a hot one: a long-running agent can compact
+mid-task, after loading this file's rules but before finishing the task that used them.
+
+The anchor is the minimum state a workflow declares must survive that event, re-injected from
+source rather than reconstructed from whatever the compacted summary retained:
+
+1. **Current task ID** — `T<N>`, from the plan file's `## Tasks` section (or `## Session Handoff`
+   → `Resume at:`, per execute-plan's tracking).
+2. **Its context manifest** — that task's own `Context` list (§ Context manifest above), reloaded
+   from the plan file, not paraphrased from memory.
+3. **The completion ritual** — § Completion ritual above, including which plan-type lifecycle
+   applies (feature persists / fix deletes).
+
+Re-injection is the calling workflow's job at the point it notices compaction happened — a
+discontinuity in its own working context is the signal; no explicit hook exists for this. Reload
+the three items above from their source location before resuming the task in progress; do not
+continue from the summary's paraphrase of them.
