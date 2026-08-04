@@ -206,8 +206,9 @@ Needs P1, P2; benefits from P3.
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
 *Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,
 permissions declared and enforced in both harnesses (D067/D069) and in cinch's own opencode seam
-(D071); the audit has executed against both consumers' domains, and its proposal→apply loop has
-completed once (E014→D072).*
+(D071); the audit has executed against both consumers' domains and inside cinch's own envelope
+(E016), its proposal→apply loop completed once (E014→D072) with the in-envelope run finding
+nothing to propose; only the project-side interactive Claude Code audit remains unverified.*
 
 ---
 
