@@ -25,6 +25,14 @@ until it runs against a consuming repo.
 **Nothing project-specific crosses the boundary.** If a change requires naming a stack, it belongs
 in the consumer's `manifest.yml` or in a manifest-declared command, not here.
 
+**Nothing harness-specific crosses the boundary either.** A harness's entry point (skill shim,
+slash command) is consumer-side glue; a template references another workflow by
+`.agent/workflows/<name>.md` path, never by name or invocation syntax. Command-shaped tokens,
+runner-config paths, and stack literals hardcoded from the scaffold contract are checked
+structurally by `go test` (`templates_test.go`) — a template describing in prose *how* its runner
+happens to surface something is a judgment call for whoever ports it, not something a script
+catches by name.
+
 **Checkers are doc-upstream or lateral only.** A check that validates a doc's copy of a
 machine-readable fact means the duplication should be deleted instead.
 

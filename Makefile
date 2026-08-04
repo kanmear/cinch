@@ -4,7 +4,7 @@ build:
 
 test: build
 	go vet ./...
-	go test ./... 2>/dev/null || true
+	go test ./...
 
 # Fixture render+check across stacks — the portability test (D017).
 fixtures: build
