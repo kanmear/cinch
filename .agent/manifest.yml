@@ -20,6 +20,7 @@ development:
     test-backend: go test ./...
     test-e2e: go test ./...
     docs-index: ./bin/cinch index # regenerate .agent/index.md
+    ignores: ./bin/cinch ignores # the cinch:ignore N/A inventory (check-rules step 1)
 
 taxonomy:
   layers: [core]
@@ -34,4 +35,4 @@ seams:
   planner: { tier: strong, max_task_layers: 1, allow: [check, test] }
   executor: { tier: any, max_task_layers: 1, allow: [check, test] }
   doc_maintainer: { tier: mid, allow: [check, docs-index] }
-  auditor: { tier: strong, allow: [check-harness, check] }
+  auditor: { tier: strong, allow: [check-harness, check, ignores] }

@@ -195,7 +195,9 @@ Needs P1, P2; benefits from P3.
   declaration is enforcement. *(Enforced — `allow:` command-id lists in both manifests,
   C12-validated (non-empty, C3-resolved). Both glue pieces landed: the project's opencode auditor
   agent envelope (D067) and the Claude Code auditor agent whose PreToolUse guard derives its
-  allowance from the manifest at runtime — declaration and enforcement cannot drift (D069).)*
+  allowance from the manifest at runtime — declaration and enforcement cannot drift (D069).
+  The check-rules N/A inventory is itself a bound command (`{{commands.ignores}}`, D070), so the
+  audit's step 1 is executable inside the seam.)*
 
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
 *Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,

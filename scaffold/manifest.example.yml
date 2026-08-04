@@ -28,6 +28,7 @@ development:
     test-frontend: make test-frontend
     test-e2e: make test-e2e
     docs-index: make docs-index # regenerates .agent/index.md (cinch index)
+    ignores: make ignores # the cinch:ignore N/A inventory (check-rules step 1)
     start-backend: make start-backend # dev server, backend
     start-frontend: make start-frontend # dev server, frontend
     # D028 — introspection producers. Core defines the JSON contract;

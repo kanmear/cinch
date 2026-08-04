@@ -22,8 +22,8 @@ per rule:
   (a coverage gap) or declared N/A (step 2)
 - **unresolved marker** — a marker that names no real rule: dead syntax, fix it
 
-`cinch ignores` lists every rule declared N/A. The checker's report plus that inventory **are** the
-enumerated list:
+`{{commands.ignores}}` lists every rule declared N/A. The checker's report plus that inventory **are**
+the enumerated list:
 
 ```
 [SIG-001] <rule summary>   unmarked — verify coverage
@@ -42,7 +42,7 @@ Categories:
 **N/A** — the rule describes display or structural behavior that cannot be tested automatically
 (e.g. "display names are derived from another field"). Declare it in the doc by placing
 `<!-- cinch:ignore <ID> -->` directly under the rule item, so `cinch check` stops warning about
-it as uncovered and `cinch ignores` lists the inventory. Not a test coverage gap.
+it as uncovered and `{{commands.ignores}}` lists the inventory. Not a test coverage gap.
 
 ### 3. Find test coverage
 

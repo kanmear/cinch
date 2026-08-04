@@ -1,78 +1,59 @@
-# P5.1 handoff — Claude Code seam enforcement landed; episodic memory track opened
+# P5.2 handoff — `cinch ignores` binding landed; the audit is runnable end-to-end
 
-Status: **both next-session candidates from the P5 handoff are done.** The Claude Code half of
-per-harness seam enforcement exists (agent envelope + manifest-derived PreToolUse guard, D069) and
-the episodic-memory anytime track is live in the project (`.agent/events/events.jsonl`). What
-remains is all dormant or consumer-side: the `cinch ignores` binding gap (deferred, see below),
-O005, and the D020 reconsideration once fan-out is real.
+Status: **the one gap between the seam and the top next-session candidate is closed.** The
+check-rules audit's step-1 instruction (`cinch ignores` for the N/A inventory) was denied by both
+envelopes — fail-closed guard, deny-by-default opencode agent. It is now a manifest command
+(`{{commands.ignores}}`) both consumers declare, so the audit's "never enumerate by hand"
+instruction is executable inside the seam (D070). What remains is dormant or consumer-side: the
+interactive audit itself (now unblocked), O005, D020, and the third-consumer question.
 
-## Done — [P5.1 session]
+## Done — [P5.2 session]
 
-**Claude Code auditor seam (D069).** `.claude/agents/auditor.md` in the project — the same envelope
-shape as the opencode agent: `tools: Read, Grep, Glob, Bash` (no Edit/Write/Agent), body mirroring
-the seam prompt — plus an agent-scoped `PreToolUse` hook running `.claude/hooks/auditor-bash-guard.py`.
-The guard is the enforcement piece and it *consults the manifest*: it resolves `seams.auditor.allow`
-ids to command literals through `development.commands` at runtime (quoted and unquoted literal
-shapes, inline comments — both consumers verified), auto-allows a match only if its remainder is
-free of chaining/expansion (`; | & \` $`, control chars), and exits 2 (deny) on everything else,
-**failing closed** when the manifest is unreadable, the seam lacks `allow:`, or no id resolves.
-Adding an id to the seam's `allow:` now widens the Claude Code seam with zero glue edits — the
-manifest is the single source of truth, the handoff's "live property" is closed for this harness.
+**The binding (D070).** `templates/check-rules.md` steps 1 and 2 bind the literal `` `cinch
+ignores` `` to `{{commands.ignores}}`; `scaffold/manifest.example.yml` gains `ignores: make
+ignores` so `templates_test.go`'s variable contract stays honest. Both consumers declare the
+command: project_deltadocs `ignores: "make ignores"` with a new `ignores:` Makefile target
+(`$(CINCH) ignores`), cinch's own `.agent/manifest.yml` `ignores: ./bin/cinch ignores`.
+`seams.auditor.allow` gains `ignores` in both manifests; the opencode auditor envelope gains
+`"make ignores*": allow`; both agent bodies' prose now names the bound shape.
 
-**Routing + stale-path pass.** The `.claude/skills/check-rules/SKILL.md` now routes the audit to
-the auditor agent (mirroring the opencode skill) and the pre-P4 `.agent/business/` paths are gone:
-`check-rules`/`rules` in `.claude/`, `rules` in `.opencode/`, and the project's AGENTS.md.
-Correction to the P5 handoff: **plan-feature/fix-bug/optimize-docs/sync-docs skills were already
-clean** — the pass was narrower than listed.
+**The Claude Code guard needed zero glue edits** — the D069 payoff, demonstrated live: adding the
+id to `seams.auditor.allow` widened the seam by data alone. Unit-runs against both manifests:
+`make ignores` allowed (quoted literal), `./bin/cinch ignores` allowed (unquoted), bare
+`` `cinch ignores` `` denied as unresolvable, chaining after the allowed literal denied, unrelated
+commands denied, non-Bash passes.
 
-**Episodic memory (roadmap anytime).** `.agent/events/events.jsonl` seeded with E001 (this
-session's landing) and a recording rule in the project's AGENTS.md (decisions, dead ends, accepted
-risks, surprises → one append-only JSONL event; schema pointer to cinch's `docs/decisions-log.md`).
-Verified index-inert: `make docs-index` regenerates the same 63-entry index.
-
-**Verification.** Guard unit-run against both consumers' manifests (allow: the three project
-checkers + cinch's `./bin/cinch check`; deny: `make test`, `git push`, `rm -rf .`, `ls`, `make
-check-frontend`; chaining: `&&` / `|` after an allowed literal; fail-closed: missing manifest,
-unresolvable ids). Agent frontmatter parses to the expected structure. Project `make check-harness`
-exit 0 with the two designed C6/C7 warns, unchanged. **End-to-end smoke test completed** (E012):
-the earlier headless `claude --agent auditor` failure was a VPN outage, not the glue; once auth
-worked, the deny path blocked `ls`/`cat`/compounds live, and the allow path exposed one real bug —
-the guard emitted `permissionDecision` at top level, but PreToolUse requires it inside
-`hookSpecificOutput` with `hookEventName: "PreToolUse"` (top-level is deprecated). With that fix,
-`make check-harness` ran prompt-free inside the auditor agent and the model interpreted the harness
-output in the seam role. Verified against Claude Code v2.1.221.
-
-**Decisions logged:** D069 (Claude Code enforcement design), E011 (session event), project E001
-(event). Roadmap §P5 permissions bullet, status line, and anytime episodic-memory bullet annotated.
+**Verification.** Both consumers re-rendered and C2-green: project check-harness exit 0 with the
+two designed C6/C7 warns; cinch self-check exit 0 with the two known C11 warns plus the designed
+C10 self-question on this session's own template edit (answer: no harness rule changed).
+`make ignores` lists CAT-003 and MEMB-006 in the project. `make test` green including
+TestTemplatePurity. Decisions logged: D070, E013 (cinch), project E002 (event). Roadmap §P5
+permissions bullet annotated.
 
 ## Not done
 
-- **`cinch ignores` binding gap (deferred, by design).** `check-rules.md` step 1 references
-  `cinch ignores`, but no manifest command, Makefile target, or harness envelope allows it — it was
-  unreachable in the opencode envelope too. The N/A inventory stays derivable by reading the
-  `cinch:ignore` markers in the domain docs. Fixing it means a manifest command + Makefile target +
-  template binding (`{{commands.*}}` instead of the literal) + both envelopes — a cinch-side change
-  with a re-render; parked unless it bites.
+- **The real `/check-rules` audit** — the P5.1 handoff's top candidate, now unblocked: step 1
+  (closure + inventory) is script output the seam permits, the semantic half is the model's job
+  in the auditor agent. Still hasn't run end-to-end as an interactive skill invocation.
 - **O005** (org vs personal repo) — dormant until the repo is pushed.
-- **D020 reconsideration** — the roadmap's anytime section says to live with the event log before
-  deciding on the multi-slot handoff; no fan-out exists, so nothing to decide yet.
+- **D020 reconsideration** — no fan-out exists in either consumer; nothing to decide.
 - **Envelope asymmetry** — the Claude Code guard is tighter than the opencode envelope (exact
-  literals; opencode's `make check*` also admits `make check-frontend`/`check-backend`, which the
-  project's auditor allowance does not name). Noted in D069; revisit when a third harness appears.
+  literals; opencode's `make check*` also admits `make check-frontend`/`check-backend`). Noted in
+  D069; revisit when a third harness appears.
+- **A second phase-5-ish consumer with real harness glue** — cinch's own repo has no `.opencode/`
+  or `.claude/`; its seams are declared-and-validated only.
 
 ## Next session
 
-Nothing is blocked. Candidates, in rough order of value:
+Nothing is blocked. Candidates:
 
-1. **Run the real `/check-rules` audit in an interactive Claude Code session** — the headless
-   smoke test (E012) proved both envelope paths, but the full audit (closure → classification →
-   report) hasn't run end-to-end as a skill invocation yet. The `.claude/agents/` directory was
-   created this session — a running Claude Code session started before it may need a restart to see
-   the agent.
-2. **The `cinch ignores` binding** if the audit run shows the missing N/A inventory actually hurts.
-3. **A second phase-5-ish consumer** — cinch's own repo has no harness glue (no `.opencode/` or
-   `.claude/` at all); its seams are declared-and-validated only. If cinch sessions ever run in a
-   harness with permission envelopes, the glue question recurs there.
+1. **Run the real `/check-rules` audit in an interactive Claude Code session** — the envelope
+   paths are proven (E012) and step 1's inventory is now seam-permitted (D070), so the full
+   closure → classification → report run is the remaining unverified path. A Claude Code session
+   started before the agent existed may need a restart to see `.claude/agents/auditor.md`.
+2. **A second phase-5-ish consumer** if cinch ever runs in a harness with permission envelopes —
+   cinch's own seams are declared-and-validated only, and the guard/agent glue would recur there.
+3. **O005 / D020** — both dormant by design (repo push; real fan-out).
 
 ## Notes for future work
 
@@ -83,11 +64,16 @@ Nothing is blocked. Candidates, in rough order of value:
   `Bash(<literal>:*)` rules to the personal `settings.local.json`; keep the project-shared
   `.claude/settings.json` hooks-only.
 - **`.claude/` is root-gitignored but partially tracked** (historical `git add -f`), same as
-  `.opencode/`. The agent and hook files were force-added this session; any *new* glue file there
-  needs `git add -f` at commit time or it silently never ships. Edits to already-tracked files
-  stage normally.
+  `.opencode/`. Any *new* glue file there needs `git add -f` at commit time; edits to
+  already-tracked files stage normally. This session only edited tracked files.
 - **The guard is a 60-line stdlib script parsing a machine-shaped YAML.** C12 guarantees the ids
   resolve, so the parse risk is the command-literal shapes (quoted vs unquoted, inline comments) —
-  both verified, but a future manifest shape change must re-run the guard's cases.
-- **The self-check pattern held again**: this session touched no harness rule, only glue and docs,
-  so no C10/C2 question even arose on the cinch side — the cheapest resolution yet.
+  the project's `"make ignores"` (quoted) and cinch's `./bin/cinch ignores` (unquoted) are both
+  verified; a future manifest shape change must re-run the guard's cases.
+- **The `{{commands.ignores}}` binding follows the D067 pattern**: every command the workflow
+  instructs the auditor to run must exist as a manifest command, a Makefile target, and an
+  envelope allowance. Any future script-instructed command (e.g. a new `cinch` subcommand) should
+  ship as all three in the same change, or the workflow will again instruct a denied command.
+- **The self-check pattern held again**: the session's own template edits produced the designed
+  C10 warn, resolved by answering "no harness rule changed" — no C10/C2 question required any
+  harness rule edit.
