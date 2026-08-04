@@ -1,12 +1,13 @@
-# P1 handoff — nine of ten workflows rendered; template-porting goal met
+# P2 handoff — compaction anchor landed; plan-feature/fix-bug shrunk to their fronts; execute-plan repointed
 
-Status: **Phase 1's template-porting exit criterion is met.** The binding side is done and green
-(C1/C3/C4/C12); nine workflows — `check-rules`, `task-primitive`, `optimize-docs`, `execute-plan`,
-`plan-feature`, `sync-docs`, `fix-bug`, `rules`, and `doc-philosophy` — are authored *as
-templates*, render into project_deltadocs, and are C2-guarded. `figma-restyle.md` is intentionally
-**not** ported (D053) — its content doesn't generalize into a portable procedure, so it stays
-project-owned prose, same status as any project doc with no derivable-elsewhere content.
-`make check-harness` is **fully green** ("harness ok").
+Status: **Phase 2's exit criterion is met.** The task primitive now carries the compaction anchor
+(D039), `plan-feature.md` and `fix-bug.md` are shrunk to their Phase 1/2 fronts with no
+atomicity/manifest/verification rule appearing in more than one template, `fix-bug`'s differences
+note is deleted rather than updated, and `execute-plan.md` points at the primitive instead of
+restating it. `make check-harness` is **fully green** ("harness ok").
+
+Phase 1's record stands below (nine of ten workflows rendered, template-porting goal met, D053
+figma-restyle exclusion).
 
 ## Done
 
@@ -142,6 +143,36 @@ excluding `.agent/`), and stack literals hardcoded from `scaffold/manifest.examp
 referenced as `{{commands.<key>}}` — all structural, no maintained name list. `make`'s `test`
 target no longer swallows `go test` failures.
 
+**[P2 session 1 — this one]**
+
+- `templates/task-primitive.md` gained the **Compaction anchor** section (D039) — appended after
+  the Completion ritual as a cross-cutting epilogue: the minimum state (current task ID, its
+  context manifest, the completion ritual) that must survive a mid-session summarization event,
+  re-injected from source rather than reconstructed from the compacted summary.
+- `templates/fix-bug.md` — the closing *(Where this differs from feature planning…)* parenthetical
+  was **deleted, not updated** (the roadmap exit bar's artifact); Phase 5's machinery list gained
+  `compaction-anchor`.
+- `templates/plan-feature.md` — Phase 3 shrank from five bullets restating the primitive's section
+  substance to a name-list plus the feature-specific persists-as-complete input, leaving
+  `plan-feature`/`fix-bug` Phase 3/5 structurally symmetric.
+- `templates/execute-plan.md` — per-task step 4 now points at the primitive's § Verification tiers
+  instead of restating Tier 1→2→3 (the scheduling note stays — it's execute-plan's own behavior);
+  Session Boundaries gained the compaction-reload paragraph, since this is the one workflow that
+  runs during task execution where a mid-session compaction event is observable.
+- Each edit was verified individually before the next (D033): `make render` + `make check-harness`
+  C2 green in project_deltadocs, `go test ./...` (D049) clean in cinch. Final pass: `make
+  check-harness` clean, `go test ./...` clean, no stray "Differences from Feature Planning" or
+  restated-tier prose in `templates/`.
+- **Self-render resolution (D055):** P2 does not render the primitive into cinch's own repo — the
+  exit clause "cinch renders the primitive for its own use" is satisfied by the template existing,
+  being C2-green in project_deltadocs, and being proven portable there. A cinch `.agent/manifest.yml`
+  is P3 scope per D036 and standing rule 2. Roadmap P2's exit line gained a parenthetical making
+  this explicit; no self-render step ran.
+
+**Decisions logged:** D054 (compaction anchor content lives in `task-primitive.md` alone; composing
+templates name it, `execute-plan` gets the operational pointer), D055 (no P2 self-render; P3 scope
+per D036), E005 (P2 session 1 progress event).
+
 ## Not done — P1 status
 
 1. **Template porting is done.** Nine of ten workflows are rendered output; `figma-restyle.md`
@@ -158,13 +189,18 @@ target no longer swallows `go test` failures.
 
 ## Next session
 
-P1's template-porting work is closed out. What's left in Phase 1 is the D047 distribution deferral
-(not a blocker, revisit at first release) — otherwise Phase 1's stated exit criteria hold. The
-roadmap's session-loads table names Phase 2 (`task-primitive.md` extraction, D039 compaction
-anchor, D036 dogfooding) as the next numbered phase; note that `templates/task-primitive.md`
-already exists from P1 session 2; the next session should check the roadmap P2 section for what
-Phase 2 still expects (shrinking `plan-feature`/`fix-bug` to their P1/P2 fronts, deleting rather
-than updating `fix-bug`'s differences table) before assuming P2 starts from zero.
+Phase 2's work is closed out — the primitive carries its compaction anchor, the composing
+workflows are shrunk to their fronts, and the exit bar (single-home rules, deleted-not-updated
+differences note, portable-in-project_deltadocs primitive) holds. The roadmap's session-loads
+table names Phase 3 (Checker layer) as the next numbered phase:
+
+> roadmap §P3 · `check.go` · consumer `manifest.yml` · D009 D011 D027 D028 D030
+
+Wave 1 (C1/C2/C3/C4/C5/C9/C11/C12) already ships in `check.go`; the remaining P3 items are wave 2
+(C6/C7 — the introspection JSON contract, D028), wave 3 (C8 — blocked on rule markers existing
+across the test suite, D027), and the fixture projects in cinch CI (D017) — the roadmap's exit
+line: `cinch check` green on a clean tree in the project and both fixtures, and every mechanical
+audit in `sync-docs`/`optimize-docs` prose either a checker or deleted as doc-downstream (D009).
 
 ## Notes for future template work
 

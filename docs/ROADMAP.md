@@ -102,9 +102,11 @@ with `Status: complete`. Shrink `plan-feature` / `fix-bug` to their Phase 1/2 fr
 
 **Exit:** no atomicity, manifest, or verification rule appears in more than one template.
 `fix-bug`'s "Differences from Feature Planning" table is deleted, not updated. **And cinch renders
-the primitive for its own use** — from P3 onward cinch plans its own work with it (D036), which is
-both the planning workflow the project's domain-bound `plan-feature` cannot provide and the first
-real portability evidence.
+the primitive for its own use** (the template exists, is C2-green in project_deltadocs, and is
+proven portable — not a self-manifest or self-render inside cinch's own repo, which stays out of
+scope until P3 per D036/standing rule 2) — from P3 onward cinch plans its own work with it (D036),
+which is both the planning workflow the project's domain-bound `plan-feature` cannot provide and
+the first real portability evidence.
 
 **Justify as drift control, not context savings** — a session loads one workflow, so extraction
 saves roughly zero runtime tokens.
