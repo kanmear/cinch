@@ -196,12 +196,15 @@ Needs P1, P2; benefits from P3.
   C12-validated (non-empty, C3-resolved). Both glue pieces landed: the project's opencode auditor
   agent envelope (D067) and the Claude Code auditor agent whose PreToolUse guard derives its
   allowance from the manifest at runtime — declaration and enforcement cannot drift (D069).
-  The check-rules N/A inventory is itself a bound command (`{{commands.ignores}}`, D070), so the
-  audit's step 1 is executable inside the seam.)*
+   The check-rules N/A inventory is itself a bound command (`{{commands.ignores}}`, D070), so the
+   audit's step 1 is executable inside the seam. *(cinch's own repo now carries real glue for the
+   harness it runs in: `.opencode/agent/auditor.md` envelope + check-rules entry point, and the
+   audit ran against cinch's own domain — D071/E014.)*
 
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
 *Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,
-permissions declared and enforced in both harnesses (D067/D069).*
+permissions declared and enforced in both harnesses (D067/D069) and in cinch's own opencode seam
+(D071); the audit has executed against both consumers' domains.*
 
 ---
 
