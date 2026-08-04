@@ -13,7 +13,7 @@ import (
 
 // TestTemplatePurity checks templates/*.md for leaks that are structural — a
 // shape no future harness or stack can hide from — rather than enumerating
-// harness names, which rot the moment a new tool exists (D050). `/foo` is a
+// harness names, which rot the moment a new tool exists (D049). `/foo` is a
 // leak by construction; "Claude Code" would only be a leak by lookup against
 // a list that can never be complete, so no such list exists here. The
 // general case — prose describing how a runner happens to surface

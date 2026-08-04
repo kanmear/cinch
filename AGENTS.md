@@ -6,9 +6,12 @@ A portable agent harness: templates plus a Go CLI that renders them against a pr
 ## What this repo is
 
 - `*.go` — the CLI. `render`, `index`, `check`.
-- `templates/` — portable workflow templates. Reference `{{commands.check}}`,
-  `{{paths.tests.integration}}`, `{{taxonomy.layers}}`. Never mention a language, framework, or
-  command literal.
+- `templates/` — portable workflow templates, nothing else. `render` walks every `*.md` under here
+  and renders it into a consumer's `.agent/workflows/`, with no filename exclusion — a meta-doc
+  placed in this directory (a README, notes-to-porters) gets rendered as if it were a workflow.
+  Directory-level conventions belong here in `AGENTS.md`, not a nested README. Reference
+  `{{commands.check}}`, `{{paths.tests.integration}}`, `{{taxonomy.layers}}`. Never mention a
+  language, framework, or command literal.
 - `fixtures/` — toy repos CI renders into, one per stack. The portability test.
 - `docs/` — core/philosophy only: `ROADMAP.md` (phased plan), `RATIONALE.md` (why the design is
   what it is), `PHILOSOPHY.md`, decisions log.
