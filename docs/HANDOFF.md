@@ -43,7 +43,14 @@ renamed to `ops/`. Nothing pending there.
   section (D035 still referenced).
 
 **Decisions logged:** D045 (template porting conventions), D046 (C11 fence-skip), D047
-(distribution), D048 (index skips front-matter), E001 (P1 progress event).
+(distribution), D048 (index skips front-matter), D049 (template-purity Go test, not a checker or
+name blocklist), E001 (P1 progress event).
+
+**Template purity test added** (D049): `templates_test.go` (`go test` / `make test`) now catches
+command-shaped inline tokens (`` `/foo` ``), runner-config dotdir paths (`.claude/`-shaped,
+excluding `.agent/`), and stack literals hardcoded from `scaffold/manifest.example.yml` instead of
+referenced as `{{commands.<key>}}` — all structural, no maintained name list. `make`'s `test`
+target no longer swallows `go test` failures.
 
 ## Not done — P1 blockers
 
@@ -88,7 +95,10 @@ renamed to `ops/`. Nothing pending there.
   (`/execute-plan`, `/rules`, …). Both are Claude Code bindings: drop the line and rewrite the
   references as `.agent/workflows/<name>.md` paths. The consumer's `.claude/skills/` shims already
   frame the workflows as "agent-neutral procedures" — the workflow body naming the harness
-  contradicts that framing.
+  contradicts that framing. `make test` (D049) now catches the slash-command references and any
+  hardcoded stack commands mechanically as each port lands — it will **not** catch the italic
+  "Claude Code exposes this as …" line itself, since that's prose with no structural token; still
+  needs eyes during each port.
 - Templates resolve next to the binary (`~/code/cinch/templates`) — edit them in the cinch repo,
   then run `make render` in projectX. No sync step exists; do not introduce a second copy.
 - `templates/` may be nested (render walks recursively) — keep flat unless a port needs grouping.
