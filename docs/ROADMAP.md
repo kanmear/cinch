@@ -133,9 +133,10 @@ for types, runtime for routes (D028). cinch defines the JSON contract; the proje
 producers. *(Landed — contract in `docs/INTROSPECTION.md`, C6/C7 in `check.go`, producers in the
 project; doc-upstream errors, coverage warns, absent producers skip. D056.)*
 
-**Wave 3** — C8 rule ID → at least one `// cinch:rule PROJ-014` marker (D027), plus the reverse
+**Wave 3** — C8 rule ID → at least one `// cinch:rule <ID>` marker (D027), plus the reverse
 check that every marker resolves to a real rule. Blocked on markers existing across the test suite —
-a migration, not a build. *(The build ships with the P4.1 rule-ID migration, not before — D057.)*
+a migration, not a build. *(Landed with the P4.1 rule-ID migration — D057/D064; forward warns,
+reverse errors, `cinch:ignore` declares exemptions, `cinch ignores` lists them.)*
 
 No time- or commit-based staleness thresholds (D011).
 
@@ -152,7 +153,8 @@ updated, `check-rules` still passes — and the rule text is now false.
 
 - **[project] 4.1** Roll out rule IDs and `// cinch:rule` markers. Author-assigned, permanent, never
   reused, prefixed from `rule_prefix` front-matter. Only `domain/<domain>.md` rules get IDs;
-  philosophies in `overview.md` do not (D027).
+  philosophies in `overview.md` do not (D027). *(Landed — 75 rules IDed and marked across
+  project_deltadocs; cinch's own harness rules HARNESS-001..005 marked or ignored. D064.)*
 - **[cinch] 4.2** C10 diff-coupling: a commit touching a domain's `owns:` paths but not its domain
   doc → **warning**, not error. Value is asking the question when the answer is cheapest.
 - **[project] 4.3** Derivability gate as an explicit admission test: *can an agent recover this from
@@ -161,7 +163,8 @@ updated, `check-rules` still passes — and the rule text is now false.
 - **[project] 4.4** `optimize-docs` gets a deletion mandate — it must *remove*, applying 4.3
   retroactively (D013).
 
-**Exit:** every rule has an ID resolving to a marked test; a behaviour-changing commit that leaves
+**Exit:** every rule has an ID resolving to a marked test (untestable rules declared
+`cinch:ignore`, listed by `cinch ignores` — D064); a behaviour-changing commit that leaves
 its domain doc untouched warns; `optimize-docs` has deleted something on first run.
 
 ---
