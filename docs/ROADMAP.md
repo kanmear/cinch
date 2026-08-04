@@ -80,8 +80,10 @@ output committed (D006, D008).
 Test tiers as data: `tdd: rule-tests` not `tdd: mandatory`; `opt_in: true` as data; per-tier prose
 in the primitive or a `notes:`-named doc.
 
-**Exit:** no literal `make`, no hardcoded test paths or tier names in any template. The project's
-workflows are rendered output. **Do not ship the render step without C2.**
+**Exit:** no literal `make`, no hardcoded test paths or tier names in any template. Nine of the
+project's ten workflows are rendered output; `figma-restyle.md` stays project-owned prose (D053) —
+its content doesn't generalize into a portable procedure. **Do not ship the render step without
+C2.**
 
 ---
 
