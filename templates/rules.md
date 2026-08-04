@@ -1,0 +1,122 @@
+# Business Rule Maintenance
+
+Add, edit, or reorganize business rules in `{{paths.business}}/`.
+
+Read [Doc Philosophy](doc-philosophy.md) before proceeding.
+
+## Usage
+
+Update business documentation to reflect domain or product changes, including:
+- New constraints or invariants discovered
+- Existing rules clarified or corrected
+- New API resource added (needs a matching `business/<resource>.md`)
+- Business doc reorganization (moving facts to the right file)
+
+**This workflow is not triggered by code changes.** For code-driven doc updates, use the sync-docs
+workflow (`.agent/workflows/sync-docs.md`).
+
+## Instructions
+
+### 1. Understand what changed
+
+Determine the nature of the change:
+- **New rule** — a constraint that wasn't previously documented
+- **Updated rule** — an existing rule that needs correction or clarification
+- **New resource** — a new API resource was added that needs a business file
+- **Reorganization** — facts are in the wrong file (split, merged, or misplaced)
+
+### 2. Locate the right file
+
+Business files mirror `api/` files 1:1: `api/<resource>.md` → `{{paths.business}}/<resource>.md`.
+See `{{paths.business}}/overview.md` § Structure Convention for the exact rule and the current
+list of API resources that have no business-file counterpart (read-only/aggregation endpoints
+with no independent domain rules of their own).
+
+Rules:
+- One file per API resource — do not consolidate multiple resources
+- `{{paths.business}}/overview.md` documents key concepts and domain relationships, not rules — do not add rules there
+- If no matching business file exists for a resource with non-trivial rules → create one
+
+### 3. Check one-fact-one-place
+
+Before adding anything, search existing business docs for the fact:
+
+```
+Grep `{{paths.business}}/` for keywords from the rule
+```
+
+If the fact already exists elsewhere:
+- **Same file, same rule** → edit in place, don't add a duplicate
+- **Different file** → move it to the correct file; replace with a cross-reference in the original
+- **Partially stated in multiple files** → consolidate in the most specific file; cross-reference from others
+
+### 4. Edit or create
+
+**Editing an existing file:**
+- Add the rule to the numbered list in the relevant section
+- Keep each rule to one sentence where possible
+- Don't include endpoint contracts, struct fields, or SQL schema — those belong in `api/` and `models/`
+
+**Creating a new file:**
+Use this template:
+```markdown
+# <Resource> Business Rules
+
+1. <Rule one.>
+2. <Rule two.>
+...
+
+## Related Documentation
+
+- [<Resource> API](../api/<resource>.md) — endpoint contracts
+- [<Resource> Model](../models/<resource>.md) — schema
+- [<Related> Rules](<related>.md) — <brief reason for the link>
+```
+
+What belongs in business docs:
+- ✅ Domain constraints and invariants ("at most one per...", "cannot be shared across...")
+- ✅ Cascade effects ("deleting X cascades to delete Y")
+- ✅ Role/permission constraints ("only the designated signer can...")
+- ✅ Workflow rules ("a tab with a pending signature cannot be edited")
+
+What does NOT belong here:
+- ❌ Endpoint contracts or HTTP status codes (→ `api/<resource>.md`)
+- ❌ Struct fields, SQL schema, or model implementation (→ `models/<resource>.md`)
+- ❌ Error handling specifics (→ `api/<resource>.md`)
+- ❌ Implementation details visible in the code
+
+### 5. Fix cross-references
+
+After editing, check both directions:
+
+**Outgoing** — does this file's Related Documentation section link to the right files?
+
+**Incoming** — do other files that reference this topic now need updating?
+- Search for references to the old location of any moved facts
+- Replace stale references with cross-references to the new location
+
+### 6. Regenerate the doc index if a new file was created
+
+If you created a new `business/<resource>.md`, its H1 first line becomes its index entry — run
+`{{commands.docs-index}}` and stage `.agent/index.md` so the generated doc map picks it up. Do not
+hand-edit the index or AGENTS.md; editing an existing file needs neither.
+
+## Decision Tree
+
+```
+Domain/product rule changed
+    ↓
+Does a business file exist for this resource?
+    ├─ NO  → Does it have non-trivial rules? → YES → Create new file
+    │                                        → NO  → Add to closest related file
+    └─ YES → Is the fact already documented somewhere?
+              ├─ YES, same file → Edit in place
+              ├─ YES, wrong file → Move + cross-reference
+              └─ NO → Add to the correct file
+```
+
+## Common Pitfalls
+
+- **Duplicating endpoint info** — Business rules describe *what* is constrained, not *how* the API signals it. "Only the editor can cancel" belongs here; "returns 404 if caller is not the editor" belongs in `api/<resource>.md`.
+- **Adding rules to overview.md** — `overview.md` is a domain map, not a rule list. Rules go in the resource-specific file.
+- **Skipping cross-reference cleanup** — When moving a fact, always replace it with a reference; never leave two copies.
