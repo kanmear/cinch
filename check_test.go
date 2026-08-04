@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -64,4 +67,93 @@ func TestCheckSeamsAllow(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCheckRenderedTamper — a committed file whose body no longer matches its
+// own header hash is hand-edited, not stale. The marker for HARNESS-004 sits
+// above checkRendered (check.go), the C12 precedent (TestCheckSeamsAllow).
+func TestCheckRenderedTamper(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("CINCH_HOME", root)
+	tdir := filepath.Join(root, "templates")
+	mustMkdir(t, tdir)
+
+	if err := os.WriteFile(filepath.Join(tdir, "w.md"), []byte("# W\n{{paths.domain}}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	files, err := renderAll(root, m)
+	if err != nil {
+		t.Fatalf("renderAll: %v", err)
+	}
+	pristine := files[0].body
+
+	dst := filepath.Join(root, ".agent", "workflows", "w.md")
+	mustMkdir(t, filepath.Dir(dst))
+	// Hand-edit: the header still carries the hash of the pristine body, but
+	// the body no longer matches it.
+	tampered := strings.Replace(pristine, "domain", "domain ", 1)
+	if tampered == pristine {
+		t.Fatal("test edit did not change the body")
+	}
+	if err := os.WriteFile(dst, []byte(header("w.md", pristine)+tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var r report
+	checkRendered(root, m, &r)
+	msg := c2Message(r)
+	if !strings.Contains(msg, "hand-edited") {
+		t.Fatalf("C2 = %q, want a hand-edited finding", msg)
+	}
+	if strings.Contains(msg, "stale") {
+		t.Fatalf("C2 = %q, tamper misreported as staleness", msg)
+	}
+}
+
+// TestCheckRenderedStale — a committed file whose header hash matches its own
+// body but whose body differs from a fresh render is stale, not tampered.
+func TestCheckRenderedStale(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("CINCH_HOME", root)
+	tdir := filepath.Join(root, "templates")
+	mustMkdir(t, tdir)
+
+	if err := os.WriteFile(filepath.Join(tdir, "w.md"), []byte("# W\n{{paths.domain}}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	files, err := renderAll(root, old)
+	if err != nil {
+		t.Fatalf("renderAll: %v", err)
+	}
+
+	dst := filepath.Join(root, ".agent", "workflows", "w.md")
+	mustMkdir(t, filepath.Dir(dst))
+	// Committed as rendered under the old manifest: header and body agree.
+	if err := os.WriteFile(dst, []byte(header("w.md", files[0].body)+files[0].body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The manifest moves on; the committed file does not.
+	fresh := &Manifest{Vars: map[string]string{"paths.domain": ".agent/harness"}}
+	var r report
+	checkRendered(root, fresh, &r)
+	msg := c2Message(r)
+	if !strings.Contains(msg, "stale against the manifest") {
+		t.Fatalf("C2 = %q, want a staleness finding", msg)
+	}
+	if strings.Contains(msg, "hand-edited") {
+		t.Fatalf("C2 = %q, staleness misreported as tamper", msg)
+	}
+}
+
+// c2Message returns the first C2 error message from a report (empty if none).
+func c2Message(r report) string {
+	for _, f := range r.findings {
+		if f.level == "error" && f.code == "C2" {
+			return f.msg
+		}
+	}
+	return ""
 }

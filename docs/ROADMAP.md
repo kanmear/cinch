@@ -199,12 +199,15 @@ Needs P1, P2; benefits from P3.
    The check-rules N/A inventory is itself a bound command (`{{commands.ignores}}`, D070), so the
    audit's step 1 is executable inside the seam. *(cinch's own repo now carries real glue for the
    harness it runs in: `.opencode/agent/auditor.md` envelope + check-rules entry point, and the
-   audit ran against cinch's own domain — D071/E014.)*
+   audit ran against cinch's own domain — D071/E014. The audit's one proposal — C2's tamper branch
+   had no unit test — is executor-applied: `TestCheckRenderedTamper` + the stale-branch companion
+   in check_test.go close the gap (D072/E015).)*
 
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
 *Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,
 permissions declared and enforced in both harnesses (D067/D069) and in cinch's own opencode seam
-(D071); the audit has executed against both consumers' domains.*
+(D071); the audit has executed against both consumers' domains, and its proposal→apply loop has
+completed once (E014→D072).*
 
 ---
 
