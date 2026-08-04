@@ -12,18 +12,27 @@ Identify which domain rules lack test coverage, classified by testability.
 
 ## Instructions
 
-### 1. Enumerate all rules
+### 1. Get the closure from the harness checkers
 
-Read every file in `{{paths.domain}}/` except `overview.md`. Extract each numbered rule with its
-ID (the `**<PREFIX>-0NN**` token at the start of each item, prefixed from the doc's `rule_prefix`
-front-matter) and its source file. Build a flat list:
+The rule set is **script output, not something to re-read by hand**. Run `{{commands.check-harness}}` —
+its rule-marker check (C8) walks every file in `{{paths.domain}}/` except `overview.md` and reports,
+per rule:
+
+- **unmarked** — no `// cinch:rule <ID>` marker anywhere in the tree: the rule is either untested
+  (a coverage gap) or declared N/A (step 2)
+- **unresolved marker** — a marker that names no real rule: dead syntax, fix it
+
+`cinch ignores` lists every rule declared N/A. The checker's report plus that inventory **are** the
+enumerated list:
 
 ```
-[SIG-001] <rule summary>
-[SIG-002] <rule summary>
-...
-[TAB-005] <rule summary>
+[SIG-001] <rule summary>   unmarked — verify coverage
+[SIG-002] <rule summary>   unmarked — verify coverage
+[TAB-005] <rule summary>   cinch:ignore — N/A
 ```
+
+Your job starts where the script stops: the semantic half in steps 2–3. Do not re-enumerate the
+rule set by hand — the checkers never miss a rule; a hand extraction can.
 
 ### 2. Classify each rule by testability
 
@@ -90,7 +99,7 @@ Example:
 
 Before finishing, confirm:
 
-- [ ] Every domain file (except overview.md) was read
+- [ ] The rule closure came from the harness checkers — no hand re-enumeration of `{{paths.domain}}/`
 - [ ] Every rule was classified by its ID (API / Model / N/A)
 - [ ] N/A rules are declared `<!-- cinch:ignore <ID> -->` in their doc — not just skipped in the report
 - [ ] Test files were read, not just searched by name — semantic matching used

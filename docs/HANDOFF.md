@@ -1,80 +1,83 @@
-# P4 handoff — admission test and deletion mandate landed, first-run prune executed
+# P5 handoff — Auditor wired, fan-out verified-and-deferred, permissions declared with first glue piece
 
-Status: **Phase 4 is complete.** All four P4 exit items are live on both consumers: rule IDs and
-markers (4.1, C8), the diff-coupling warning (4.2, C10), the derivability admission test (4.3),
-and optimize-docs' deletion mandate (4.4) — which deleted something on its first run. The
-roadmap's P4 exit line is fully annotated. Remaining work is Phase 5, plus O005. See Next session.
+Status: **Phase 5's order is complete**: seams were already declared (P1), the Auditor verification
+is wired (D067), Executor fan-out was verified absent and deferred (D068), and permissions are
+declared with the first enforcement glue piece (D067). Remaining work is the enforcement remainder
+(Claude Code glue), the anytime tracks, and O005 — all project-side or dormant. See Next session.
 
-## Done — [P4.3/4.4 session]
+## Done — [P5 session]
 
-**Decision first (D066)** — the gate is two questions and the pass removes. D012 names the gate
-and the residue but not where residue content goes or what survives a retroactive prune; D066
-settles both: recoverable-from-source → not written, point at source; not recoverable but
-falsifiable → business rule, `domain/` doc with a rule ID (C8/C10-guarded); otherwise → prose.
-The pruning pass carves out `domain/` rule docs (the guarded residue) and generated workflows
-(C2-owned), and a removal must be spot-checked recoverable from source before committing.
+**Auditor seam wired (D067).** `templates/check-rules.md` step 1 no longer has the model read every
+domain file and build the rule list by hand — enumeration is script work (D014). The workflow now
+takes the closure from the harness checkers: a new `{{commands.check-harness}}` binding declared in
+both manifests (project: `make check-harness`; cinch: `./bin/cinch check`) whose C8 report names
+every unmarked rule, plus `cinch ignores` for the N/A inventory. The model's job is the semantic
+half the script cannot do (marked tests genuinely exercise their rules; unmarked genuinely
+untested vs forgotten). No tier prose — that would duplicate C12 (D009).
 
-**Authoring (cinch templates)**
+**Permissions declared, C12 extended (D067).** `seams.<name>.allow` — an optional non-empty list
+of `development.commands` ids, resolved like C3 — is validated by C12 in `check.go`
+(check_test.go covers five cases). Allowances declared in both manifests (auditor:
+check-harness/check/docs-index; doc_maintainer: check/docs-index; planner/executor: fuller sets).
+A declaration gates nothing by itself — the manifest comment and the roadmap both say so.
 
-- `templates/doc-philosophy.md` — "The Admission Test" added at the head of the doc (after The
-  Core Insight, before the principles): the two-question test above, stated as a write-path
-  procedure. Principles and the ❌/✅ teaching lists unchanged.
-- `templates/optimize-docs.md` — new step 2 "Prune first — the admission test applied
-  retroactively": gate-failing content is **removed, not trimmed, not refreshed**; the report
-  names removals and confirms recoverability; the fix step makes removal the default for
-  gate-failing content (trim/cross-reference only for pass-the-gate redundancy).
+**First glue piece (project).** `.opencode/agent/auditor.md` — the auditor seam's permission
+envelope in opencode: `edit` and `task` denied, bash restricted to the checker commands (broad
+patterns first — opencode evaluates the last matching rule). The `check-rules` skill entry point
+routes the audit to it and fixes its stale `.agent/business/` path. Note for commit time:
+`.opencode/` is root-gitignored; the skills were force-added historically, and `auditor.md` needs
+the same `git add -f` (nested `.opencode/.gitignore` does not exclude it).
 
-**Re-render + verification (D033)**
+**Fan-out verified-and-deferred (D068).** Neither consumer harness fans out: skills are
+single-slot, `execute-plan.md` runs one atomic task per session, no sub-agent config in
+`.opencode.json` or `.claude/settings.json`. D020's multi-slot deferral stands; re-verify when a
+consumer actually gains fan-out.
 
-- Both consumers re-rendered and C2-green. cinch self-check exit 0 with the two known C11 warns;
-  the C10 warn it fired on the session's own uncommitted template edits is the loop working as
-  designed — no harness rule changed, no harness.md update needed. Project `make check-harness`
-  exit 0 with the two designed C6/C7 warns. `make test` green including TestTemplatePurity.
+**Re-render + verification (D033).** Both consumers re-rendered and C2-green. cinch self-check
+exit 0 with the two known C11 warns plus the designed C10 warn on the session's own
+check.go/templates edits — answer: no harness rule changed (HARNESS-002's "Enforced: C12" still
+holds), same resolution as P4.2/P4.3. Project `make check-harness` exit 0 with the two designed
+C6/C7 warns. `make test` green including TestCheckSeamsAllow.
 
-**First-run deletion (project side)**
-
-- `.agent/analysis/v4-flash-review.md` removed: a dated point-in-time review of the pre-P3
-  `.agent/` system, unindexed (`analysis/` is index-skipped) and unreferenced by any doc, every
-  finding since superseded by the phase history (guard hole → cinch pre-commit guard, rule
-  citations → C8 IDs, Claude Code flavor → generic templates, index → cinch index). Its reasoning
-  survives in git history and decisions.jsonl (E001–E008). `analysis/` is gone; index unchanged;
-  check-harness still exit 0. The roadmap's P4 exit bar — "`optimize-docs` has deleted something
-  on first run" — is met.
-- **Decisions logged:** D066 (gate shape, residue routing, carve-outs, recoverability
-  spot-check), E009 (session event). Roadmap §P4.3/4.4 bullets and the P4 exit line annotated.
+**Decisions logged:** D067 (closure-by-script + allow schema + first glue piece), D068
+(fan-out verified-and-deferred), E010 (session event). Roadmap §P5 bullets and order line
+annotated.
 
 ## Not done
 
+- **Claude Code enforcement glue** — the roadmap's per-harness enforcement "must be built" has
+  its opencode half; the Claude Code half (hook permissions / deny rules consulting the seam
+  allowances) does not exist yet.
 - **O005** (org vs personal repo) — still open; dormant until the repo is pushed.
+- **Anytime tracks** — session-start signals are live (the SessionStart hook); episodic memory
+  (`.agent/events/*.jsonl`) does not exist yet.
+- **Stale skill paths** — `.agent/business/` in the remaining project skills (`rules`,
+  `plan-feature`, `fix-bug`, `optimize-docs`, `sync-docs`) in both harnesses still points at the
+  pre-P4 name; only `check-rules` was fixed. Glue cleanup, not script-caught.
 
 ## Next session
 
-The roadmap's session-loads row for Phase 5:
+Two independent candidates, both project-side:
 
-> roadmap §P5 · `manifest.yml` · workflow list · D014 D015 — seams, tiering, permissions. Needs
-> P1, P2. Order within: declare seams → wire the Auditor verification → Executor fan-out →
-> permissions.
+1. **Claude Code seam enforcement** — the permissions remainder: per-seam allowances enforced via
+   Claude Code hook permissions or deny rules. Load the project manifest's `seams.*.allow` data;
+   the auditor agent's envelope in `.opencode/agent/auditor.md` is the shape precedent.
+2. **Episodic memory anytime track** — append-only `.agent/events/*.jsonl` per the roadmap's
+   anytime section and `docs/decisions-log.md`.
 
-Phase 5 is **[both]** and benefits from P3, which is complete: the Auditor seam was already
-changed by C8's mechanized enumeration (D014), doc-maintainer narrows to judgment, and fan-out
-may arrive before the phase is formally reached (D039). The anytime tracks (session-start
-signals, episodic memory) are independent project-side work. P5 needs the workflow list and
-`manifest.yml` — the seams section already exists in the project's manifest (C12-checked); the
-work is declaration-to-enforcement, and permissions enforcement is per-harness glue.
+O005 becomes actionable whenever cinch is pushed (needs a GitHub org-vs-personal call and blocks
+only P0.1). The stale-skill-path cleanup is a ten-minute glue pass.
 
 ## Notes for future work
 
-- **C10's boundary is `git diff HEAD`**, so its scope is the working set, not history — a clean
-  committed tree is always silent, and `cinch check` is unchanged as a CI gate. Untracked files
-  stay invisible until staged; the extension point if it ever bites is
-  `git ls-files --others --exclude-standard`.
-- **The self-check has now asked the session's own question twice** (check.go in P4.2, template
-  edits in P4.3) — both times the designed answer was "no rule changed", resolved in the same
-  change. The cheap fix path holds; a rule change would be the expensive-but-correct case.
-- **Stale artifacts hide in the unindexed dirs.** `analysis/` held the first-run deletion;
-  `plans/` was spared because its files conform to the convention (Status: open/complete). An
-  optimize-docs run should look there first — C1/C5/C11 give no signal about those files.
-- **The admission gate is a write-time procedure and a prune-time verdict**, not a checker: the
-  question "can an agent recover this?" is judgment, so it stays prose in the templates (D058's
-  judgment-residue principle) and is enforced by the write path and the optimize-docs run, never
-  by a C-check.
+- **The self-check has now asked the session's own question three times** (check.go in P4.2,
+  template edits in P4.3, check.go+templates in P5) — every time the designed answer was "no rule
+  changed", resolved in the same change. The cheap fix path still holds.
+- **The allowance list is data with a resolution contract (C12), not an enforcement surface.**
+  Adding a command id to a seam's `allow:` changes nothing until the harness glue consumes it —
+  the roadmap's "declaration is not enforcement" is a live property, not a caveat.
+- **opencode's permission objects are last-match-wins**: broad patterns first, narrow last. The
+  auditor agent's bash rules are ordered accordingly; a future edit that reorders them silently
+  flips the envelope.
+- **`.opencode/` is root-gitignored but partially tracked** (skills force-added in an old
+  commit). New glue files there need `git add -f` at commit time or they silently never ship.

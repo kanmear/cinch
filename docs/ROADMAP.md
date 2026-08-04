@@ -180,17 +180,26 @@ Needs P1, P2; benefits from P3.
 
 - **Auditor seam changed by C8.** Enumeration left the model entirely, so the seam is
   strong-verification over a script-produced list — cheaper *and* stronger than the original split
-  (D014).
+  (D014). *(Wired — check-rules.md takes the rule closure from the harness checkers
+  (`{{commands.check-harness}}`: C8 warns + `cinch ignores` inventory); the model's job is the
+  semantic half only. D067.)*
 - **Doc-maintainer narrows.** After P3 most mechanical routing is gone; mid tier still right, but
   the role is nearly all "can an agent derive this from source?"
 - **Fan-out arrives earlier than this phase implies** (D039). Frontier harnesses spawn parallel
   sub-agents natively, so Executor fan-out and the multi-slot handoff question (D020) may become
-  real before P5 is formally reached.
+  real before P5 is formally reached. *(Checked at P5: no fan-out exists in either consumer —
+  skills are single-slot, execute-plan runs one atomic task per session, no sub-agent config
+  declared. The D020 deferral stands; re-verify when a consumer actually gains fan-out. D068.)*
 - **Permissions.** Declare per-seam allowances in `manifest.yml`. Enforcement is per-harness glue
   (Claude Code hook permissions, local runner allowlist) and must be built. No doc may imply that
-  declaration is enforcement.
+  declaration is enforcement. *(Declared — `allow:` command-id lists in both manifests,
+  C12-validated (non-empty, C3-resolved). First glue piece landed: the project's opencode auditor
+  agent envelope (read-only, checker commands only). Claude Code hook enforcement still to build.
+  D067.)*
 
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
+*Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,
+permissions declared with the first glue piece (D067/D068).*
 
 ---
 

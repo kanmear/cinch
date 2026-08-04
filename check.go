@@ -328,9 +328,10 @@ func checkLinks(root string, r *report) {
 	})
 }
 
-// C12 — seam declarations are well-formed (D038). Tier is data so that one
-// design serves a 27B consumer and a frontier one; this checks the data.
-// Absent seams: section is legitimate — a repo may not have declared them yet.
+// C12 — seam declarations are well-formed (D038; allow lists per D067). Tier
+// is data so that one design serves a 27B consumer and a frontier one; this
+// checks the data. Absent seams: section is legitimate — a repo may not have
+// declared them yet.
 // cinch:rule HARNESS-002 — the auditor seam is never cheap (C12)
 func checkSeams(m *Manifest, r *report) {
 	seams, ok := m.Raw["seams"].(map[string]any)
@@ -366,6 +367,28 @@ func checkSeams(m *Manifest, r *report) {
 		// silently corrupts the rules->tests closure, at any target tier.
 		if name == "auditor" && tier != "strong" {
 			r.errf("C12", "seam %q must be strong — semantic coverage judgment is where a false pass is most costly", name)
+		}
+		// allow: names the development.commands ids a seam's workflows may run
+		// (D067). Data for per-harness enforcement glue — a declaration gates
+		// nothing by itself — but an id that does not resolve is a typo that
+		// would silently widen or narrow a seam, so resolve it like C3.
+		if v, declared := decl["allow"]; declared {
+			ids, ok := v.([]any)
+			if !ok || len(ids) == 0 {
+				r.errf("C12", "seam %q allow must be a non-empty list of command ids", name)
+			} else {
+				cmds := m.commandKeys()
+				for _, id := range ids {
+					s, ok := id.(string)
+					if !ok {
+						r.errf("C12", "seam %q allow entries must be strings", name)
+						continue
+					}
+					if !cmds[s] {
+						r.errf("C12", "seam %q allow %q is not a declared development.commands id", name, s)
+					}
+				}
+			}
 		}
 	}
 }

@@ -15,6 +15,7 @@ paths:
 development:
   commands:
     check: ./bin/cinch check # self-check: the harness guards its own repo
+    check-harness: ./bin/cinch check # alias: the template binding both consumers share
     test: go test ./...
     test-backend: go test ./...
     test-e2e: go test ./...
@@ -27,8 +28,10 @@ taxonomy:
     - { id: e2e, tdd: never, opt_in: true, cmd: test-e2e, notes: .agent/e2e.md }
     - { id: manual, automatable: false }
 
+# D067 — seams carry an allow: list of development.commands ids; C12 validates
+# the shape. Declaration gates nothing by itself — enforcement is per-harness glue.
 seams:
-  planner: { tier: strong, max_task_layers: 1 }
-  executor: { tier: any, max_task_layers: 1 }
-  doc_maintainer: { tier: mid }
-  auditor: { tier: strong }
+  planner: { tier: strong, max_task_layers: 1, allow: [check, test] }
+  executor: { tier: any, max_task_layers: 1, allow: [check, test] }
+  doc_maintainer: { tier: mid, allow: [check, docs-index] }
+  auditor: { tier: strong, allow: [check-harness, check] }
