@@ -58,16 +58,31 @@ If the fact already exists elsewhere:
 
 **Editing an existing file:**
 - Add the rule to the numbered list in the relevant section
+- Give the new rule the **next free ID**: the bold `**<PREFIX>-0NN**` token at the start of each
+  item, prefixed from the doc's `rule_prefix` front-matter (e.g. the next rule in a doc whose
+  last rule is `**SIG-019**` gets `**SIG-020**`). Append with a new number — **never renumber or
+  reuse**: rule numbers and IDs are permanent (once a rule is retired it keeps its ID with a
+  retirement note, and the number is never reused)
 - Keep each rule to one sentence where possible
 - Don't include endpoint contracts, struct fields, or SQL schema — those belong in `api/` and `models/`
+- When the test enforcing the rule exists, place `// cinch:rule <ID>` above that test function so
+  the coverage closure holds (C8); a rule that cannot be tested — display behavior or a
+  future-decision constraint — declares `<!-- cinch:ignore <ID> -->` directly under the rule item
+  instead
 
 **Creating a new file:**
 Use this template:
 ```markdown
+---
+rule_prefix: <PREFIX>
+owns:
+  - <code paths that enforce these rules>
+---
+
 # <Resource> Domain Rules
 
-1. <Rule one.>
-2. <Rule two.>
+1. **<PREFIX>-001** <Rule one.>
+2. **<PREFIX>-002** <Rule two.>
 ...
 
 ## Related Documentation
@@ -76,6 +91,8 @@ Use this template:
 - [<Resource> Model](../models/<resource>.md) — schema
 - [<Related> Rules](<related>.md) — <brief reason for the link>
 ```
+The prefix must be unique across `{{paths.domain}}/` and never change — it is the namespace the
+rule IDs hang off.
 
 What belongs in domain docs:
 - ✅ Domain constraints and invariants ("at most one per...", "cannot be shared across...")
@@ -123,4 +140,5 @@ Does a domain file exist for this resource?
 
 - **Duplicating endpoint info** — Domain rules describe *what* is constrained, not *how* the API signals it. "Only the editor can cancel" belongs here; "returns 404 if caller is not the editor" belongs in `api/<resource>.md`.
 - **Adding rules to overview.md** — `overview.md` is a domain map, not a rule list. Rules go in the resource-specific file.
+- **Renumbering rules** — numbers and IDs are permanent (R5). A new rule appends with the next free ID; a retired rule keeps its ID with a retirement note. Renumbering silently breaks every `(rule N)` cross-reference and every `// cinch:rule` marker.
 - **Skipping cross-reference cleanup** — When moving a fact, always replace it with a reference; never leave two copies.
