@@ -1,8 +1,9 @@
-# P1 handoff — first templates landed, eight to go
+# P1 handoff — four templates landed, six to go
 
 Status: **Phase 1 in progress.** The binding side is done and green (C1/C3/C4/C12); the template
-port has started — `check-rules` and `task-primitive` are authored *as templates*, render into
-project_deltadocs, and are C2-guarded. The remaining eight workflows are still hand-authored.
+port is underway — `check-rules`, `task-primitive`, `optimize-docs`, and `execute-plan` are
+authored *as templates*, render into project_deltadocs, and are C2-guarded. The remaining six
+workflows are still hand-authored.
 `make check-harness` is **fully green** ("harness ok").
 
 ## Done
@@ -27,7 +28,7 @@ staged-tree snapshot first (D042).
 `cinch version show|bump` (D043), git-conventions moved out of docs/ (D044), `conventions/`
 renamed to `ops/`. Nothing pending there.
 
-**[P1 session 2 — this one]**
+**[P1 session 2]**
 
 - `templates/check-rules.md` + `templates/task-primitive.md` authored as templates (D045
   conventions: vars from the scaffold contract only, examples genericized, no project names) and
@@ -42,9 +43,30 @@ renamed to `ops/`. Nothing pending there.
 - **KICKOFF.md deleted**; its §4 relevance table folded into ROADMAP as the "Session loads"
   section (D035 still referenced).
 
+**[P1 session 3 — this one]**
+
+- `templates/optimize-docs.md` + `templates/execute-plan.md` authored as templates and rendered
+  into projectX — C2 green on both, `make check-harness` clean. Neither needed a `{{commands.*}}`
+  substitution (no literal `make` commands in either source); the work was harness-neutrality
+  (dropped the "Claude Code exposes this as…" line and every `/slash-command` reference, per D045 —
+  sibling workflows are now referenced by their rendered `.agent/workflows/<name>.md` path) plus
+  genericizing `execute-plan.md`'s real commit-history calibration examples into a `<scope>`
+  placeholder shape.
+- `TestTemplatePurity` (D049) passed clean on both new templates on first write — no follow-up
+  fixes needed.
+- **Bug found and fixed (D050):** `templates/README.md` was getting rendered into projectX as
+  `.agent/workflows/README.md` — `renderAll` walks every `*.md` under `templates/` with no
+  filename exclusion, so a meta-doc there is indistinguishable from a workflow. Deleted it (its
+  content already duplicated `AGENTS.md`); removed the orphaned rendered copy from projectX by
+  hand, since `cmdRender` doesn't clean up output whose template disappeared. `AGENTS.md`'s
+  `templates/` bullet now says directory conventions live there, not a nested README. Also fixed a
+  stray `(D050)` reference in `templates_test.go`'s doc comment (from the D049 commit) that pointed
+  at a decision never actually logged — it now cites D049, which is what it was restating.
+
 **Decisions logged:** D045 (template porting conventions), D046 (C11 fence-skip), D047
 (distribution), D048 (index skips front-matter), D049 (template-purity Go test, not a checker or
-name blocklist), E001 (P1 progress event).
+name blocklist), D050 (templates/ holds only templates, no nested README), E001 (P1 progress
+event), E002 (P1 session 3 progress event).
 
 **Template purity test added** (D049): `templates_test.go` (`go test` / `make test`) now catches
 command-shaped inline tokens (`` `/foo` ``), runner-config dotdir paths (`.claude/`-shaped,
@@ -54,13 +76,11 @@ target no longer swallows `go test` failures.
 
 ## Not done — P1 blockers
 
-1. **Eight workflows still hand-authored** in projectX; `render` only covers the two ported ones.
+1. **Six workflows still hand-authored** in projectX; `render` now covers the four ported ones.
    Port order (smallest first) and per-file notes:
 
    | Workflow | Portability notes |
    | --- | --- |
-   | `optimize-docs` | clean — manifest references only; port next |
-   | `execute-plan` | clean; genericize the commit-conventions calibration examples (they name `back`/`front` scopes) |
    | `plan-feature` | clean; genericize the rule-interaction-table example (signatures/perms/members names) |
    | `sync-docs` | `make docs-index` → `{{commands.docs-index}}`; genericize quirks examples (`.env.local`, `json:"-"`) |
    | `fix-bug` | `test-backend`/`test-frontend` literals → tier-`cmd` mapping prose or `{{commands.*}}`; troubleshooting paths are structural, keep |
@@ -78,21 +98,19 @@ target no longer swallows `go test` failures.
 
 ## Next P1 session — recommended order
 
-1. Port `optimize-docs` and `execute-plan` (smallest, cleanest). Render, `make check-harness`,
-   then the next.
-2. Port `plan-feature`, `sync-docs`, `fix-bug` — same discipline, genericizing examples per D045.
-3. `rules.md`: first move its exception table project-side (see table above), then port the
+1. Port `plan-feature`, `sync-docs`, `fix-bug` — same discipline, genericizing examples per D045.
+2. `rules.md`: first move its exception table project-side (see table above), then port the
    procedure. The `<related>.md`-style placeholder links in its example are now safe under D046.
-4. `doc-philosophy`, then `figma-restyle` last (needs `check-frontend` declared in the manifest
+3. `doc-philosophy`, then `figma-restyle` last (needs `check-frontend` declared in the manifest
    first — project-side edit).
-5. Exit check: ten rendered workflows, C2 green, `make check-harness` green, no `{{` left
+4. Exit check: ten rendered workflows, C2 green, `make check-harness` green, no `{{` left
    unreplaced in projectX workflows.
 
 ## Notes for the next session
 
-- **Harness-neutrality is part of the port (D045).** The remaining eight hand-authored workflows all
+- **Harness-neutrality is part of the port (D045).** The remaining six hand-authored workflows all
   open with an italic "Claude Code exposes this as …" line and reference workflows by slash command
-  (`/execute-plan`, `/rules`, …). Both are Claude Code bindings: drop the line and rewrite the
+  (`/plan-feature`, `/rules`, …). Both are Claude Code bindings: drop the line and rewrite the
   references as `.agent/workflows/<name>.md` paths. The consumer's `.claude/skills/` shims already
   frame the workflows as "agent-neutral procedures" — the workflow body naming the harness
   contradicts that framing. `make test` (D049) now catches the slash-command references and any
