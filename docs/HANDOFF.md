@@ -107,11 +107,11 @@ session 1 progress event). Roadmap P3's wave-2, wave-3, and fixtures bullets ann
 Phase 3 is closed except C8-by-design. The roadmap's session-loads table names **Phase 4 (Semantic
 integrity)**, which starts on the project side:
 
-> roadmap §P4 · `business/overview.md` · one `business/<domain>.md` · `doc-philosophy.md` · D012
+> roadmap §P4 · `domain/overview.md` · one `domain/<domain>.md` · `doc-philosophy.md` · D012
 > D013 D027
 
 P4.1 is the rule-ID rollout: author-assigned permanent IDs prefixed from `rule_prefix` front-matter
-on every `business/<domain>.md` rule, `// cinch:rule PROJ-0NN` markers above the tests that enforce
+on every `domain/<domain>.md` rule, `// cinch:rule PROJ-0NN` markers above the tests that enforce
 them (D027) — the migration wave 3's C8 build (which the cinch side should land in the same session
 as the migration) then flips on. After P4.1, the [cinch] side of P4 is C10 diff-coupling
 (warn-level), and the project side is the derivability gate (4.3) and optimize-docs' deletion
@@ -120,6 +120,13 @@ mandate (4.4). P4 planning runs through cinch's own rendered `.agent/workflows/p
 
 ## Notes for future template work
 
+- **Audit decisions landed (D062/D063):** `business/` → `domain/` across both consumers; templates
+  select by manifest key presence (`requires:` front-matter); fragments compose at anchors. Two
+  known residual sync-docs warnings on cinch's self-check (`.agent/frontend/conventions.md`,
+  `.agent/backend/troubleshooting.md`) — the routing-table fragment, deferred until variance bites.
+- **Temporary pointer:** the audit's "projectX" consumer is project_deltadocs at
+  `~/code/project_deltadocs` (full-stack: `api/`, `models/`, `domain/`, `plans/`). Remove this line
+  when the audit doc names the real consumer.
 - The `RouteMux`-interface pattern is now the demonstrated way to enumerate an `http.ServeMux`:
   registration takes an interface, the producer passes a recording mux. It shipped in both the real
   consumer and the Go fixture, so it's proven portable (D059).

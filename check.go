@@ -155,11 +155,11 @@ func checkManifestPaths(root string, m *Manifest, r *report) {
 
 // C5 — the domain list is the filesystem; overview.md must agree with it.
 func checkDomains(root string, m *Manifest, r *report) {
-	bdir := m.Vars["paths.business"]
+	bdir := m.Vars["paths.domain"]
 	if bdir == "" {
-		// No business layer declared. Legitimate — cinch itself has none, and so
-		// will plenty of consumers. Absence of the binding is a declaration about
-		// the repo's shape, not an omission.
+		// No domain layer declared. Legitimate — a consumer with no domain
+		// rules declares absence as shape (D063), and the templates that
+		// require the binding are not rendered for it.
 		return
 	}
 	abs := filepath.Join(root, bdir)
@@ -213,10 +213,66 @@ func checkPlans(root string, r *report) {
 	})
 }
 
-// C11 — relative markdown links inside .agent/ must resolve.
+// C11 — relative markdown links and backticked path tokens inside .agent/
+// must resolve. Links are doc-relative markdown cross-references; a
+// backticked token that looks like a path is a reference in prose — the
+// audit's §1.2 findings were all backtick-quoted paths, not links, so a
+// link-only checker missed every one of them. `.agent/...` tokens are
+// root-relative (D045), everything else resolves from the repo root.
 func checkLinks(root string, r *report) {
 	linkRe := regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
+	tickRe := regexp.MustCompile("`([^`]+)`")
 	adir := agentDir(root)
+
+	// resolve reports whether target resolves; pathless and non-relative
+	// targets (URLs, anchors, mailto) are always fine.
+	resolve := func(p, target string) bool {
+		target = strings.TrimSpace(target)
+		if target == "" || strings.Contains(target, "://") ||
+			strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
+			return true
+		}
+		target = strings.SplitN(target, "#", 2)[0]
+		if target == "" {
+			return true
+		}
+		_, err := os.Stat(filepath.Join(filepath.Dir(p), target))
+		return err == nil
+	}
+
+	// tickPath decides whether a backticked token is a path reference rather
+	// than a plain word: it must contain a slash, no whitespace, and no
+	// placeholder (`<...>`, brackets, an ellipsis). A trailing slash is a
+	// directory reference — a convention location that comes into existence
+	// with its first file — and "N/A"-shaped abbreviations are not paths.
+	tickPath := func(tok string) bool {
+		if !strings.Contains(tok, "/") || strings.ContainsAny(tok, "<>[]{}* \t") ||
+			strings.Contains(tok, "...") || strings.HasSuffix(tok, "/") {
+			return false
+		}
+		for _, r := range tok {
+			if r != '/' && (r < 'A' || r > 'Z') {
+				return true
+			}
+		}
+		return false // all-caps abbreviation like `N/A`
+	}
+
+	// resolveTick resolves a backticked path from the repo root, or from the
+	// document's own directory (index.md uses `workflows/...` since it sits
+	// in .agent/; templates' `.agent/...` tokens are root-relative, D045).
+	resolveTick := func(p, tok string) bool {
+		for _, base := range []string{root, filepath.Dir(p)} {
+			clean := strings.TrimPrefix(tok, ".agent/")
+			if clean != tok {
+				base = filepath.Join(root, ".agent")
+			}
+			if _, err := os.Stat(filepath.Join(base, clean)); err == nil {
+				return true
+			}
+		}
+		return false
+	}
 
 	_ = filepath.WalkDir(adir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
@@ -227,7 +283,15 @@ func checkLinks(root string, r *report) {
 			return nil
 		}
 		rel, _ := filepath.Rel(adir, p)
-		// Links inside fenced code blocks are illustrative examples, not
+		// Generated files carry the cinch header; their whole body is
+		// template-authored prose whose tokens are expected to resolve.
+		// Hand-authored docs may reference the project's own source tree,
+		// imports, and aliases — not checkable from here — so their
+		// backticked tokens are only checked when explicitly `.agent/`-
+		// prefixed, the one root-relative convention this repo defines
+		// (D045).
+		generated := strings.HasPrefix(string(b), headerPrefix)
+		// References inside fenced code blocks are illustrative examples, not
 		// cross-references (e.g. a doc template showing [<Related> Rules](<related>.md)).
 		// Checking them would flag every placeholder, so skip fenced lines.
 		inFence := false
@@ -240,17 +304,19 @@ func checkLinks(root string, r *report) {
 				continue
 			}
 			for _, m := range linkRe.FindAllStringSubmatch(line, -1) {
-				target := strings.TrimSpace(m[1])
-				if target == "" || strings.Contains(target, "://") ||
-					strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
+				if !resolve(p, m[1]) {
+					r.warnf("C11", "%s links to %s, which does not exist", rel, strings.TrimSpace(m[1]))
+				}
+			}
+			for _, m := range tickRe.FindAllStringSubmatch(line, -1) {
+				if !tickPath(m[1]) {
 					continue
 				}
-				target = strings.SplitN(target, "#", 2)[0]
-				if target == "" {
+				if !generated && !strings.HasPrefix(m[1], ".agent/") {
 					continue
 				}
-				if _, err := os.Stat(filepath.Join(filepath.Dir(p), target)); err != nil {
-					r.warnf("C11", "%s links to %s, which does not exist", rel, target)
+				if !resolveTick(p, m[1]) {
+					r.warnf("C11", "%s refers to `%s`, which does not exist", rel, m[1])
 				}
 			}
 		}

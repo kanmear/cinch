@@ -19,7 +19,7 @@ consumer from commit one. A template, checker, or manifest key is not done until
 the real repo. This replaces the pressure that extract-later gave for free.
 
 **2. cinch does not plan its own work with the project's `plan-feature`** (D036). It is domain-bound
-and structurally inapplicable to a Go CLI with no business rules. P0 and P1 are planned in-session
+and structurally inapplicable to a Go CLI with no domain rules. P0 and P1 are planned in-session
 against the roadmap; P2 produces the primitive cinch then uses for P3 onward. Separately, D025 still
 applies project-side: a phase that modifies a project workflow is not executed via that workflow.
 
@@ -69,7 +69,7 @@ an error), `render`, `index`. Templates ported one at a time, authored *as* temp
 **[project]** `manifest.yml` completed: commands, test-dir layout, layer taxonomy, test-tier
 taxonomy, `harness_version` pin. Two schema constraints hold — every `cmd` id resolves under
 `development.commands`; no `domains:` key. Per-domain owning code paths go in
-`business/<domain>.md` front-matter, not the manifest (D010).
+`domain/<domain>.md` front-matter, not the manifest (D010).
 
 **[project]** `seams:` declared in the manifest — tier and constraints per seam (D038). Declaration
 only; enforcement is P5.
@@ -151,9 +151,9 @@ Needs P1 and P3. Addresses the one drift class nothing else catches: behaviour c
 updated, `check-rules` still passes — and the rule text is now false.
 
 - **[project] 4.1** Roll out rule IDs and `// cinch:rule` markers. Author-assigned, permanent, never
-  reused, prefixed from `rule_prefix` front-matter. Only `business/<domain>.md` rules get IDs;
+  reused, prefixed from `rule_prefix` front-matter. Only `domain/<domain>.md` rules get IDs;
   philosophies in `overview.md` do not (D027).
-- **[cinch] 4.2** C10 diff-coupling: a commit touching a domain's `owns:` paths but not its business
+- **[cinch] 4.2** C10 diff-coupling: a commit touching a domain's `owns:` paths but not its domain
   doc → **warning**, not error. Value is asking the question when the answer is cheapest.
 - **[project] 4.3** Derivability gate as an explicit admission test: *can an agent recover this from
   source?* If yes, it is not written. Freshness is a write-time constraint, not a sync process
@@ -236,7 +236,7 @@ anytime  session-start signals, episodic memory   [project]
 ## Session loads
 
 What a phase session should have in front of it — a relevance filter, not a budget ceiling (D035).
-The failure this prevents is a cinch session loading the project's business rules, or a project
+The failure this prevents is a cinch session loading the project's domain rules, or a project
 session loading cinch's design history. Anytime-track sessions load the anytime section and nothing
 else.
 
@@ -246,7 +246,7 @@ else.
 | 1 | project | roadmap §P1 · `manifest.example.yml` · current `manifest.yml` · D001 D010 |
 | 2 | cinch | roadmap §P2 · `task-primitive.md` `fix-bug.md` `execute-plan.md` · D036 D039 |
 | 3 | cinch | roadmap §P3 · `check.go` · consumer `manifest.yml` · D009 D011 D027 D028 D030 |
-| 4 | project | roadmap §P4 · `business/overview.md` · one `business/<domain>.md` · `doc-philosophy.md` · D012 D013 D027 |
+| 4 | project | roadmap §P4 · `domain/overview.md` · one `domain/<domain>.md` · `doc-philosophy.md` · D012 D013 D027 |
 | 4 | cinch | roadmap §P4.2 · `check.go` · D009 |
 | 5 | both | roadmap §P5 · `manifest.yml` · workflow list · D014 D015 |
 

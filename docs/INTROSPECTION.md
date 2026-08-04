@@ -20,7 +20,7 @@ A producer exits 0 and writes its JSON to stdout. A non-zero exit or
 unparseable output is a C6/C7 error carrying the producer's stderr tail.
 
 A repo that does not declare a producer key simply skips the corresponding
-check — same absence-is-a-declaration semantics as C5's missing business layer
+check — same absence-is-a-declaration semantics as C5's missing domain layer
 and C12's missing seams. A repo that declares it must have it green: the
 declared command is the repo's binding to this contract.
 

@@ -9,11 +9,16 @@
 harness_version: 0.1.0 # pinned core version; bump -> re-render -> cinch check
 
 paths:
-  business: .agent/business # domain list = this dir's files, minus overview.md
+  domain: .agent/domain # domain list = this dir's files, minus overview.md
   tests:
     integration: backend/tests
     unit: frontend/tests
     e2e: frontend/e2e
+    # Optional sub-keys: declared only by consumers whose test layout groups
+    # by layer. Their presence activates the check-rules classification
+    # fragment (D063); absence leaves the coverage audit semantic-only.
+    handlers: backend/tests/handlers
+    models: backend/tests/models
 
 development:
   commands:

@@ -39,7 +39,7 @@ checker layer from growing into a maintenance burden of its own.
 **3. The freshness question has a design answer, not a process answer.**
 "How do you keep this fresh when the codebase changes constantly" is answered by *what gets written
 down*, not by how often it is re-synced. Content that a code change can falsify should not be in
-the corpus. The one exception is the semantic layer — `business/*.md` encodes rules that a
+the corpus. The one exception is the semantic layer — `domain/*.md` encodes rules that a
 behaviour change can silently invalidate and that no checker can validate — and that exposure needs
 its own mechanism (Phase 4). Everything else is handled by the gate.
 
@@ -63,7 +63,7 @@ confirmation line to the user. Zero model tokens.
 
 **0.4 Fix the self-containment claim.** `harness-philosophy.md` asserts "It depends on no other
 file." True of the principles, false of the substrate — a reader of that file alone cannot discover
-`business/`, `models/`, `api/`, or the tiered reading guide. Either scope the claim to the
+`domain/`, `models/`, `api/`, or the tiered reading guide. Either scope the claim to the
 principles, or add one line pointing at the generated index as the substrate's entry point. The
 second is better: it makes the index the discovery mechanism for the whole corpus, which is what it
 should be anyway.
@@ -83,10 +83,10 @@ read its permissions.
 test-dir layout, layer taxonomy, test-tier taxonomy. Hold to the two schema constraints already
 specified — every `cmd` id resolves under `development.commands`, and there is no `domains:` key.
 
-**1.2 Add per-domain code paths — in the business docs, not the manifest.** Phase 4's diff-coupling
+**1.2 Add per-domain code paths — in the domain docs, not the manifest.** Phase 4's diff-coupling
 check needs a domain → owning-code-paths mapping. Putting it in `manifest.yml` would reintroduce
 the `domains:` key the schema forbids and would drift the same way. Put it in each
-`business/<domain>.md`'s front-matter instead:
+`domain/<domain>.md`'s front-matter instead:
 
 ```yaml
 ---
@@ -153,10 +153,10 @@ tokens, exit non-zero on error.
 | C2 | render staleness | manifest ↔ rendered workflows | rendered docs older than the manifest hash they were built from |
 | C3 | cmd-id resolution | manifest-internal | a `cmd:` in `taxonomy.test_tiers` with no key under `development.commands` |
 | C4 | path-binding validity | manifest → fs | `paths.*` pointing at directories that don't exist |
-| C5 | domain enumeration | fs ↔ `business/overview.md` | a domain file with no entry in overview, or an overview reference to a missing domain file |
+| C5 | domain enumeration | fs ↔ `domain/overview.md` | a domain file with no entry in overview, or an overview reference to a missing domain file |
 | C6 | model ↔ type sync | **doc upstream** | fields declared in `models/*.md` absent from, or contradicted by, the actual structs/types |
 | C7 | api ↔ route | lateral | documented endpoints with no registered route, and routes with no doc |
-| C8 | rule → test enumeration | doc upstream | a rule ID in `business/*.md` with no test referencing it |
+| C8 | rule → test enumeration | doc upstream | a rule ID in `domain/*.md` with no test referencing it |
 | C9 | plan hygiene | fs ↔ ritual | a completed fix plan still present; a feature plan with a missing or invalid `Status:` |
 | C11 | cross-reference integrity | doc ↔ doc | dead internal links — one-fact-one-place depends on cross-refs resolving |
 
@@ -199,12 +199,12 @@ tests are updated, `check-rules` still passes because the rule still has a test 
 is now false. The rules→tests→tasks loop is closed but anchored to a stale root.
 
 **4.1 Adopt a rule-ID convention.** C8 and C10 both need rules to be addressable. Something like
-`PROJ-014` in the business doc, referenced from the test by tag or comment rather than by test name
+`PROJ-014` in the domain doc, referenced from the test by tag or comment rather than by test name
 — name-matching is precisely what the semantic audit was designed to avoid, so the reference must be
 explicit, not inferred.
 
 **4.2 C10 — diff-coupling.** If a commit touches paths under a domain's `owns:` list and does not
-touch that domain's business doc, flag it. Warning, not error: most commits legitimately don't
+touch that domain's domain doc, flag it. Warning, not error: most commits legitimately don't
 change rules. The value is that it puts the question in front of a human at the moment the answer is
 cheapest.
 
@@ -219,7 +219,7 @@ includes content that should never have been admitted. Add an explicit pruning p
 retroactively and *removes* rather than refreshes. Without this, the corpus only grows, and the
 context-budget north star erodes silently over months.
 
-**Exit criteria:** every rule in `business/` has an ID; every rule ID resolves to at least one
+**Exit criteria:** every rule in `domain/` has an ID; every rule ID resolves to at least one
 tagged test; a behaviour-changing commit that leaves its domain doc untouched produces a warning;
 `optimize-docs` has removed at least one section on its first run.
 
@@ -230,7 +230,7 @@ tagged test; a behaviour-changing commit that leaves its domain doc untouched pr
 Independently schedulable; no dependencies. Small.
 
 The Session Handoff is *state* — a single slot describing where work stands. There is no *episodic*
-record: why a session went the way it did, what was ruled out, what surprised. `business/` holds
+record: why a session went the way it did, what was ruled out, what surprised. `domain/` holds
 standing rules, git holds diffs, and neither holds rationale-in-flight.
 
 **5.1 Add an append-only event log** — `.agent/events/*.jsonl` or equivalent — written on decisions,

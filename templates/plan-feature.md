@@ -1,16 +1,20 @@
+---
+requires: paths.domain
+---
+
 # Feature Planning Workflow
 
 Produce a structured, atomic feature plan before writing any implementation code.
 
-Outputs `.agent/plans/<feature-slug>.md` — a living plan file that tracks business rules, the test plan, and per-task execution checklists with explicit context manifests.
+Outputs `.agent/plans/<feature-slug>.md` — a living plan file that tracks domain rules, the test plan, and per-task execution checklists with explicit context manifests.
 
-**Do not write implementation code during this workflow.** Writing business rule docs (via the rule-maintenance workflow, `.agent/workflows/rules.md`) and plan file content is the only output.
+**Do not write implementation code during this workflow.** Writing domain rule docs (via the rule-maintenance workflow, `.agent/workflows/rules.md`) and plan file content is the only output.
 
 ---
 
 ## When to run
 
-Run this workflow at the start of every non-trivial feature that touches business logic. Skip for
+Run this workflow at the start of every non-trivial feature that touches domain logic. Skip for
 pure style changes, dependency bumps, or doc-only edits. Bug work routes through
 `.agent/workflows/fix-bug.md`, not here.
 
@@ -18,16 +22,16 @@ pure style changes, dependency bumps, or doc-only edits. Bug work routes through
 
 ## Phase 1: Domain Rules
 
-**Goal:** Enumerate every business rule governing this feature — existing and new — and validate them with the user before proceeding. Rules are the foundation; a wrong or missing rule corrupts every test and task downstream.
+**Goal:** Enumerate every domain rule governing this feature — existing and new — and validate them with the user before proceeding. Rules are the foundation; a wrong or missing rule corrupts every test and task downstream.
 
 ### 1.1 Identify affected domains
 
 From the feature description, identify which domains are involved. The domain list is the set of
-files in `manifest.paths.business` (`{{paths.business}}/`) minus `overview.md` — list that directory
+files in `manifest.paths.domain` (`{{paths.domain}}/`) minus `overview.md` — list that directory
 to see the current domains; each `<domain>.md` is one domain. (There is deliberately no domain list
 in the manifest to copy out of sync — the filesystem is the source.)
 
-Read only the relevant files. If uncertain which domains apply, read `{{paths.business}}/overview.md`
+Read only the relevant files. If uncertain which domains apply, read `{{paths.domain}}/overview.md`
 first for orientation.
 
 ### 1.2 List applicable rules
@@ -70,19 +74,19 @@ Wait for confirmation. Do not proceed until the user confirms or redirects.
 
 ### 1.5 Write new rules
 
-For each gap or new rule identified, write it to the appropriate `{{paths.business}}/<domain>.md` via
+For each gap or new rule identified, write it to the appropriate `{{paths.domain}}/<domain>.md` via
 `.agent/workflows/rules.md`. Follow that workflow for placement, numbering, and style.
 
 Do not inline rule text in the plan file. Reference the canonical location instead.
 
-### 1.6 Fill in the plan file — Business Rules section
+### 1.6 Fill in the plan file — Domain Rules section
 
 Record the final rule set in `.agent/plans/<feature-slug>.md`:
 
 ```markdown
-## Business Rules
+## Domain Rules
 
-### Existing Rules (from {{paths.business}}/)
+### Existing Rules (from {{paths.domain}}/)
 - [domain.md #N] Rule summary
 
 ### New Rules (written during planning)
@@ -151,7 +155,7 @@ Make targets here).
 
 ## Phase 3: Atomic Task Decomposition — via the task primitive
 
-With the Business Rules and Test Plan sections confirmed and filled in, decompose the
+With the Domain Rules and Test Plan sections confirmed and filled in, decompose the
 implementation using `.agent/workflows/task-primitive.md`. It supplies, unchanged for feature
 work: Atomicity, Context manifest, Verification tiers, Task template, Pre-flight gate, Completion
 ritual, and Compaction anchor — see that file's matching sections.

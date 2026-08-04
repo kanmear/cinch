@@ -1,16 +1,20 @@
-# Business Rule Maintenance
+---
+requires: paths.domain
+---
 
-Add, edit, or reorganize business rules in `{{paths.business}}/`.
+# Domain Rule Maintenance
+
+Add, edit, or reorganize domain rules in `{{paths.domain}}/`.
 
 Read [Doc Philosophy](doc-philosophy.md) before proceeding.
 
 ## Usage
 
-Update business documentation to reflect domain or product changes, including:
+Update domain documentation to reflect domain or product changes, including:
 - New constraints or invariants discovered
 - Existing rules clarified or corrected
-- New API resource added (needs a matching `business/<resource>.md`)
-- Business doc reorganization (moving facts to the right file)
+- New API resource added (needs a matching `domain/<resource>.md`)
+- Domain doc reorganization (moving facts to the right file)
 
 **This workflow is not triggered by code changes.** For code-driven doc updates, use the sync-docs
 workflow (`.agent/workflows/sync-docs.md`).
@@ -22,27 +26,27 @@ workflow (`.agent/workflows/sync-docs.md`).
 Determine the nature of the change:
 - **New rule** — a constraint that wasn't previously documented
 - **Updated rule** — an existing rule that needs correction or clarification
-- **New resource** — a new API resource was added that needs a business file
+- **New resource** — a new API resource was added that needs a domain file
 - **Reorganization** — facts are in the wrong file (split, merged, or misplaced)
 
 ### 2. Locate the right file
 
-Business files mirror `api/` files 1:1: `api/<resource>.md` → `{{paths.business}}/<resource>.md`.
-See `{{paths.business}}/overview.md` § Structure Convention for the exact rule and the current
-list of API resources that have no business-file counterpart (read-only/aggregation endpoints
+Domain files mirror `api/` files 1:1: `api/<resource>.md` → `{{paths.domain}}/<resource>.md`.
+See `{{paths.domain}}/overview.md` § Structure Convention for the exact rule and the current
+list of API resources that have no domain-file counterpart (read-only/aggregation endpoints
 with no independent domain rules of their own).
 
 Rules:
 - One file per API resource — do not consolidate multiple resources
-- `{{paths.business}}/overview.md` documents key concepts and domain relationships, not rules — do not add rules there
-- If no matching business file exists for a resource with non-trivial rules → create one
+- `{{paths.domain}}/overview.md` documents key concepts and domain relationships, not rules — do not add rules there
+- If no matching domain file exists for a resource with non-trivial rules → create one
 
 ### 3. Check one-fact-one-place
 
-Before adding anything, search existing business docs for the fact:
+Before adding anything, search existing domain docs for the fact:
 
 ```
-Grep `{{paths.business}}/` for keywords from the rule
+Grep `{{paths.domain}}/` for keywords from the rule
 ```
 
 If the fact already exists elsewhere:
@@ -60,7 +64,7 @@ If the fact already exists elsewhere:
 **Creating a new file:**
 Use this template:
 ```markdown
-# <Resource> Business Rules
+# <Resource> Domain Rules
 
 1. <Rule one.>
 2. <Rule two.>
@@ -73,7 +77,7 @@ Use this template:
 - [<Related> Rules](<related>.md) — <brief reason for the link>
 ```
 
-What belongs in business docs:
+What belongs in domain docs:
 - ✅ Domain constraints and invariants ("at most one per...", "cannot be shared across...")
 - ✅ Cascade effects ("deleting X cascades to delete Y")
 - ✅ Role/permission constraints ("only the designated signer can...")
@@ -97,7 +101,7 @@ After editing, check both directions:
 
 ### 6. Regenerate the doc index if a new file was created
 
-If you created a new `business/<resource>.md`, its H1 first line becomes its index entry — run
+If you created a new `domain/<resource>.md`, its H1 first line becomes its index entry — run
 `{{commands.docs-index}}` and stage `.agent/index.md` so the generated doc map picks it up. Do not
 hand-edit the index or AGENTS.md; editing an existing file needs neither.
 
@@ -106,7 +110,7 @@ hand-edit the index or AGENTS.md; editing an existing file needs neither.
 ```
 Domain/product rule changed
     ↓
-Does a business file exist for this resource?
+Does a domain file exist for this resource?
     ├─ NO  → Does it have non-trivial rules? → YES → Create new file
     │                                        → NO  → Add to closest related file
     └─ YES → Is the fact already documented somewhere?
@@ -117,6 +121,6 @@ Does a business file exist for this resource?
 
 ## Common Pitfalls
 
-- **Duplicating endpoint info** — Business rules describe *what* is constrained, not *how* the API signals it. "Only the editor can cancel" belongs here; "returns 404 if caller is not the editor" belongs in `api/<resource>.md`.
+- **Duplicating endpoint info** — Domain rules describe *what* is constrained, not *how* the API signals it. "Only the editor can cancel" belongs here; "returns 404 if caller is not the editor" belongs in `api/<resource>.md`.
 - **Adding rules to overview.md** — `overview.md` is a domain map, not a rule list. Rules go in the resource-specific file.
 - **Skipping cross-reference cleanup** — When moving a fact, always replace it with a reference; never leave two copies.

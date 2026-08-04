@@ -102,21 +102,21 @@ test-tier taxonomy, and the seam tiers (Forward vision):
 taxonomy:
   layers: [backend-model, backend-handler, frontend-state, frontend-ui]  # the atomicity axis
   test_tiers:                        # data-driven tiers; no hardcoded classification
-    - {id: integration, tdd: rule-tests, cmd: test-backend}   # TDD-mandatory only when a test enforces a business rule
+    - {id: integration, tdd: rule-tests, cmd: test-backend}   # TDD-mandatory only when a test enforces a domain rule
     - {id: unit,        tdd: optional,   cmd: test-frontend}
     - {id: e2e,         tdd: never,      opt_in: true, cmd: test-e2e, notes: frontend/e2e.md}
     - {id: manual,      automatable: false}
 
 paths:
-  business: .agent/business          # the domain list IS this directory's files (minus overview.md)
+  domain: .agent/domain             # the domain list IS this directory's files (minus overview.md)
   tests: {integration: backend/tests, unit: frontend/tests, e2e: frontend/e2e}
 # commands live under development.commands (check / test / build / migrate-* / …)
 ```
 
 Two schema constraints: **every `cmd` id resolves** to a key under `development.commands`; and there
-is **no `domains:` key** — the domain list is already the filesystem (`paths.business/*.md` minus
+is **no `domains:` key** — the domain list is already the filesystem (`paths.domain/*.md` minus
 `overview.md`), and a manifest copy would drift the same way an inlined tree does. Templates that
-need the domain list derive it by listing `paths.business`.
+need the domain list derive it by listing `paths.domain`.
 
 ### 2. One shared task-decomposition primitive
 
@@ -143,7 +143,7 @@ redefines its tiers in YAML and the templates are unchanged. Three details a nai
 wrong:
 
 - **TDD conditionality.** The rule is not "integration ⇒ TDD-mandatory"; it is TDD-mandatory *when a
-  test enforces a business rule*. Encode `tdd: rule-tests`, not `tdd: mandatory`.
+  test enforces a domain rule*. Encode `tdd: rule-tests`, not `tdd: mandatory`.
 - **Per-tier prose survives.** Operational guidance no YAML row can hold (spec auto-discovery, "keep
   the e2e surface thin — smoke, not a per-rule mirror", the e2e-vs-manual judgment call) lives in the
   task primitive (§2) or a per-tier doc named by the tier's `notes:` field.
@@ -218,7 +218,7 @@ the tier — which is what makes per-seam model assignment viable rather than as
 | Planner        | `plan-feature` / `fix-bug`   | domain rules + interaction table|
 | Executor       | `execute-plan` per-task loop | one task's manifest only        |
 | Doc-maintainer | `sync-docs` / `optimize-docs`| git diff + target doc           |
-| Auditor        | `check-rules`                | `business/` + tests             |
+| Auditor        | `check-rules`                | `domain/` + tests             |
 
 The assignments, briefly. Planner at `strong`: rule reasoning and decomposition, the one seam where
 raw capability earns its keep. Executor at `any`: the narrowest boundary in the system, one task's

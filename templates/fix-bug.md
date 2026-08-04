@@ -1,3 +1,7 @@
+---
+requires: paths.domain
+---
+
 # Bug Fix Workflow
 
 Produce a structured bug fix plan that reproduces the issue, identifies the root cause, adds a regression test, and verifies the fix.
@@ -24,7 +28,7 @@ Most bugs are a single wrong line in one layer. The full five-phase workflow (th
 
 - **Single layer** — no backend↔frontend sync required.
 - **Clear implementation error** — inverted condition, off-by-one, wrong operator/comparison, wrong variable. The correct behavior is obvious once you see the line.
-- **Rule already exists and is unambiguous** — the code simply fails to match a business rule that's already written. No new or clarified rule needed.
+- **Rule already exists and is unambiguous** — the code simply fails to match a domain rule that's already written. No new or clarified rule needed.
 - **Localized** — the fix is a few lines in one file.
 
 ### Fast-path procedure
@@ -66,8 +70,7 @@ Attempt to reproduce the bug. Choose the appropriate method using commands from
 | Run existing tests | Bug might already be caught by a flaky test |
 | Layer test cmd — the tier's `cmd`, per `taxonomy.test_tiers` (`.agent/workflows/task-primitive.md` § Test tiers) | Suspect a specific layer |
 | Manual API call (e.g., `curl`) | Backend-only issue |
-| Dev servers (`{{commands.start-backend}}`, `{{commands.start-frontend}}`) | Full-stack or UI issue |
-| Check troubleshooting files | `.agent/backend/troubleshooting.md`, `.agent/frontend/troubleshooting.md` |
+<!-- compose: fix-bug-devservers -->
 
 If the bug doesn't reproduce, document what you tried and ask the user for more details before proceeding.
 
@@ -105,7 +108,7 @@ Classify the root cause:
 
 | Type | Example |
 | ------ | --------- |
-| Missing guard | No check for edge case the business rules require |
+| Missing guard | No check for edge case the domain rules require |
 | Wrong logic | Condition inverted, wrong comparison, off-by-one |
 | Missing sync | Backend added a field but frontend doesn't use it (or vice versa) |
 | Race/ordering | Operations executed in wrong order, missing transaction |
@@ -125,21 +128,21 @@ Present:
 
 1. The root cause with file:line reference
 2. Why existing tests didn't catch it (if applicable)
-3. Whether this reveals a missing business rule
+3. Whether this reveals a missing domain rule
 
-Ask: *"Is this the correct root cause? Does this reveal a gap in the business rules?"*
+Ask: *"Is this the correct root cause? Does this reveal a gap in the domain rules?"*
 
 Wait for confirmation.
 
 ---
 
-## Phase 3: Business Rule Check
+## Phase 3: Domain Rule Check
 
-**Goal:** Determine if the bug reveals a missing or ambiguous business rule.
+**Goal:** Determine if the bug reveals a missing or ambiguous domain rule.
 
-### 3.1 Cross-reference with business rules
+### 3.1 Cross-reference with domain rules
 
-Read the relevant `.agent/business/<domain>.md` file(s). Check:
+Read the relevant `.agent/domain/<domain>.md` file(s). Check:
 
 1. **Is there an existing rule that this code should enforce?** If yes, the bug is a rule violation — the fix is to make the code match the rule.
 2. **Is there no rule for this case?** If the behavior is currently undefined, a new rule is needed before fixing.
@@ -151,7 +154,7 @@ If the bug revealed a missing rule, write it via the rules workflow (`.agent/wor
 
 ### 3.3 Skip if not applicable
 
-For bugs that are purely implementation errors (e.g., typo in a variable name, wrong comparison operator) where the business rule already exists and is clear, skip rule changes.
+For bugs that are purely implementation errors (e.g., typo in a variable name, wrong comparison operator) where the domain rule already exists and is clear, skip rule changes.
 
 ---
 
@@ -219,17 +222,17 @@ uses. A bug fix typically needs fewer tasks than a feature:
 | Single-file logic fix | 1 task (test + fix in same layer) |
 | Cross-layer sync with independently passing stages | 2 tasks (lower-layer fix, then upper-layer sync) |
 | Inseparable contract transition | 1 multi-layer task with an atomicity rationale and checks for every affected layer |
-| Missing business rule + fix | 2-3 tasks (rule → enforcement → consumer handling) |
+| Missing domain rule + fix | 2-3 tasks (rule → enforcement → consumer handling) |
 
 **Bug-specific inputs to the primitive's gate/ritual:**
 
 - Planning checkpoints to clear: Phase 1 (reproduced + layer), Phase 2 (root cause, `file:line`),
-  Phase 3 (business rules checked — silent gate), Phase 4 (regression test plan confirmed).
+  Phase 3 (domain rules checked — silent gate), Phase 4 (regression test plan confirmed).
 - Plan location: `.agent/plans/fix/<bug-slug>.md`, saved with status `in-progress`.
 - Completion uses the **fix** lifecycle: the plan file is **deleted** once the regression test and
   any troubleshooting entry are committed (git history is the archive), plus the post-fix
-  troubleshooting update. If a new test file was added, also record it in
-  `.agent/backend/testing.md`'s coverage table when that doc maintains one.
+  troubleshooting update.
+<!-- compose: fix-bug-testing -->
 
 The **fast path** (above) is exempt from the primitive's gate and completion ritual — its single
 combined ⛔ checkpoint and the regression test are the whole record, with no persisted plan file.
