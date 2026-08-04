@@ -1,231 +1,138 @@
-# P2 handoff — compaction anchor landed; plan-feature/fix-bug shrunk to their fronts; execute-plan repointed
+# P3 handoff — C6/C7 landed, fixtures green on two stacks, cinch self-harness live
 
-Status: **Phase 2's exit criterion is met.** The task primitive now carries the compaction anchor
-(D039), `plan-feature.md` and `fix-bug.md` are shrunk to their Phase 1/2 fronts with no
-atomicity/manifest/verification rule appearing in more than one template, `fix-bug`'s differences
-note is deleted rather than updated, and `execute-plan.md` points at the primitive instead of
-restating it. `make check-harness` is **fully green** ("harness ok").
+Status: **Phase 3's exit items are met except wave 3.** `cinch check` is green on a clean tree in
+project_deltadocs (`make check-harness` — exit 0 with two designed warnings), in both fixtures
+("harness ok", zero findings), and on cinch's own repo ("harness ok"). Every mechanical audit in
+`sync-docs`/`optimize-docs` prose is mapped to a checker or is judgment by design (D058). C8 is
+deferred: its build ships with the P4.1 rule-ID migration, which owns the marker rollout (D057).
 
-Phase 1's record stands below (nine of ten workflows rendered, template-porting goal met, D053
-figma-restyle exclusion).
+## Done — [P3 session 1]
 
-## Done
+**Introspection contract + C6/C7 (cinch side, D028/D056)**
 
-**[project] `manifest.yml` completed** (P1 session 1, `531021f` in `~/code/project_deltadocs`)
+- `docs/INTROSPECTION.md` defines the two producer output shapes (`types` with serialized field
+  names — `json:"-"` fields by declared Go name; `routes` with uppercase method and exact path) and
+  the matching rules: a type is documented by a ```go fence containing `type <Name> struct`
+  (signature.md documents two structs under `## X Struct` headings — the fence is authoritative,
+  not the H1), a route by an `## METHOD /path` heading with fenced lines skipped (D046).
+- `checkTypes`/`checkRoutes` in `check.go`, wired into `cmdCheck`. Doc-upstream direction errors
+  (documented type/field/route must exist in the producer output); coverage direction warns (real
+  type/route with no doc) — `emit()` returns success on warnings, so the coverage question can't
+  red the exit bar. A repo that declares no `introspect-types`/`introspect-routes` key skips the
+  check, mirroring C5's missing-business-layer and C12's missing-seams semantics. Producers run
+  with a 30s timeout.
+- `scaffold/manifest.example.yml` gained `test: make test` — the D051-noted `{{commands.test}}`
+  gap, closed because the fixtures now render `task-primitive.md` and would hit it at render time.
+- Parser unit tests in `introspect_test.go` (doc-struct extraction, route-heading regex).
 
-- commands (kebab-case, D040), test-dir layout, layer + test-tier taxonomy, `harness_version: 0.1.0` (D008)
-- `seams:` declared (D038); C12 green
-- both schema constraints hold: every tier `cmd` resolves under `development.commands` (C3); no `domains:` key
+**Project producers + route refactor (project_deltadocs, D033 proof)**
 
-**[cinch] core commands working**
+- `backend/cmd/introspect-types` (go/ast walk of exported structs in `backend/models`, json-tag
+  field names) and `backend/cmd/introspect-routes` (builds the real route table with zero-valued
+  deps — handler constructors only store deps — and dumps it). Manifest keys uncommented; the
+  bindings use `go run -C backend ./cmd/...` because `backend/` is its own Go module and cannot be
+  entered from the repo root.
+- `RegisterRoutes`'s parameter became the `RouteMux` interface (`HandleFunc(string, func(w, r))`),
+  so the producer can hand registration a recording mux — `http.ServeMux` cannot enumerate its own
+  patterns. Call sites unchanged (`*http.ServeMux` satisfies it).
+- **First-run reconciliation (expected):** the code registered the tab segment as `{id}` in three
+  signature routes and `{tabID}` in the other three; the docs consistently use `{tabID}`. The
+  doc-upstream resolution: made the code match the docs — the three registrations and their three
+  handlers' `PathID` reads became `tabID`. Client-visible URLs unchanged. Also fixed
+  `api/users.md`'s heading `## GET /api/users/search?q=...` (query strings are not routes).
+- `make check-harness` green with exactly two warnings, both the designed derivability answer:
+  `GET /api/health` (liveness probe, no contract to document) and `PendingSignatureIndicator`
+  (internal plumbing whose response contract lives in `api/signatures.md` prose).
 
-- `render` — D005 literal substituter; an undefined variable is an error (render.go)
-- `index` — H1 extraction → `.agent/index.md` (D029); now skips leading YAML front-matter (D048)
-- `check` — wave one C1/C2/C3/C4/C5/C9/C11/C12; C11 ignores links inside fenced code blocks (D046)
+**Fixtures (D017/D059)**
 
-**Index ownership moved to cinch** (D041): `scripts/gen-agent-index.sh` deleted in projectX;
-`docs-index` and the pre-commit guard route through `cinch index`. The guard git-inits its
-staged-tree snapshot first (D042).
+- `fixtures/go/` — toy Go service: `app` package with json-tagged model types, a route table
+  registered through the same RouteMux pattern, both producers (`introspect-types` walks `app/`
+  via go/ast with `runtime.Caller`-anchored paths; `introspect-routes` uses a recording mux).
+- `fixtures/node/` — toy Node service, zero dependencies: central route table, `introspect-routes`
+  dumps it; deliberately no type producer — D028's "repos may answer differently", and C6 skips
+  there while C7 runs.
+- Both declare the full eleven-variable template contract (`paths.business` is referenced 13×, so
+  even the toys declare a business layer — overview.md plus two domain docs, exercising C5
+  cross-stack), seams (C12), and test tiers with an e2e notes file. Rendered workflows and
+  `index.md` are committed in the cinch repo.
+- **Each fixture is its own git repo** — `repoRoot()` resolves to the fixture, not cinch
+  (D042's empty-repo-marker precedent). `make fixtures` git-inits idempotently and renders + indexes
+  + checks each: **"harness ok"** both.
+- `.github/workflows/ci.yml` — `make test` + `make fixtures` on push/PR. Dormant until the repo is
+  pushed anywhere (O005).
 
-**Ops/chore session ran** (after the previous handoff): versioning system ported as
-`cinch version show|bump` (D043), git-conventions moved out of docs/ (D044), `conventions/`
-renamed to `ops/`. Nothing pending there.
+**Mechanical-audit closure (P3 exit item, D058)**
 
-**[P1 session 2]**
+- Every mechanical audit mapped: doc-map regen → C1 (+ pre-commit guard); markdown links → C11;
+  manifest path bindings → C4; command references in rendered workflows → C2 (generated from
+  `{{vars}}`, so they cannot go stale without the render check firing). Stays prose by design:
+  sync-docs' commit-message greps (detection heuristics feeding judgment) and optimize-docs'
+  manifest-values-restated audit (itself a deletion mandate, D009/D013).
+- `templates/optimize-docs.md` stale-references bullet rewritten: harness-era "skills" dropped,
+  C2/C4/C11 named as the mechanical coverage, judgment residue left explicit. Re-rendered into
+  project_deltadocs; D049 purity test green.
 
-- `templates/check-rules.md` + `templates/task-primitive.md` authored as templates (D045
-  conventions: vars from the scaffold contract only, examples genericized, no project names) and
-  rendered into projectX — C2 green on both. Header + body hash guard active.
-- Red checks closed: C5 (overview.md now references every domain, incl. Categories), C9 ×2 (both
-  plans gained `Status:` lines — `open` for the action-bar stub, `complete` for the schema review),
-  C11 ×3 (rules.md placeholder links, via D046).
-- **D010 front-matter** (`owns:` code paths) landed on all eight `business/<domain>.md` docs.
-- **Distribution settled** (D047): projectX keeps `CINCH ?= $(HOME)/code/cinch/bin/cinch`; the
-  Makefile comment that claimed `~/.cinch` now describes the actual wiring. A `~/.cinch`
-  distribution clone is release-time work (first tag), not now.
-- **KICKOFF.md deleted**; its §4 relevance table folded into ROADMAP as the "Session loads"
-  section (D035 still referenced).
+**Cinch self-harness (D036/D055/D060)**
 
-**[P1 session 3]**
+- cinch's own `.agent/manifest.yml` — honest bindings for a Go CLI (self-check `./bin/cinch
+  check`, `go test`, `go run .` for the shared start-* bindings, no fictional dev servers), seams,
+  test tiers, `tests/` as the bound tests dir.
+- `.agent/business/overview.md` — the bind is required by the shared templates; the absence of
+  domain docs is the declaration that cinch has no business rules. `.agent/e2e.md` for the notes var.
+- `cinch render` + `cinch index` + `cinch check` on its own repo: **"harness ok"**. `tests/` is
+  real — `tests/cli_test.go` exercises the built binary (`version show`, self-check); the
+  introspect parser tests stay at the module root (`package main` can't be entered from a
+  subpackage). `make test` and `make fixtures` green throughout.
 
-- `templates/optimize-docs.md` + `templates/execute-plan.md` authored as templates and rendered
-  into projectX — C2 green on both, `make check-harness` clean. Neither needed a `{{commands.*}}`
-  substitution (no literal `make` commands in either source); the work was harness-neutrality
-  (dropped the "Claude Code exposes this as…" line and every `/slash-command` reference, per D045 —
-  sibling workflows are now referenced by their rendered `.agent/workflows/<name>.md` path) plus
-  genericizing `execute-plan.md`'s real commit-history calibration examples into a `<scope>`
-  placeholder shape.
-- `TestTemplatePurity` (D049) passed clean on both new templates on first write — no follow-up
-  fixes needed.
-- **Bug found and fixed (D050):** `templates/README.md` was getting rendered into projectX as
-  `.agent/workflows/README.md` — `renderAll` walks every `*.md` under `templates/` with no
-  filename exclusion, so a meta-doc there is indistinguishable from a workflow. Deleted it (its
-  content already duplicated `AGENTS.md`); removed the orphaned rendered copy from projectX by
-  hand, since `cmdRender` doesn't clean up output whose template disappeared. `AGENTS.md`'s
-  `templates/` bullet now says directory conventions live there, not a nested README. Also fixed a
-  stray `(D050)` reference in `templates_test.go`'s doc comment (from the D049 commit) that pointed
-  at a decision never actually logged — it now cites D049, which is what it was restating.
+**Decisions logged:** D056 (C6/C7 semantics: doc-upstream errors, coverage warns, absent producers
+skip; contract in `docs/INTROSPECTION.md`), D057 (C8 build ships with its P4.1 migration), D058
+(mechanical-audit closure map; optimize-docs bullet rewritten), D059 (fixture shape: own git repos,
+Go answers the full contract, Node routes-only), D060 (cinch renders its own harness), E006 (P3
+session 1 progress event). Roadmap P3's wave-2, wave-3, and fixtures bullets annotated.
 
-**[P1 session 4]**
+## Not done — P3 status
 
-- `templates/plan-feature.md`, `templates/sync-docs.md`, and `templates/fix-bug.md` authored as
-  templates and rendered into projectX — each verified individually (render + `cinch check` C2
-  green + `go test` D049) before the next port started, per D033. `make check-harness` clean
-  throughout.
-- Slash-command tokens and `plan-feature`/`sync-docs`'s italic "Claude Code exposes this as…" lines
-  dropped; sibling-workflow prose references (`task-primitive.md`, `rules.md`, `execute-plan.md`)
-  rewritten as `.agent/workflows/<name>.md` paths, matching the four prior ports.
-- `plan-feature.md`'s rule-interaction-table example (`signatures.md`/`tabs.md`/`perms`/`members`)
-  and `sync-docs.md`'s quirks examples (`tParams()`, `.env.local`, `json:"-"`,
-  `credentials: 'include'`) genericized into `<placeholder>` shapes, keeping the same illustrative
-  structure.
-- `fix-bug.md`'s reproduce-method table: the `test-backend`/`test-frontend` row became tier-`cmd`
-  mapping prose pointing at `taxonomy.test_tiers` (matching how `task-primitive.md` already treats
-  tier-derived values, rather than hardcoding a tier→key assumption the schema doesn't guarantee);
-  the `start-backend`/`start-frontend` row — not tier-derived — became a direct
-  `{{commands.start-backend}}` / `{{commands.start-frontend}}` substitution. Troubleshooting-file
-  paths kept literal per HANDOFF's prior note (structural, `.agent/` is D045's dotdir exception).
-- **Scaffold amendment (D051):** `scaffold/manifest.example.yml`'s `development.commands` gained
-  `docs-index`, `start-backend`, `start-frontend` — needed by these two ports and previously
-  undeclared, which left D045's "a template may assume any key it declares" claim silently false
-  (as `task-primitive.md`'s pre-existing `{{commands.test}}` already had — noted, not fixed, this
-  session).
-- **One correction made mid-port:** `sync-docs.md`'s `[Doc Philosophy](doc-philosophy.md)` markdown
-  link was initially rewritten to `.agent/workflows/doc-philosophy.md` to match the prose
-  sibling-reference convention, which broke C11 — link resolution in `checkLinks` is relative to
-  the linking file's own directory, so `.agent/workflows/doc-philosophy.md` resolved against
-  `.agent/workflows/` doubled the path. The sibling-reference convention applies to backtick prose
-  only; actual markdown links must stay relative. Reverted to the original relative link.
-
-**[P1 session 5 — this one]**
-
-- `templates/rules.md` and `templates/doc-philosophy.md` authored as templates and rendered into
-  projectX — each verified individually (render + `cinch check` C2 green + `go test` D049) before
-  the next port started, per D033.
-- **`rules.md`'s exception table moved project-side first (D052):** the three bullets naming
-  `api/access.md`/`api/auth.md`/`api/users.md` as having no `business/*.md` counterpart moved into
-  `business/overview.md` § Structure Convention (an `**Exceptions**` sub-list extending the
-  existing section, not a new one). The template now points at that section by path
-  (`{{paths.business}}/overview.md`) instead of hardcoding the table; the file-creation block's
-  `<Resource>`/`<related>` placeholders were already generic (D046) and needed no further change.
-- `doc-philosophy.md`'s stack-specific examples — Go error handling / Svelte reactivity /
-  session-vs-JWT auth (principle 1), the bcrypt/`backend/handlers/auth.go` example (principle 2),
-  `models/session.md`/`api/auth.md` (principle 3), the `as never` i18n workaround (principle 6),
-  and the ❌/✅ lists' Go/Svelte/`.env.local`/MCP-for-Svelte-docs mentions — were genericized into
-  placeholder shapes, keeping the concrete-vs-abstract contrast the principles illustrate (same
-  treatment session 4 gave `sync-docs.md`'s quirks examples).
-- **`figma-restyle.md` scoped out of the port entirely (D053), on direction mid-session:** its
-  per-component state-inventory methodology is tied to a specific `frontend/components/` tree, a
-  worked example naming `action-bar.md`, and an assumed `frontend/conventions.md` § Documenting
-  Complex Component States anchor — project-specific enough that a template would either lose the
-  concrete guidance or need a manifest key (e.g. a frontend-component-docs path) serving only this
-  one workflow. It remains project-owned prose, not a P1 blocker.
-- **`check-frontend` manifest key reverted:** added to `scaffold/manifest.example.yml` and the
-  project manifest in prep for the `figma-restyle` port (mirroring D051's pattern), then reverted
-  from both once that port was scoped out — no other template needs it, and D045's contract is
-  that only what a template actually uses belongs in the scaffold's variable contract.
-- **Phase 1's roadmap exit line revised:** "the project's workflows are rendered output" now reads
-  "nine of the project's ten workflows are rendered output; `figma-restyle.md` stays project-owned
-  prose (D053)". `make check-harness` clean throughout; no other P1 exit item is outstanding
-  (distribution remains the accepted D047 deferral, not a blocker).
-
-**Decisions logged:** D045 (template porting conventions), D046 (C11 fence-skip), D047
-(distribution), D048 (index skips front-matter), D049 (template-purity Go test, not a checker or
-name blocklist), D050 (templates/ holds only templates, no nested README), D051 (scaffold
-contract gains docs-index/start-backend/start-frontend), D052 (rules.md exception table moves to
-business/overview.md § Structure Convention), D053 (figma-restyle stays hand-authored, not
-ported), E001 (P1 progress event), E002 (P1 session 3 progress event), E003 (P1 session 4 progress
-event), E004 (P1 session 5 progress event).
-
-**Template purity test added** (D049): `templates_test.go` (`go test` / `make test`) now catches
-command-shaped inline tokens (`` `/foo` ``), runner-config dotdir paths (`.claude/`-shaped,
-excluding `.agent/`), and stack literals hardcoded from `scaffold/manifest.example.yml` instead of
-referenced as `{{commands.<key>}}` — all structural, no maintained name list. `make`'s `test`
-target no longer swallows `go test` failures.
-
-**[P2 session 1 — this one]**
-
-- `templates/task-primitive.md` gained the **Compaction anchor** section (D039) — appended after
-  the Completion ritual as a cross-cutting epilogue: the minimum state (current task ID, its
-  context manifest, the completion ritual) that must survive a mid-session summarization event,
-  re-injected from source rather than reconstructed from the compacted summary.
-- `templates/fix-bug.md` — the closing *(Where this differs from feature planning…)* parenthetical
-  was **deleted, not updated** (the roadmap exit bar's artifact); Phase 5's machinery list gained
-  `compaction-anchor`.
-- `templates/plan-feature.md` — Phase 3 shrank from five bullets restating the primitive's section
-  substance to a name-list plus the feature-specific persists-as-complete input, leaving
-  `plan-feature`/`fix-bug` Phase 3/5 structurally symmetric.
-- `templates/execute-plan.md` — per-task step 4 now points at the primitive's § Verification tiers
-  instead of restating Tier 1→2→3 (the scheduling note stays — it's execute-plan's own behavior);
-  Session Boundaries gained the compaction-reload paragraph, since this is the one workflow that
-  runs during task execution where a mid-session compaction event is observable.
-- Each edit was verified individually before the next (D033): `make render` + `make check-harness`
-  C2 green in project_deltadocs, `go test ./...` (D049) clean in cinch. Final pass: `make
-  check-harness` clean, `go test ./...` clean, no stray "Differences from Feature Planning" or
-  restated-tier prose in `templates/`.
-- **Self-render resolution (D055):** P2 does not render the primitive into cinch's own repo — the
-  exit clause "cinch renders the primitive for its own use" is satisfied by the template existing,
-  being C2-green in project_deltadocs, and being proven portable there. A cinch `.agent/manifest.yml`
-  is P3 scope per D036 and standing rule 2. Roadmap P2's exit line gained a parenthetical making
-  this explicit; no self-render step ran.
-
-**Decisions logged:** D054 (compaction anchor content lives in `task-primitive.md` alone; composing
-templates name it, `execute-plan` gets the operational pointer), D055 (no P2 self-render; P3 scope
-per D036), E005 (P2 session 1 progress event).
-
-## Not done — P1 status
-
-1. **Template porting is done.** Nine of ten workflows are rendered output; `figma-restyle.md`
-   stays hand-authored by deliberate scope decision (D053), not because it's blocked — there's no
-   further prep or port to schedule for it. `check-rules`, `task-primitive`, `optimize-docs`,
-   `execute-plan`, `plan-feature`, `sync-docs`, `fix-bug`, `rules`, `doc-philosophy` are all
-   C2-green.
-2. **Exit criterion met** (revised): "nine of the project's ten workflows are rendered output" —
-   see `roadmap P1`'s Exit line. `make render` is the only writer; C2 guards the rendered set.
-3. **Distribution (D006/D008):** resolved as D047 for now (dev clone). The roadmap's "cloned to
-   `~/.cinch`" line becomes true at first release — add an install/refresh step to release.sh
-   then, or keep consumers on the dev clone and update the roadmap wording.
-4. **Red checks:** none — `make check-harness` green.
+1. **Wave 3 (C8) is deferred, not blocked-on-anything-pending.** The rule-ID/marker rollout is P4.1
+   scope; the checker build lands with it (D057). Nothing to schedule before P4.1.
+2. **`O005`** (org vs personal repo) — still open; the CI workflow exists but runs nothing until the
+   repo is pushed. Blocks only P0.1-adjacent concerns, i.e. nothing current.
+3. **Distribution (D006/D008/D047)** — unchanged: dev clone until first release; add the
+   install/refresh step to `release.sh` at first tag.
+4. **Red checks: none.** project_deltadocs: 2 designed warnings (health, indicators). Fixtures and
+   cinch itself: zero findings.
 
 ## Next session
 
-Phase 2's work is closed out — the primitive carries its compaction anchor, the composing
-workflows are shrunk to their fronts, and the exit bar (single-home rules, deleted-not-updated
-differences note, portable-in-project_deltadocs primitive) holds. The roadmap's session-loads
-table names Phase 3 (Checker layer) as the next numbered phase:
+Phase 3 is closed except C8-by-design. The roadmap's session-loads table names **Phase 4 (Semantic
+integrity)**, which starts on the project side:
 
-> roadmap §P3 · `check.go` · consumer `manifest.yml` · D009 D011 D027 D028 D030
+> roadmap §P4 · `business/overview.md` · one `business/<domain>.md` · `doc-philosophy.md` · D012
+> D013 D027
 
-Wave 1 (C1/C2/C3/C4/C5/C9/C11/C12) already ships in `check.go`; the remaining P3 items are wave 2
-(C6/C7 — the introspection JSON contract, D028), wave 3 (C8 — blocked on rule markers existing
-across the test suite, D027), and the fixture projects in cinch CI (D017) — the roadmap's exit
-line: `cinch check` green on a clean tree in the project and both fixtures, and every mechanical
-audit in `sync-docs`/`optimize-docs` prose either a checker or deleted as doc-downstream (D009).
+P4.1 is the rule-ID rollout: author-assigned permanent IDs prefixed from `rule_prefix` front-matter
+on every `business/<domain>.md` rule, `// cinch:rule PROJ-0NN` markers above the tests that enforce
+them (D027) — the migration wave 3's C8 build (which the cinch side should land in the same session
+as the migration) then flips on. After P4.1, the [cinch] side of P4 is C10 diff-coupling
+(warn-level), and the project side is the derivability gate (4.3) and optimize-docs' deletion
+mandate (4.4). P4 planning runs through cinch's own rendered `.agent/workflows/plan-feature.md`
+(D036/D060) — the primitive's first consumer.
 
 ## Notes for future template work
 
-Template porting is done for P1, but these mechanics apply to any future edit of an existing
-template or a revisit of `figma-restyle.md`:
-
-- **Harness-neutrality is part of any port (D045).** A hand-authored source may open with an
-  italic "Claude Code exposes this as …" line and reference workflows by slash command (`/rules`,
-  …) — both are Claude Code bindings: drop the line and rewrite backtick-prose references as
-  `.agent/workflows/<name>.md` paths. `make test` (D049) mechanically catches slash-command
-  references and hardcoded stack commands; it will **not** catch the italic line itself (prose, no
-  structural token) — still needs eyes. **The sibling-reference rewrite applies to backtick prose
-  only** — an actual markdown link (`[text](target.md)`) must stay relative to the linking file's
-  own directory, since C11's `checkLinks` resolves link targets that way, not repo-root-relative;
-  rewriting a real link to a `.agent/workflows/…` form breaks it (session 4's `sync-docs.md`
-  lesson, confirmed again reading `rules.md`'s `[Doc Philosophy](doc-philosophy.md)` link this
-  session — left untouched, correctly).
-- **A scaffold-contract key earns its place by a landing template, not a prospective one (session
-  5 lesson).** `check-frontend` was added to `scaffold/manifest.example.yml` in prep for
-  `figma-restyle.md`, then reverted when that port was scoped out — don't add a manifest key ahead
-  of the template that will actually use it; add it in the same session the template lands (D051's
-  original pattern), or not at all.
-- Templates resolve next to the binary (`~/code/cinch/templates`) — edit them in the cinch repo,
-  then run `make render` in projectX. No sync step exists; do not introduce a second copy.
-- `templates/` may be nested (render walks recursively) — keep flat unless a port needs grouping.
-- The scaffold `manifest.example.yml` is the variable contract (D040/D045): a template may use any
-  key it declares. New keys needed by a port must be added to the example *and* the consumer
-  manifest, and C3/C4-style schema thinking applies.
+- The `RouteMux`-interface pattern is now the demonstrated way to enumerate an `http.ServeMux`:
+  registration takes an interface, the producer passes a recording mux. It shipped in both the real
+  consumer and the Go fixture, so it's proven portable (D059).
+- Fixture manifests must declare **all eleven template vars**, not just the ones the fixture's own
+  docs use — `{{paths.business}}` alone is referenced 13× across the template set, and an
+  undefined variable is a render error (D005). A business layer exists in every fixture for this
+  reason, and cinch's own repo has one too (overview-only).
+- `go run -C <dir>` is the module-boundary idiom when a producer lives in a nested module
+  (project_deltadocs' `backend/`); the manifest command runs from the repo root.
+- Fixtures inside the cinch repo need their own git repos for `repoRoot()` to resolve (D042) —
+  `make fixtures` self-inits them; the outer repo tracks the working trees and never the inner
+  `.git`.
+- A doc heading carrying a query string (`## GET /api/users/search?q=...`) fails C7's exact-path
+  match — query strings are not routes.
+- C6's field parse treats the ```go fence as authoritative, not the doc's H1: a doc may document
+  several structs (`signature.md` does), each in its own fence or sequentially in one fence.
