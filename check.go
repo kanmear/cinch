@@ -1,17 +1,23 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11, C12.
-// C6/C7 (introspection) and C8 (rule markers) land later.
+// Wave two: C6/C7 (introspection, D028). C8 (rule markers, D027) lands with
+// the P4.1 migration.
 //
 // D009 — the direction rule: only doc-upstream and lateral checks belong here.
 // A check that validates a doc's copy of a machine-readable fact is
@@ -47,6 +53,8 @@ func cmdCheck(root string) error {
 	checkCommandIDs(m, r)          // C3
 	checkManifestPaths(root, m, r) // C4
 	checkDomains(root, m, r)       // C5
+	checkTypes(root, m, r)         // C6
+	checkRoutes(root, m, r)        // C7
 	checkPlans(root, r)            // C9
 	checkLinks(root, r)            // C11
 	checkSeams(m, r)               // C12
@@ -301,4 +309,171 @@ func yamlInt(v any) (int, bool) {
 		return int(n), true
 	}
 	return 0, false
+}
+
+// C6 — models/*.md must describe real types (doc-upstream), and real types
+// should be documented (coverage, warn). The introspection producer is a
+// manifest-declared command (D028); the JSON contract it must emit is
+// docs/INTROSPECTION.md. Absent a declared producer or a models/ dir, the
+// check skips — same absence-is-a-declaration semantics as C5 and C12.
+func checkTypes(root string, m *Manifest, r *report) {
+	cmd := m.Vars["commands.introspect-types"]
+	if cmd == "" {
+		return
+	}
+	mdir := filepath.Join(agentDir(root), "models")
+	if _, err := os.Stat(mdir); err != nil {
+		return
+	}
+
+	out, err := runIntrospection(root, cmd)
+	if err != nil {
+		r.errf("C6", "introspect-types: %v", err)
+		return
+	}
+	var spec struct {
+		Types []struct {
+			Name   string   `json:"name"`
+			Fields []string `json:"fields"`
+		} `json:"types"`
+	}
+	if err := json.Unmarshal(out, &spec); err != nil {
+		r.errf("C6", "introspect-types: output is not valid JSON — see docs/INTROSPECTION.md (%v)", err)
+		return
+	}
+
+	real := map[string]map[string]bool{}
+	for _, t := range spec.Types {
+		fields := map[string]bool{}
+		for _, f := range t.Fields {
+			fields[f] = true
+		}
+		real[t.Name] = fields
+	}
+
+	documented := map[string]bool{}
+	_ = filepath.WalkDir(mdir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
+			return nil
+		}
+		rel, _ := filepath.Rel(mdir, p)
+		for _, dt := range docStructs(p) {
+			documented[dt.name] = true
+			fields, ok := real[dt.name]
+			if !ok {
+				r.errf("C6", "models/%s documents type %q, which introspect-types does not report", rel, dt.name)
+				continue
+			}
+			for _, f := range dt.fields {
+				if !fields[f] {
+					r.errf("C6", "models/%s documents field %q on %q, which introspect-types does not report", rel, f, dt.name)
+				}
+			}
+		}
+		return nil
+	})
+
+	for name := range real {
+		if !documented[name] {
+			r.warnf("C6", "type %q is not documented in any models/*.md", name)
+		}
+	}
+}
+
+// C7 — api/*.md routes must be registered (doc-upstream), and registered
+// routes should be documented (coverage, warn). A route is documented by an
+// `## METHOD /path` heading; headings inside fenced code blocks are skipped
+// (D046), same as C11.
+func checkRoutes(root string, m *Manifest, r *report) {
+	cmd := m.Vars["commands.introspect-routes"]
+	if cmd == "" {
+		return
+	}
+	adir := filepath.Join(agentDir(root), "api")
+	if _, err := os.Stat(adir); err != nil {
+		return
+	}
+
+	out, err := runIntrospection(root, cmd)
+	if err != nil {
+		r.errf("C7", "introspect-routes: %v", err)
+		return
+	}
+	var spec struct {
+		Routes []struct {
+			Method string `json:"method"`
+			Path   string `json:"path"`
+		} `json:"routes"`
+	}
+	if err := json.Unmarshal(out, &spec); err != nil {
+		r.errf("C7", "introspect-routes: output is not valid JSON — see docs/INTROSPECTION.md (%v)", err)
+		return
+	}
+
+	real := map[string]bool{}
+	for _, rt := range spec.Routes {
+		real[rt.Method+" "+rt.Path] = true
+	}
+
+	documented := map[string]bool{}
+	_ = filepath.WalkDir(adir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
+			return nil
+		}
+		rel, _ := filepath.Rel(adir, p)
+		inFence := false
+		for _, line := range strings.Split(readFile(p), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "```") {
+				inFence = !inFence
+				continue
+			}
+			if inFence {
+				continue
+			}
+			for _, h := range routeHeadingRe.FindAllStringSubmatch(line, -1) {
+				key := h[1] + " " + h[2]
+				documented[key] = true
+				if !real[key] {
+					r.errf("C7", "api/%s documents %s %s, which is not a registered route", rel, h[1], h[2])
+				}
+			}
+		}
+		return nil
+	})
+
+	for key := range real {
+		if !documented[key] {
+			r.warnf("C7", "route %s is not documented in any api/*.md", key)
+		}
+	}
+}
+
+// runIntrospection shells out to a manifest-declared introspection command
+// (D024: checkers are compiled in; the introspection escape hatch is the
+// declared-command contract). A producer that hangs should fail, not hang the
+// check.
+func runIntrospection(root, cmdline string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "sh", "-c", cmdline)
+	cmd.Dir = root
+	var out, errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		tail := strings.TrimSpace(errb.String())
+		if tail != "" {
+			return nil, fmt.Errorf("%v — %s", err, tail)
+		}
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+func readFile(p string) string {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }

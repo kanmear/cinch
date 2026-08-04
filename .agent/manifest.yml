@@ -1,0 +1,39 @@
+# cinch's own harness manifest (D036/D055): cinch is the task-primitive's
+# first consumer. The shared template set binds to the same keys any consumer
+# must declare — a CLI repo answers them the honest way (no dev servers, no
+# business rules), which is exactly the portability question being asked.
+harness_version: 0.1.0
+
+paths:
+  business: .agent/business # bind required by the shared templates; cinch has no business rules
+  tests:
+    integration: tests
+    unit: tests
+    e2e: tests
+
+development:
+  commands:
+    check: ./bin/cinch check # self-check: the harness guards its own repo
+    test: go test ./...
+    test-backend: go test ./...
+    test-frontend: go test ./...
+    test-e2e: go test ./...
+    docs-index: ./bin/cinch index # regenerate .agent/index.md
+    # No dev server in a CLI repo; the bindings exist because the shared
+    # templates reference them (fix-bug's reproduce step runs the binary).
+    start-backend: go run .
+    start-frontend: go run .
+
+taxonomy:
+  layers: [core, version]
+  test_tiers:
+    - { id: integration, tdd: rule-tests, cmd: test-backend }
+    - { id: unit, tdd: optional, cmd: test-frontend }
+    - { id: e2e, tdd: never, opt_in: true, cmd: test-e2e, notes: .agent/e2e.md }
+    - { id: manual, automatable: false }
+
+seams:
+  planner: { tier: strong, max_task_layers: 1 }
+  executor: { tier: any, max_task_layers: 1 }
+  doc_maintainer: { tier: mid }
+  auditor: { tier: strong }

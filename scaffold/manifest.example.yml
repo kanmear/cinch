@@ -18,6 +18,7 @@ paths:
 development:
   commands:
     check: make check
+    test: make test
     test-backend: make test-backend
     test-frontend: make test-frontend
     test-e2e: make test-e2e
