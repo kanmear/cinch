@@ -34,10 +34,13 @@ Verified index-inert: `make docs-index` regenerates the same 63-entry index.
 checkers + cinch's `./bin/cinch check`; deny: `make test`, `git push`, `rm -rf .`, `ls`, `make
 check-frontend`; chaining: `&&` / `|` after an allowed literal; fail-closed: missing manifest,
 unresolvable ids). Agent frontmatter parses to the expected structure. Project `make check-harness`
-exit 0 with the two designed C6/C7 warns, unchanged. **The headless `claude --agent auditor`
-smoke test was unavailable — the CLI 403s in this environment (no auth).** The envelope's live
-behavior is therefore unproven end-to-end until a real Claude Code session runs the audit; the
-frontmatter shape follows current Claude Code docs (v2.1.221 installed).
+exit 0 with the two designed C6/C7 warns, unchanged. **End-to-end smoke test completed** (E012):
+the earlier headless `claude --agent auditor` failure was a VPN outage, not the glue; once auth
+worked, the deny path blocked `ls`/`cat`/compounds live, and the allow path exposed one real bug —
+the guard emitted `permissionDecision` at top level, but PreToolUse requires it inside
+`hookSpecificOutput` with `hookEventName: "PreToolUse"` (top-level is deprecated). With that fix,
+`make check-harness` ran prompt-free inside the auditor agent and the model interpreted the harness
+output in the seam role. Verified against Claude Code v2.1.221.
 
 **Decisions logged:** D069 (Claude Code enforcement design), E011 (session event), project E001
 (event). Roadmap §P5 permissions bullet, status line, and anytime episodic-memory bullet annotated.
@@ -61,10 +64,11 @@ frontmatter shape follows current Claude Code docs (v2.1.221 installed).
 
 Nothing is blocked. Candidates, in rough order of value:
 
-1. **Live-verify the auditor audit in a real Claude Code session** — run `/check-rules` with the
-   auditor agent and confirm the guard fires (allow path: `make check-harness` runs without a
-   prompt; deny path: `git`/edits are blocked). The `.claude/agents/` directory was created this
-   session — a running Claude Code session started before it may need a restart to see the agent.
+1. **Run the real `/check-rules` audit in an interactive Claude Code session** — the headless
+   smoke test (E012) proved both envelope paths, but the full audit (closure → classification →
+   report) hasn't run end-to-end as a skill invocation yet. The `.claude/agents/` directory was
+   created this session — a running Claude Code session started before it may need a restart to see
+   the agent.
 2. **The `cinch ignores` binding** if the audit run shows the missing N/A inventory actually hurts.
 3. **A second phase-5-ish consumer** — cinch's own repo has no harness glue (no `.opencode/` or
    `.claude/` at all); its seams are declared-and-validated only. If cinch sessions ever run in a
@@ -72,10 +76,12 @@ Nothing is blocked. Candidates, in rough order of value:
 
 ## Notes for future work
 
-- **The guard's permissionDecision auto-allow may be ignored by older Claude Code versions** (it
-  falls back to a normal permission prompt, never to a widened envelope — exit 0 is inert). If the
-  audit run shows prompt spam, add the three `Bash(<literal>:*)` rules to the personal
-  `settings.local.json`; keep the project-shared `.claude/settings.json` hooks-only.
+- **The guard's auto-allow depends on the PreToolUse output contract.** Verified working on
+  v2.1.221 with `hookSpecificOutput.hookEventName: "PreToolUse"` wrapping `permissionDecision` —
+  top-level `permissionDecision` is deprecated and silently ignored. If an older CLI stops honoring
+  the allow (it degrades to a normal permission prompt, never a widened envelope), add the
+  `Bash(<literal>:*)` rules to the personal `settings.local.json`; keep the project-shared
+  `.claude/settings.json` hooks-only.
 - **`.claude/` is root-gitignored but partially tracked** (historical `git add -f`), same as
   `.opencode/`. The agent and hook files were force-added this session; any *new* glue file there
   needs `git add -f` at commit time or it silently never ships. Edits to already-tracked files
