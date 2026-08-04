@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
@@ -25,19 +24,24 @@ var indexSkip = map[string]bool{
 func indexPath(root string) string { return filepath.Join(agentDir(root), "index.md") }
 
 func firstHeading(path string) string {
-	f, err := os.Open(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
-
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" || strings.HasPrefix(line, "<!--") || line == "---" {
+	text := string(b)
+	// Leading --- ... --- is YAML front-matter (D010 owns: lists), not content.
+	// Skip it so the H1 below becomes the index entry.
+	if strings.HasPrefix(text, "---\n") {
+		if end := strings.Index(text[4:], "\n---"); end >= 0 {
+			text = text[4+end+5:] // 5 = len("\n---\n")
+		}
+	}
+	for _, line := range strings.Split(text, "\n") {
+		t := strings.TrimSpace(line)
+		if t == "" || strings.HasPrefix(t, "<!--") {
 			continue
 		}
-		return strings.TrimSpace(strings.TrimLeft(line, "# "))
+		return strings.TrimSpace(strings.TrimLeft(t, "# "))
 	}
 	return ""
 }

@@ -219,18 +219,31 @@ func checkLinks(root string, r *report) {
 			return nil
 		}
 		rel, _ := filepath.Rel(adir, p)
-		for _, m := range linkRe.FindAllStringSubmatch(string(b), -1) {
-			target := strings.TrimSpace(m[1])
-			if target == "" || strings.Contains(target, "://") ||
-				strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
+		// Links inside fenced code blocks are illustrative examples, not
+		// cross-references (e.g. a doc template showing [<Related> Rules](<related>.md)).
+		// Checking them would flag every placeholder, so skip fenced lines.
+		inFence := false
+		for _, line := range strings.Split(string(b), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "```") {
+				inFence = !inFence
 				continue
 			}
-			target = strings.SplitN(target, "#", 2)[0]
-			if target == "" {
+			if inFence {
 				continue
 			}
-			if _, err := os.Stat(filepath.Join(filepath.Dir(p), target)); err != nil {
-				r.warnf("C11", "%s links to %s, which does not exist", rel, target)
+			for _, m := range linkRe.FindAllStringSubmatch(line, -1) {
+				target := strings.TrimSpace(m[1])
+				if target == "" || strings.Contains(target, "://") ||
+					strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
+					continue
+				}
+				target = strings.SplitN(target, "#", 2)[0]
+				if target == "" {
+					continue
+				}
+				if _, err := os.Stat(filepath.Join(filepath.Dir(p), target)); err != nil {
+					r.warnf("C11", "%s links to %s, which does not exist", rel, target)
+				}
 			}
 		}
 		return nil
