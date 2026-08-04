@@ -29,6 +29,7 @@ var (
 	ruleItemRe   = regexp.MustCompile(`^\s*\d+\.\s+(\*\*([A-Z0-9]+-[0-9]+)\*\*)?\s*(.*)$`)
 	ruleMarkerRe = regexp.MustCompile(`//\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)`)
 	ruleIgnoreRe = regexp.MustCompile(`cinch:ignore\s+([A-Z0-9]+-[0-9]+)`)
+	ownsItemRe   = regexp.MustCompile(`^\s*-\s+(\S.*?)\s*$`)
 )
 
 type domainRule struct {
@@ -39,12 +40,13 @@ type domainRule struct {
 
 // parseDomainDoc parses one domain doc: its rule_prefix, the rule IDs its
 // numbered items carry (id -> opening text), the IDs declared cinch:ignore,
-// and the opening text of numbered items carrying no ID (pre-migration).
-// Numbered items inside fenced blocks are examples, not rules (D046, same as
-// C7/C11).
+// the opening text of numbered items carrying no ID (pre-migration), and the
+// owns: list (D010). Numbered items inside fenced blocks are examples, not
+// rules (D046, same as C7/C11).
 func parseDomainDoc(text string) domainDoc {
 	dd := domainDoc{rules: map[string]string{}}
 	dd.prefix = rulePrefix(text)
+	dd.owns = ownsList(text)
 	inFence := false
 	for _, line := range strings.Split(text, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "```") {
@@ -75,6 +77,7 @@ type domainDoc struct {
 	rules   map[string]string
 	ignores []string
 	noID    []string
+	owns    []string
 }
 
 // rulePrefix reads rule_prefix from the doc's YAML front-matter block.
@@ -89,6 +92,32 @@ func rulePrefix(text string) string {
 		}
 	}
 	return ""
+}
+
+// ownsList reads the owns: list (D010) from the front-matter block: after an
+// `owns:` line, every `- path` item up to the next non-item line. The block
+// is text[:end] where end is the closing `---`, same block rulePrefix reads.
+func ownsList(text string) []string {
+	end := strings.Index(text, "\n---")
+	if end < 0 {
+		return nil
+	}
+	var owns []string
+	inOwns := false
+	for _, line := range strings.Split(text[:end], "\n") {
+		if !inOwns {
+			if strings.TrimSpace(line) == "owns:" {
+				inOwns = true
+			}
+			continue
+		}
+		m := ownsItemRe.FindStringSubmatch(line)
+		if m == nil {
+			break
+		}
+		owns = append(owns, m[1])
+	}
+	return owns
 }
 
 // C8 — see the comment at the top of this file.

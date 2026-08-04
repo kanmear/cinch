@@ -157,6 +157,8 @@ updated, `check-rules` still passes — and the rule text is now false.
   project_deltadocs; cinch's own harness rules HARNESS-001..005 marked or ignored. D064.)*
 - **[cinch] 4.2** C10 diff-coupling: a commit touching a domain's `owns:` paths but not its domain
   doc → **warning**, not error. Value is asking the question when the answer is cheapest.
+  *(Landed — C10 in `diff.go`, working-tree boundary (`git diff HEAD`), one warn per domain, skips
+  outside git or with no owns lists. D065.)*
 - **[project] 4.3** Derivability gate as an explicit admission test: *can an agent recover this from
   source?* If yes, it is not written. Freshness is a write-time constraint, not a sync process
   (D012).
@@ -165,7 +167,8 @@ updated, `check-rules` still passes — and the rule text is now false.
 
 **Exit:** every rule has an ID resolving to a marked test (untestable rules declared
 `cinch:ignore`, listed by `cinch ignores` — D064); a behaviour-changing commit that leaves
-its domain doc untouched warns; `optimize-docs` has deleted something on first run.
+its domain doc untouched warns *(live — C10, D065)*; `optimize-docs` has deleted something
+on first run.
 
 ---
 

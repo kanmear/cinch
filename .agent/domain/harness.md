@@ -7,6 +7,9 @@ owns:
   - manifest.go
   - main.go
   - version.go
+  - rule.go
+  - diff.go
+  - introspect.go
   - templates/
 ---
 

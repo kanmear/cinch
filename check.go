@@ -17,7 +17,8 @@ import (
 
 // Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11, C12.
 // Wave two: C6/C7 (introspection, D028). C8 (rule markers, D027) landed with
-// the P4.1 migration (D057/D064) — see rule.go.
+// the P4.1 migration (D057/D064) — see rule.go. P4.2: C10 (diff-coupling,
+// D065) — see diff.go.
 //
 // D009 — the direction rule: only doc-upstream and lateral checks belong here.
 // A check that validates a doc's copy of a machine-readable fact is
@@ -56,6 +57,7 @@ func cmdCheck(root string) error {
 	checkTypes(root, m, r)         // C6
 	checkRoutes(root, m, r)        // C7
 	checkRules(root, m, r)         // C8
+	checkDiffCoupling(root, m, r)  // C10
 	checkPlans(root, r)            // C9
 	checkLinks(root, r)            // C11
 	checkSeams(m, r)               // C12
