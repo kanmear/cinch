@@ -130,20 +130,18 @@ a positive integer when declared).
 
 **Wave 2** — C6 `models/*.md` ↔ real types; C7 `api/*.md` ↔ registered routes. Static introspection
 for types, runtime for routes (D028). cinch defines the JSON contract; the project implements the
-producers.
+producers. *(Landed — contract in `docs/INTROSPECTION.md`, C6/C7 in `check.go`, producers in the
+project; doc-upstream errors, coverage warns, absent producers skip. D056.)*
 
 **Wave 3** — C8 rule ID → at least one `// cinch:rule PROJ-014` marker (D027), plus the reverse
 check that every marker resolves to a real rule. Blocked on markers existing across the test suite —
-a migration, not a build.
-
-**Fixture projects in cinch CI** (D017): a toy Go repo and a toy Node repo, each with a minimal
-manifest. CI renders into both and runs the checkers. This makes portability demonstrated rather
-than asserted, and mitigates a framework extracted from one instance.
+a migration, not a build. *(The build ships with the P4.1 rule-ID migration, not before — D057.)*
 
 No time- or commit-based staleness thresholds (D011).
 
-**Exit:** `cinch check` green on a clean tree in the project and both fixtures. Every mechanical
-audit in `sync-docs` / `optimize-docs` prose is either a checker or deleted as doc-downstream.
+**Exit:** `cinch check` green on a clean tree in the project and in cinch's own repo — the two real
+consumers (D061 cut the toy fixtures). Every mechanical audit in `sync-docs` / `optimize-docs`
+prose is either a checker or deleted as doc-downstream.
 
 ---
 

@@ -1,17 +1,10 @@
-.PHONY: build test fixtures setup-hooks version-show version-major release
+.PHONY: build test setup-hooks version-show version-major release
 build:
 	go build -o bin/cinch .
 
 test: build
 	go vet ./...
 	go test ./...
-
-# Fixture render+check across stacks — the portability test (D017).
-fixtures: build
-	@for f in fixtures/*/; do \
-		echo "== $$f"; \
-		( cd $$f && ../../bin/cinch render && ../../bin/cinch check ) || exit 1; \
-	done
 
 # Versioning (see ops/git-conventions.md — minor/patch/hotfix bump
 # automatically via .githooks/post-commit on dev/main squash-merges; major is
