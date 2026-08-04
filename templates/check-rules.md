@@ -57,6 +57,12 @@ A rule already covered has a `// cinch:rule <ID>` marker above its enforcing tes
 marked test actually exercises the rule, and that unmarked rules are genuinely untested rather
 than forgotten.
 
+Trust the closure's direction: if the checker reported **no unmarked rules**, a rule you judge
+under-tested is *not* missing a marker — C8 warns on every unmarked rule, so the rule is marked
+somewhere. Search the tree for `// cinch:rule <ID>` before reporting it MISSING, and judge the
+quality of the marker's test instead. A rule can be marked yet under-enforced (marker above a
+weak test); it cannot be unmarked under a zero-unmarked closure.
+
 Read representative test files if you're unsure whether a test covers a rule.
 
 ### 4. Report

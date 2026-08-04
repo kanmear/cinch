@@ -204,11 +204,14 @@ Needs P1, P2; benefits from P3.
    in check_test.go close the gap (D072/E015).)*
 
 Order within: declare seams → wire the Auditor verification → Executor fan-out → permissions.
-*Status at session close: seams declared (P1), Auditor wired, fan-out verified-and-deferred,
-permissions declared and enforced in both harnesses (D067/D069) and in cinch's own opencode seam
-(D071); the audit has executed against both consumers' domains and inside cinch's own envelope
-(E016), its proposal→apply loop completed once (E014→D072) with the in-envelope run finding
-nothing to propose; only the project-side interactive Claude Code audit remains unverified.*
+*Status at session close: Phase 5 complete — seams declared (P1), Auditor wired, fan-out
+verified-and-deferred, permissions declared and enforced in both harnesses (D067/D069) and in
+cinch's own opencode seam (D071); the audit has executed inside cinch's own envelope (E016) and —
+the last unverified path — interactively in the Claude Code consumer (E017): full closure →
+classification → report → proposal → executor-apply, the one real gap closed (PERM-004's
+read-access clause, route tests + marker move) and the one misfire (a rule declared unmarked
+under a zero-unmarked closure) hardening step 3 of the workflow (D073). The seam now has a
+complete workout in every consumer it was built for.*
 
 ---
 
