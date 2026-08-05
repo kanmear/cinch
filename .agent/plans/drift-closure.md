@@ -28,7 +28,7 @@ asking a model to verify a link that already exists produces verification. The r
 and-flag-tension instruction is still worth keeping — as the weakest of the four fixes, because
 it asks the model to catch itself. The other three don't.
 
-## Phase 1 — Sync project_deltadocs `.agent` after the reorg [project]
+## Phase 1 — Sync project_deltadocs `.agent` after the reorg *(landed 2026-08-05 — no commit: the premise was wrong)*
 
 deltadocs last landed 2026-08-05 00:18 (the P5.6 commit 96d91df); the reorg (D074–D080) landed
 after it, and its Phase 4 dedup changed `templates/doc-philosophy.md`. The consumer's rendered
@@ -42,7 +42,16 @@ baseline would poison the expectation table's known-warn rows before the fixture
 **Exit:** deltadocs HEAD C2-green; `make check-harness` exit 0 at the baseline; diff reviewed by
 the user.
 
-## Phase 2 — Restore the mutation set as `make drift-test` [project]
+**Record.** The staleness premise did not hold: D080 (the Phase 4 dedup) resolved to keep
+`templates/doc-philosophy.md` unchanged — "no re-render, C2 untouched, consumers re-render on
+their own schedule" — and `git diff 616ea61..HEAD -- templates/ scaffold/` is empty. Verified
+empirically against a fresh `make build`: `make render` + `make docs-index` produced **zero
+diff** on the consumer (C1/C2 green by construction), `make check-harness` exits 0 with exactly
+the two designed baseline warns, and no stale artifacts remain in the consumer's `.agent` (no C13
+refs, no deleted-docs refs, manifest is a superset of the scaffold contract). Exit met with an
+empty diff; nothing to commit.
+
+## Phase 2 — Restore the mutation set as `make drift-test` *(landed 2026-08-05 — fixture in project_deltadocs)*
 
 Resolves the open "Home decided at implementation": mutation patches, scorer, and expectation
 table are consumer data (deltadocs paths, SIG-002-class rule IDs), so per the boundary rule they
@@ -70,6 +79,54 @@ the check binary, score against the expectation table, tear the worktree down.
 **Exit:** `make drift-test` mechanical rows reproduce the P5.6 score table on today's binary —
 the regression proof for the next person who touches `check.go`; semantic gate red-by-design,
 documented.
+
+**Record.** All exit criteria met, verified on today's binary (2026-08-05): `make drift-test`
+exit 0 — 16 findings, exact-match scored, every row's named checker with counts, zero overreach;
+`make drift-test-semantic` mechanical PASS + semantic gate FAIL exit 1 (red by design, report at
+`/tmp/drift-test-semantic-report.md`); `make check-harness` stays exit 0 with the two designed
+warns.
+
+- **Home, decided at implementation: `.agent/drift/`, not `scripts/`.** First attempt at
+  `scripts/drift/` poisoned the consumer's own C8 — `scanRuleMarkers` walks the whole repo and
+  the patch files *contain* the mutation's `// cinch:rule` lines (SIG-099 phantom: "does not
+  resolve to a rule"), plus the removed SIG-012/TAB-003 marker lines would mask real unmarked
+  warns. `.agent/` is in the marker scan's skip list and C1/C11 read only `.md`, so the fixture
+  is invisible to every checker there. Decision entry still lands at Phase 5.
+- **Recovery:** nine patches extracted byte-faithful from the reflog-reachable commits
+  (77d5e60..a83e4e1, `git show <c> --format=`); row 7 (C10) reconstructed — the original
+  working-tree edit died with the worktree (never committed, no dangling blob), same shape:
+  one-line behaviour change in `backend/handlers/signature_events.go` (owned by exactly one
+  domain → exactly one C10 warn), rule text left.
+- **Apply mechanics:** committed in the P5.6 *historical* commit order, not score-table row
+  order (the score table's row order differs from commit order; row 8's `index.md` hunk was
+  generated pre-rename, so it must land before row 5's doc move). Row 5 (C1) commits with
+  `-c core.hooksPath=/dev/null` — the pre-commit index guard rightly rejects it, and that catch
+  is part of the row's record; note the `core.` section is required (bare `-c hooksPath=` fails
+  git's -c parsing). Rows 1/2 exercise the consumer's own pre-commit hook (`make check-backend`
+  passes through cleanly). Row 7 applies uncommitted, after all commits.
+- **Scoring:** one end-state `$CINCH check` run (the P5.6 audit shape), exact-match on
+  (checker, severity, message substring, count) — every finding must be expected, every expected
+  finding present. Row 9 is the explicit negative (nothing structural may fire on the SIG-002
+  inversion). `check-rules.md` staleness is dual-attributed (rows 4 and 6 both stale it; the
+  end-state run can't decompose — row 4's unique signal is task-primitive.md, row 6's is C4);
+  the attribution note lives in expectations.json.
+- **Incident — git 2.55.0 quirk:** the worktree add/remove cycle flips `core.bare=true` in the
+  shared config, leaving the main checkout unworkable ("this operation must be run in a work
+  tree"). Reproduced live (fires on every fixture run; did not reproduce in scratch repos — the
+  trigger state is something in this repo's gitdir). The runner's cleanup now verifies
+  `core.bare` after teardown and restores it with a WARNING; the consumer was recovered
+  (`core.bare=false`).
+- **Semantic gate, red by design — confirmed 3/3 failures.** Two headless audits today, both
+  marked SIG-002 ✅: run 1 deferred the contradiction to a "note below" that never appeared in
+  the report; run 2 cited the contradicting test (`TestRequestSignature_AlreadyPending`, which
+  asserts the 409 conflict) as coverage outright. The P5.6 original makes it three for three —
+  the confabulation is not a fluke of one session. Both today's runs preserved the SIG-099-class
+  diagnosis (SIG-012 reported "mismarked — marker reads SIG-099, a typo; test itself is
+  correct"), the Phase 4 capability baseline.
+- **Forward notes:** the fixture needs the go toolchain (rows 1/2 run the consumer's hook);
+  `scripts/drift-test.sh` needs `claude` for `--semantic` (skips with a message when absent);
+  the pin lives in `.agent/drift/pinned-commit` (96d91df full hash) and must be bumped
+  deliberately when deltadocs advances (the fixture fails loudly if the pin goes unreachable).
 
 ## Phase 3 — C10/C14 boundary decision, then C14 [cinch]
 
@@ -143,9 +200,13 @@ plans persist with `Status: complete`).
 
 ## References
 
-- `docs/HANDOFF.md` — the P6 verdict this plan supersedes (git history is the archive)
+- The P6 verdict this plan supersedes: `docs/HANDOFF.md` as of commit 7ae3aa8 (deleted in the
+  reorg, D074 — git history is the archive; the P5.6 score table is also reproduced as data in
+  project_deltadocs `.agent/drift/expectations.json`)
 - E016/E017 — auditor envelope workouts; D065 — C10; D067 — the checker closure is authoritative;
   D073 — step 3 hardened to trust the closure; D061 — no toy fixtures; D074–D080 — the reorg
-  (the source of Phase 1's stale consumer)
-- `templates/check-rules.md`; `diff.go`; project_deltadocs (the fixture's real consumer;
-  `scratch/checker-drift-test` reflog is the mutation set)
+  (Phase 1's stale-consumer premise came from D080's dedup, which resolved to leave the template
+  unchanged)
+- `templates/check-rules.md`; `diff.go`; project_deltadocs `.agent/drift/` (the fixture: patches,
+  expectations.json, pinned-commit; the mutation set formerly at `scratch/checker-drift-test`,
+  branch deleted, commits reflog-reachable at 96d91df^..a83e4e1)
