@@ -123,12 +123,30 @@ warns.
   the confabulation is not a fluke of one session. Both today's runs preserved the SIG-099-class
   diagnosis (SIG-012 reported "mismarked — marker reads SIG-099, a typo; test itself is
   correct"), the Phase 4 capability baseline.
+- **Dual-driver semantic gate — the pi probe (2026-08-05, first local-model audit).** The gate
+  now runs against a second driver: headless pi (Qwen3.6-27B via llama.cpp) with a pi-native
+  `--auditor` extension (persona + manifest-derived bash allowance, the D067/D069 envelope
+  pattern bound to a third harness; consumer glue in project_deltadocs `.pi/extensions/auditor.ts`,
+  fixture modes `--semantic-pi` / `--pi-baseline` in `scripts/drift-test.sh`). Baseline probe on
+  the clean pin: the 27B performs the full audit (closure from the checkers, per-domain report,
+  SIG-099-class diagnosis preserved). Drift probe, two runs: run 1 confabulated SIG-002 ✅ citing
+  `TestRequestSignature_AlreadyPending` — the claude failure verbatim; run 2 flagged it
+  "⚠️ QUALITY — test contradicts rule", quoting the mutated rule text against the
+  `http.StatusConflict` assertion. Net: **claude 3/3, pi 1/2** — "the auditor confabulates a ✅"
+  is model-run-dependent, not a fixed property, so the Phase 4 blinding is what makes the catch
+  reliable instead of lucky, and the blinded protocol must be verified against **both** drivers
+  (the fixture's dual-driver gate is the standing policy; D081). Runner findings: pi never exits
+  after writing its report (shutdown stall — the fixture terminates it after 120s of post-output
+  quiet, 45-min backstop, orphan-safe trap); the pi gate scores contradiction wording, not just
+  MISSING. Reports: `records/pi-audits/` (temporary home; also `~/Documents/cinch-first-audits`).
 - **Forward notes:** the fixture needs the go toolchain (rows 1/2 run the consumer's hook);
-  `scripts/drift-test.sh` needs `claude` for `--semantic` (skips with a message when absent);
-  the pin lives in `.agent/drift/pinned-commit` (96d91df full hash) and must be bumped
-  deliberately when deltadocs advances (the fixture fails loudly if the pin goes unreachable).
+  `scripts/drift-test.sh` needs `claude` for `--semantic` and `pi` for `--semantic-pi` /
+  `--pi-baseline` (each skips with a message when absent); the pin lives in `.agent/drift/pinned-commit`
+  (96d91df full hash) and must be bumped deliberately when deltadocs advances (the fixture fails
+  loudly if the pin goes unreachable); the semantic gate is dual-driver by policy (D081) — both
+  drivers run per audit round and their verdicts are compared, not averaged.
 
-## Phase 3 — C10/C14 boundary decision, then C14 [cinch]
+## Phase 3 — C10/C14 boundary decision, then C14 [cinch] *(landed 2026-08-05 — D082, two-window C14, fixture row 9 re-scored)*
 
 **Decision first** (one entry; read D011/D065 before writing it; applied to C10 and C14
 together): C10 only fires pre-commit — its window is `git diff HEAD`, so a committed change is
@@ -157,6 +175,38 @@ marked test, validating no doc's copy of a machine-readable fact.
 
 **Exit:** `go vet ./...` and `go test ./...` green; `cinch check` green on cinch's own repo and
 on project_deltadocs; `make drift-test` all mechanical rows green including the C14 row.
+
+**Record.** All exit criteria met, verified on today's binary (2026-08-05): `go vet ./...` +
+`go test ./...` green with 15 new C14 cases; cinch self-check exit 0 at the known baseline;
+deltadocs `make check-harness` exit 0 with exactly the two designed warns — **no C14 noise on
+the clean pin** (the P4.1 migration commit 20abbe6 authored the IDs fresh, so no text-change
+detections at rest; cinch's e10555f changed only the ignored rule); `make drift-test` exit 0,
+exact-match PASS with row 9 re-scored: the SIG-002 inversion now fires exactly one C14 warn and
+nothing else structural.
+
+- **The decision, D082, first:** C10 stays working-tree-only — hook-only by design, stated
+  plainly in diff.go's comment and the roadmap (widening would warn permanently on test-only
+  commits under owns: paths and re-baseline the fixture's rows 1/2); C14 gets two ref-free
+  windows — the working tree (C10's) and the **last commit that touched the rule's doc**
+  (`git log -1 -- <doc>`), the only window that sees the fixture's row 9 at the end-state
+  audit, since row 9 is committed mid-history (`git diff HEAD` and `git diff HEAD^ HEAD` both
+  miss it). Persistent warn by choice: a committed rule-text change without its marker stays
+  flagged until the doc is touched again — the falsifying commit is the fact. D011 reconciled:
+  one deterministic commit, not a threshold.
+- **C14** in `diff.go`: `checkRuleDiffCoupling` plus three small git helpers (gitShow /
+  gitLogLast / gitDiffPaths, 10s timeouts, same shape as gitChangedPaths); `scanRuleMarkers`
+  extended to record where each marker lives (map[string]string) so the marker file is
+  nameable; marker-less and cinch:ignore rules drop out (C8's domain); a rule newly given an
+  ID is not a text change (C8 owns the closure); renames self-correct (marker or doc renamed
+  in the same commit is silent).
+- **Fixture-data self-poison, caught by cinch's own self-check:** the first fixture text put
+  literal `// cinch:rule SIG-002` tokens in diff_test.go, which scanRuleMarkers reads as real
+  markers → C8 errors on cinch's own repo. Fixtures now build markers at runtime (the mkMarker
+  convention from rule_test.go) — the same poison class as the P5.6 patch files, one level
+  closer to home.
+- Both C14 windows probed live on the pinned deltadocs tree: "changed in the working tree"
+  and "changed in commit \<sha\> but its marker file backend/tests/handlers/tab_test.go did
+  not" — message names the rule, doc, marker file, and window.
 
 ## Phase 4 — Blind the semantic pass, then the full fixture run [both]
 

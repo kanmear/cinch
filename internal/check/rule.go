@@ -172,26 +172,28 @@ func checkRules(root string, m *manifest.Manifest, r *report) {
 	}
 	for id, rule := range rules {
 		switch {
-		case markers[id] && ignored[id] != "":
+		case markers[id] != "" && ignored[id] != "":
 			r.errf("C8", "rule %s is both marked and cinch:ignore'd — one truth", id)
-		case markers[id] || ignored[id] != "":
+		case markers[id] != "" || ignored[id] != "":
 		default:
 			r.warnf("C8", "rule %s (%s) has no // cinch:rule marker — add one above its enforcing test, or declare cinch:ignore", id, rule.doc)
 		}
 	}
 }
 
-// scanRuleMarkers finds every `// cinch:rule <ID>` token in the source tree.
-// The marker is a comment token, greppable in any language — core never parses
-// project source (D003). Documentation surfaces are not source and are skipped:
+// scanRuleMarkers finds every `// cinch:rule <ID>` token in the source tree
+// and records which file carries it (id -> repo-relative path). The marker is
+// a comment token, greppable in any language — core never parses project
+// source (D003). Documentation surfaces are not source and are skipped:
 // `.agent/` (rendered workflows and authored harness docs), `templates/` and
-// `docs/` (prose that teaches the marker syntax), and `decisions.jsonl` (the
+// `docs/` (prose that teaches the marker syntax), `records/` (archived report
+// surfaces that quote markers verbatim), and `decisions.jsonl` (the
 // append-only record — D027's own example token lives there permanently and
 // must never resolve). `.git/` and `bin/` are artifacts. Binary files are
 // never read whole.
-func scanRuleMarkers(root string) map[string]bool {
-	found := map[string]bool{}
-	skipDir := map[string]bool{".git": true, "bin": true, "docs": true, ".agent": true, "templates": true}
+func scanRuleMarkers(root string) map[string]string {
+	found := map[string]string{}
+	skipDir := map[string]bool{".git": true, "bin": true, "docs": true, ".agent": true, "templates": true, "records": true}
 	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -214,7 +216,11 @@ func scanRuleMarkers(root string) map[string]bool {
 			return nil
 		}
 		for _, m := range ruleMarkerRe.FindAllStringSubmatch(string(b), -1) {
-			found[m[1]] = true
+			if _, ok := found[m[1]]; !ok {
+				if rel, err := filepath.Rel(root, p); err == nil {
+					found[m[1]] = rel
+				}
+			}
 		}
 		return nil
 	})

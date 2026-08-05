@@ -68,8 +68,9 @@ consumers; no time- or commit-based staleness thresholds.
 
 **Phase 4 — Semantic integrity [both]** — Landed: author-assigned permanent rule IDs with
 `// cinch:rule` markers (warnings both directions, `cinch ignores` for exemptions); C10 diff-
-coupling at the domain level; the derivability gate as an explicit admission test; `optimize-docs`
-deletion mandate exercised.
+coupling at the domain level (working-tree window only — a hook-only check by design, D065/D082);
+C14 rule-level diff-coupling with a committed window (drift-closure Phase 3, D082); the
+derivability gate as an explicit admission test; `optimize-docs` deletion mandate exercised.
 
 **Phase 5 — Seams, tiering, permissions [both]** — Landed: auditor seam strong-tier over a
 script-produced closure; `allow:` command-id lists declared in both manifests and enforced by both
