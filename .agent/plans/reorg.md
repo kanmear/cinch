@@ -1,6 +1,6 @@
 # Cinch reorganization — pin the plan, execute one phase at a time
 
-Status: planned
+Status: complete
 
 Purpose: cinch has outgrown its own grasp — docs/ mixes living spec with dead
 artifacts, the Go code is grouped by chronology not concept, naming is
@@ -152,7 +152,7 @@ templates are unchanged by this phase, so C2 should stay green); HARNESS
 markers still resolve (they travel with the moved test files). Stop for user
 review of the package layout.
 
-## Phase 4 — Fundamentals cross-check
+## Phase 4 — Fundamentals cross-check *(landed 2026-08-05 — D078–D080)*
 
 - **Dedup PHILOSOPHY ↔ doc-philosophy**: the template is the canonical
   operational statement of the derivability gate; PHILOSOPHY's "Code is the

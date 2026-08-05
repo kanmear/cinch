@@ -9,8 +9,8 @@ the plan files under Current work.
 
 ## Current work
 
-- `.agent/plans/reorg.md` — the reorganization: scope and taxonomy (done), cut (done), Go
-  restructure, fundamentals cross-check.
+- `.agent/plans/reorg.md` — the reorganization: all four phases landed (scope and taxonomy, cut,
+  Go restructure, fundamentals cross-check — D074–D080); plan closed complete, file kept.
 - `.agent/plans/drift-closure.md` — the drift-test follow-up: fixture first, C14, blinded auditor,
   C10/C14 boundary decision.
 

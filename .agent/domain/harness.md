@@ -14,12 +14,13 @@ owns:
 
 ## Direction of checks
 
-1. **HARNESS-001** — Checkers are doc-upstream or lateral only. A checker
-   validates that code or a bound artifact conforms to the doc (doc is the
-   spec), or that two authored artifacts agree. Never doc-downstream: a check
-   that validates a doc's copy of a machine-readable fact means the
-   duplication should be deleted instead (D009). *Enforced: no test;
-   constrains every future checker decision.*
+1. **HARNESS-001** — Checkers are doc-upstream, lateral, or structural only.
+   A checker validates that code or a bound artifact conforms to the doc (doc
+   is the spec), that two authored artifacts agree, or that a corpus or
+   contract referent exists (paths, commands, links, plans, seams). Never
+   doc-downstream: a check that validates a doc's copy of a machine-readable
+   fact means the duplication should be deleted instead (D009). *Enforced: no
+   test; constrains every future checker decision.*
    <!-- cinch:ignore HARNESS-001 — a future-decision constraint; no test can enforce it -->
 
 ## The audit seam

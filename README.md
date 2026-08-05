@@ -75,7 +75,7 @@ Not a memory system; not a semantic validator — even at its best it detects
 
 C# | checks | direction | severity | file
 --- | --- | --- | --- | ---
-C1 | committed `.agent/index.md` matches a fresh generation | lateral | error | internal/index/index.go
+C1 | committed `.agent/index.md` matches a fresh generation | lateral | error | internal/check/check.go
 C2 | rendered workflows match a fresh render (stale) and their header hash (tamper) | lateral | error | internal/check/check.go
 C3 | test-tier `cmd` ids resolve under `development.commands` | structural | error | internal/check/check.go
 C4 | every `paths.*` binding points at something that exists | structural | error | internal/check/check.go
@@ -88,6 +88,6 @@ C10 | a change touching a domain's `owns:` paths leaves its domain doc warning-f
 C11 | links and backticked path tokens inside `.agent/` resolve | structural | warn | internal/check/check.go
 C12 | seam declarations: known tier, auditor strong, `allow` ids resolve | structural | error | internal/check/check.go
 
-Direction rule (D009): doc-upstream and lateral checks only — never
-doc-downstream. A check that validates a doc's copy of a machine-readable fact
-means the duplication should be deleted instead.
+Direction rule (D009): doc-upstream, lateral, and structural checks only —
+never doc-downstream. A check that validates a doc's copy of a machine-readable
+fact means the duplication should be deleted instead.
