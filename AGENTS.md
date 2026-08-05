@@ -5,9 +5,9 @@ that makes it portable across repositories.
 
 ## What this repo is
 
-- `*.go` — the CLI: `render`, `index`, `check`, `ignores`, `version`. Parser unit tests live
-  next to the code they test at the module root; CLI-level tests live in `tests/` and exercise
-  the built binary.
+- `*.go` — the CLI: `render`, `index`, `check`, `ignores`, `version`. Unit tests live next to
+  the code they exercise (module root today; `internal/` after the Phase 3 move); CLI-level
+  tests live in `tests/` and exercise the built binary.
 - `templates/` — portable workflow templates. `render` walks every `*.md` under here
   and renders it into a consumer's `.agent/workflows/`, with no filename exclusion — a meta-doc
   placed in this directory (a README, notes-to-porters) gets rendered as if it were a workflow.
@@ -39,6 +39,10 @@ catches by name.
 
 **Checkers are doc-upstream or lateral only.** A check that validates a doc's copy of a
 machine-readable fact means the duplication should be deleted instead.
+
+**Handoffs go to events/plan files, never `docs/`.** docs/ holds spec, contract, and plan+status
+only; session state is point-in-time and belongs in a plan file or a decision/event entry — git
+is the archive.
 
 **Core never parses project source.** Type and route introspection are commands the consumer
 declares; this repo defines their output contract and nothing more.

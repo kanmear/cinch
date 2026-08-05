@@ -80,7 +80,7 @@ occurrence (the glossary's harness entry keeps the consumer sense).
 consistently; AGENTS.md opens with the new definition. Stop for user review
 of the README wording.
 
-## Phase 2 — Cut
+## Phase 2 — Cut *(landed 2026-08-05 — D074)*
 
 - **Delete outright** (git history is the archive):
   - `docs/RATIONALE.md` — superseded by ROADMAP v3; its phases are the same
