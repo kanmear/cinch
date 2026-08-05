@@ -80,17 +80,18 @@ func TestScanRuleMarkers(t *testing.T) {
 	write(".agent/conventions.md", mkMarker("DOC")+"\n")
 	write("docs/ROADMAP.md", mkMarker("MAP")+"\n")
 	write("templates/check-rules.md", mkMarker("TPL")+"\n")
+	write("records/pi-audits/report.md", mkMarker("REC")+"\n")
 	write("decisions.jsonl", mkMarker("LOG")+"\n")
 	write("data.bin", "\x00\x01"+mkMarker("NUL"))
 
 	got := scanRuleMarkers(root)
 	for _, id := range []string{"SIG-001", "SIG-002", "SIG-003"} {
-		if !got[id] {
+		if got[id] == "" {
 			t.Fatalf("marker %s not found", id)
 		}
 	}
-	for _, id := range []string{"GHOST", "BIN", "NUL", "DOC", "MAP", "LOG", "TPL"} {
-		if got[id] {
+	for _, id := range []string{"GHOST", "BIN", "NUL", "DOC", "MAP", "LOG", "REC", "TPL"} {
+		if got[id] != "" {
 			t.Fatalf("marker %s must be skipped (artifact/doc surface)", id)
 		}
 	}
@@ -157,7 +158,7 @@ func TestCheckRules(t *testing.T) {
 	t.Run("green", func(t *testing.T) {
 		fs := runCheckRules(t, map[string]string{
 			".agent/domain/signatures.md": doc,
-			"backend/tests/tab_test.go":   mkMarker("SIG-001")+"\n"+mkMarker("SIG-002")+"\n",
+			"backend/tests/tab_test.go":   mkMarker("SIG-001") + "\n" + mkMarker("SIG-002") + "\n",
 		})
 		if len(fs) != 0 {
 			t.Fatalf("expected green, got %v", fs)
@@ -167,7 +168,7 @@ func TestCheckRules(t *testing.T) {
 	t.Run("uncovered rule warns", func(t *testing.T) {
 		fs := runCheckRules(t, map[string]string{
 			".agent/domain/signatures.md": doc,
-			"backend/tests/tab_test.go":   mkMarker("SIG-001")+"\n",
+			"backend/tests/tab_test.go":   mkMarker("SIG-001") + "\n",
 		})
 		hasFinding(t, fs, "C8", "warn", "SIG-002")
 		if len(fs) != 1 {
@@ -178,7 +179,7 @@ func TestCheckRules(t *testing.T) {
 	t.Run("ignored rule is silent", func(t *testing.T) {
 		fs := runCheckRules(t, map[string]string{
 			".agent/domain/signatures.md": doc + "\n<!-- cinch:ignore SIG-002 -->\n",
-			"backend/tests/tab_test.go":   mkMarker("SIG-001")+"\n",
+			"backend/tests/tab_test.go":   mkMarker("SIG-001") + "\n",
 		})
 		if len(fs) != 0 {
 			t.Fatalf("expected green, got %v", fs)
@@ -188,7 +189,7 @@ func TestCheckRules(t *testing.T) {
 	t.Run("stray marker errors", func(t *testing.T) {
 		fs := runCheckRules(t, map[string]string{
 			".agent/domain/signatures.md": doc,
-			"backend/tests/tab_test.go":   mkMarker("SIG-001")+"\n"+mkMarker("GHOST-001")+"\n",
+			"backend/tests/tab_test.go":   mkMarker("SIG-001") + "\n" + mkMarker("GHOST-001") + "\n",
 		})
 		hasFinding(t, fs, "C8", "error", "GHOST-001")
 	})
@@ -196,7 +197,7 @@ func TestCheckRules(t *testing.T) {
 	t.Run("marked and ignored is a contradiction", func(t *testing.T) {
 		fs := runCheckRules(t, map[string]string{
 			".agent/domain/signatures.md": doc + "\n<!-- cinch:ignore SIG-001 -->\n",
-			"backend/tests/tab_test.go":   mkMarker("SIG-001")+"\n",
+			"backend/tests/tab_test.go":   mkMarker("SIG-001") + "\n",
 		})
 		hasFinding(t, fs, "C8", "error", "both marked and cinch:ignore'd")
 	})

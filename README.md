@@ -87,6 +87,7 @@ C9 | plans carry a `Status:` line; complete fix plans are deleted | structural |
 C10 | a change touching a domain's `owns:` paths leaves its domain doc warning-free | lateral | warn | internal/check/diff.go
 C11 | links and backticked path tokens inside `.agent/` resolve | structural | warn | internal/check/check.go
 C12 | seam declarations: known tier, auditor strong, `allow` ids resolve | structural | error | internal/check/check.go
+C14 | a rule's text changed and the file carrying its `// cinch:rule` marker did not | lateral | warn | internal/check/diff.go
 
 Direction rule (D009): doc-upstream, lateral, and structural checks only —
 never doc-downstream. A check that validates a doc's copy of a machine-readable
