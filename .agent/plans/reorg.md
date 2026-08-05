@@ -43,9 +43,17 @@ lives in "What cinch is not," not in the mechanism line.
 
 - This file. Done when written and Status: planned.
 
-## Phase 1 — Scope & taxonomy (keystone)
+## Phase 1 — Scope & taxonomy (keystone) *(landed 2026-08-05 — D074–D076)*
 
 Definition first; it justifies every cut.
+
+Two deltas from the sketch below, both settled in review: (1) AGENTS.md was
+trimmed beyond line 1 — its "What this repo is" bullets shrank to
+session-relevant notes, because the audience seam (injected into every session
+vs read on demand) makes README the owner of the layout map, glossary, and
+registry; (2) the README's `.agent/` bullet reads "cinch's own consumer corpus
+— not a harness of its own", closing the harness confusion at its last new
+occurrence (the glossary's harness entry keeps the consumer sense).
 
 - **README.md** (new, root): the pinned definition (one-liner + mechanism
   version); a "What cinch is not" section; one-paragraph layout map of the

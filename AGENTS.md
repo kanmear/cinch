@@ -1,25 +1,25 @@
 # cinch
 
-A portable agent harness: templates plus a Go CLI that renders them against a project's
-`manifest.yml` and checks the result for drift.
+A referential integrity checker for agent documentation, plus the binding layer
+that makes it portable across repositories.
 
 ## What this repo is
 
-- `*.go` — the CLI. `render`, `index`, `check`.
-- `templates/` — portable workflow templates, nothing else. `render` walks every `*.md` under here
+- `*.go` — the CLI: `render`, `index`, `check`, `ignores`, `version`. Parser unit tests live
+  next to the code they test at the module root; CLI-level tests live in `tests/` and exercise
+  the built binary.
+- `templates/` — portable workflow templates. `render` walks every `*.md` under here
   and renders it into a consumer's `.agent/workflows/`, with no filename exclusion — a meta-doc
   placed in this directory (a README, notes-to-porters) gets rendered as if it were a workflow.
   Directory-level conventions belong here in `AGENTS.md`, not a nested README. Reference
   `{{commands.check}}`, `{{paths.tests.integration}}`, `{{taxonomy.layers}}`. Never mention a
   language, framework, or command literal.
-- `docs/` — core/philosophy only: `ROADMAP.md` (phased plan), `RATIONALE.md` (why the design is
-  what it is), `PHILOSOPHY.md`, `INTROSPECTION.md` (the C6/C7 JSON contract), decisions log.
-- `ops/` — operational docs, not core: git workflow, versioning, release. Anything that
-  describes how this repo is *run* goes here, never in `docs/`.
+- `docs/` — spec, contract, plan+status only: `PHILOSOPHY.md`, `INTROSPECTION.md` (the C6/C7 JSON
+  contract), `ROADMAP.md`. `ops/` — how this repo is run: git workflow, versioning, release.
 - `decisions.jsonl` — append-only decision log. Read it before proposing a change to a settled
   question; append a superseding entry rather than diverging silently.
-- `tests/` — CLI-level tests exercising the built binary (self-check, version). Parser unit
-  tests live next to the code they test at the module root.
+- `README.md` — the orientation artifact: layout map, glossary, checker registry. This file
+  carries only what a session needs without asking; the map and registry live there, not here.
 
 ## Rules
 
