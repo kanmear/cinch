@@ -16,9 +16,11 @@ Not a memory system; not a semantic validator — even at its best it detects
 
 ## Layout
 
-- `*.go` — the CLI: `render`, `index`, `check`, `ignores`, `version`. Paths
-  resolve from the git repository root; templates and the version store resolve
-  next to the binary.
+- `main.go` — the entry point: usage, dispatch. `internal/` — the packages:
+  `manifest/` (manifest.yml loading), `render/` (render + template purity),
+  `index/` (generated index), `check/` (the C1–C12 checkers), `version/`
+  (binary-relative version store). Paths resolve from the git repository root;
+  templates and the version store resolve next to the binary.
 - `templates/` — portable workflow templates and fragments, nothing else. Every
   `*.md` here renders into a consumer's `.agent/workflows/`.
 - `scaffold/` — the starter contract a consumer binds against:
@@ -73,18 +75,18 @@ Not a memory system; not a semantic validator — even at its best it detects
 
 C# | checks | direction | severity | file
 --- | --- | --- | --- | ---
-C1 | committed `.agent/index.md` matches a fresh generation | lateral | error | index.go
-C2 | rendered workflows match a fresh render (stale) and their header hash (tamper) | lateral | error | check.go
-C3 | test-tier `cmd` ids resolve under `development.commands` | structural | error | check.go
-C4 | every `paths.*` binding points at something that exists | structural | error | check.go
-C5 | `overview.md` references every domain doc | lateral | error | check.go
-C6 | `models/*.md` matches introspect-types output | doc-upstream | error; coverage warn | check.go
-C7 | `api/*.md` matches introspect-routes output | doc-upstream | error; coverage warn | check.go
-C8 | rule→marker closure: marked or ignored, markers resolve, prefixes and numbering hold | lateral | error; unmarked warns | rule.go
-C9 | plans carry a `Status:` line; complete fix plans are deleted | structural | error | check.go
-C10 | a change touching a domain's `owns:` paths leaves its domain doc warning-free | lateral | warn | diff.go
-C11 | links and backticked path tokens inside `.agent/` resolve | structural | warn | check.go
-C12 | seam declarations: known tier, auditor strong, `allow` ids resolve | structural | error | check.go
+C1 | committed `.agent/index.md` matches a fresh generation | lateral | error | internal/index/index.go
+C2 | rendered workflows match a fresh render (stale) and their header hash (tamper) | lateral | error | internal/check/check.go
+C3 | test-tier `cmd` ids resolve under `development.commands` | structural | error | internal/check/check.go
+C4 | every `paths.*` binding points at something that exists | structural | error | internal/check/check.go
+C5 | `overview.md` references every domain doc | lateral | error | internal/check/check.go
+C6 | `models/*.md` matches introspect-types output | doc-upstream | error; coverage warn | internal/check/check.go
+C7 | `api/*.md` matches introspect-routes output | doc-upstream | error; coverage warn | internal/check/check.go
+C8 | rule→marker closure: marked or ignored, markers resolve, prefixes and numbering hold | lateral | error; unmarked warns | internal/check/rule.go
+C9 | plans carry a `Status:` line; complete fix plans are deleted | structural | error | internal/check/check.go
+C10 | a change touching a domain's `owns:` paths leaves its domain doc warning-free | lateral | warn | internal/check/diff.go
+C11 | links and backticked path tokens inside `.agent/` resolve | structural | warn | internal/check/check.go
+C12 | seam declarations: known tier, auditor strong, `allow` ids resolve | structural | error | internal/check/check.go
 
 Direction rule (D009): doc-upstream and lateral checks only — never
 doc-downstream. A check that validates a doc's copy of a machine-readable fact

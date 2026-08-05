@@ -1,15 +1,12 @@
 ---
 rule_prefix: HARNESS
 owns:
-  - render.go
-  - check.go
-  - index.go
-  - manifest.go
   - main.go
-  - version.go
-  - rule.go
-  - diff.go
-  - introspect.go
+  - internal/manifest/
+  - internal/render/
+  - internal/index/
+  - internal/check/
+  - internal/version/
   - templates/
 ---
 
@@ -36,8 +33,8 @@ owns:
 3. **HARNESS-003** — Templates name no stack and no harness. A template
    references another workflow by `.agent/workflows/<name>.md` path, never by
    name or invocation syntax; command-shaped tokens, runner-config paths, and
-   stack literals come only from the manifest. *Enforced: C13 purity
-   patterns.*
+   stack literals come only from the manifest. *Enforced: TestTemplatePurity
+   purity patterns.*
 
 4. **HARNESS-004** — Rendered output is never hand-edited.
    `.agent/workflows/` is generated; the harness guards its own repo by

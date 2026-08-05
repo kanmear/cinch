@@ -1,10 +1,12 @@
-package main
+package check
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"cinch/internal/manifest"
 )
 
 func TestRulePrefix(t *testing.T) {
@@ -101,7 +103,7 @@ func TestScanRuleMarkers(t *testing.T) {
 // cinch:rule HARNESS-005
 func TestRuleIDsUnique(t *testing.T) {
 	seen := map[string]string{}
-	entries, err := os.ReadDir(".agent/domain")
+	entries, err := os.ReadDir(filepath.Join("..", "..", ".agent", "domain"))
 	if err != nil {
 		t.Fatalf("reading .agent/domain: %v", err)
 	}
@@ -109,7 +111,7 @@ func TestRuleIDsUnique(t *testing.T) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || e.Name() == "overview.md" {
 			continue
 		}
-		dd := parseDomainDoc(readFile(filepath.Join(".agent/domain", e.Name())))
+		dd := parseDomainDoc(readFile(filepath.Join("..", "..", ".agent", "domain", e.Name())))
 		for id := range dd.rules {
 			if prev, dup := seen[id]; dup {
 				t.Errorf("rule ID %s appears in both %s and %s — IDs are never reused (R5)", id, prev, e.Name())
@@ -132,7 +134,7 @@ func runCheckRules(t *testing.T, files map[string]string) []finding {
 			t.Fatal(err)
 		}
 	}
-	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	m := &manifest.Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
 	r := &report{}
 	checkRules(root, m, r)
 	return r.findings
@@ -238,7 +240,7 @@ func TestCheckRules(t *testing.T) {
 
 	t.Run("no domain layer skips", func(t *testing.T) {
 		r := &report{}
-		checkRules(t.TempDir(), &Manifest{Vars: map[string]string{}}, r)
+		checkRules(t.TempDir(), &manifest.Manifest{Vars: map[string]string{}}, r)
 		if len(r.findings) != 0 {
 			t.Fatalf("expected skip, got %v", r.findings)
 		}

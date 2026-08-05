@@ -1,4 +1,4 @@
-package main
+package check
 
 import (
 	"os"
@@ -7,15 +7,16 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v3"
+
+	"cinch/internal/manifest"
+	"cinch/internal/render"
 )
 
-func manifestWithSeams(seams string) *Manifest {
-	m := &Manifest{Raw: map[string]any{}}
+func manifestWithSeams(seams string) *manifest.Manifest {
+	m := &manifest.Manifest{Raw: map[string]any{}}
 	if err := yaml.Unmarshal([]byte("development:\n  commands:\n    check: x\n    docs-index: y\nseams:\n"+seams), &m.Raw); err != nil {
 		panic(err)
 	}
-	m.Vars = map[string]string{}
-	flatten("", m.Raw, m.Vars)
 	return m
 }
 
@@ -81,12 +82,12 @@ func TestCheckRenderedTamper(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tdir, "w.md"), []byte("# W\n{{paths.domain}}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
-	files, err := renderAll(root, m)
+	m := &manifest.Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	files, err := render.RenderAll(root, m)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
-	pristine := files[0].body
+	pristine := files[0].Body
 
 	dst := filepath.Join(root, ".agent", "workflows", "w.md")
 	mustMkdir(t, filepath.Dir(dst))
@@ -96,7 +97,7 @@ func TestCheckRenderedTamper(t *testing.T) {
 	if tampered == pristine {
 		t.Fatal("test edit did not change the body")
 	}
-	if err := os.WriteFile(dst, []byte(header("w.md", pristine)+tampered), 0o644); err != nil {
+	if err := os.WriteFile(dst, []byte(render.Header("w.md", pristine)+tampered), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -122,8 +123,8 @@ func TestCheckRenderedStale(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tdir, "w.md"), []byte("# W\n{{paths.domain}}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	old := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
-	files, err := renderAll(root, old)
+	old := &manifest.Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	files, err := render.RenderAll(root, old)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -131,12 +132,12 @@ func TestCheckRenderedStale(t *testing.T) {
 	dst := filepath.Join(root, ".agent", "workflows", "w.md")
 	mustMkdir(t, filepath.Dir(dst))
 	// Committed as rendered under the old manifest: header and body agree.
-	if err := os.WriteFile(dst, []byte(header("w.md", files[0].body)+files[0].body), 0o644); err != nil {
+	if err := os.WriteFile(dst, []byte(render.Header("w.md", files[0].Body)+files[0].Body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// The manifest moves on; the committed file does not.
-	fresh := &Manifest{Vars: map[string]string{"paths.domain": ".agent/harness"}}
+	fresh := &manifest.Manifest{Vars: map[string]string{"paths.domain": ".agent/harness"}}
 	var r report
 	checkRendered(root, fresh, &r)
 	msg := c2Message(r)
@@ -156,4 +157,13 @@ func c2Message(r report) string {
 		}
 	}
 	return ""
+}
+
+func mustMkdir(t *testing.T, dirs ...string) {
+	t.Helper()
+	for _, d := range dirs {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 }

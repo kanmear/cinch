@@ -110,7 +110,14 @@ unaffected — no template changes). Stop for user review of the ROADMAP
 rewrite (flagged: it is a real rewrite, not a trim; phase detail is
 historical record — keep the phase list and statuses, drop D/E annotations).
 
-## Phase 3 — Go restructure
+## Phase 3 — Go restructure *(landed 2026-08-05 — D076, D077)*
+
+Two deltas from the layout sketch below, both settled in review: (1) `main.go`
+sits at the module root, not `cmd/cinch/` — one binary, no other package main,
+so the extra level earns nothing; (2) the generated `version/` store stays at
+root — it is binary-relative data, and moving it inside the imported
+`internal/version/` package would compile the version constants into the
+binary, breaking the D006 "nothing compiled in" invariant.
 
 ```
 cmd/cinch/main.go      — usage, dispatch, repoRoot/agentDir        (from main.go)

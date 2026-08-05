@@ -1,4 +1,4 @@
-package main
+package check
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"cinch/internal/manifest"
 )
 
 // C10 — diff-coupling (D012, D065). A change that touches paths under a
@@ -22,7 +24,7 @@ import (
 // HEAD yet, or no git binary → skip: absence is a declaration, same as
 // C5/C6/C7/C12. Lateral under D009: it binds a change set to the domain doc
 // and validates no doc's copy of a machine-readable fact.
-func checkDiffCoupling(root string, m *Manifest, r *report) {
+func checkDiffCoupling(root string, m *manifest.Manifest, r *report) {
 	bdir := m.Vars["paths.domain"]
 	if bdir == "" {
 		return
@@ -52,7 +54,7 @@ func checkDiffCoupling(root string, m *Manifest, r *report) {
 		changedSet[p] = true
 	}
 
-	for _, name := range sortedKeys(domains) {
+	for _, name := range manifest.SortedKeys(domains) {
 		var touched []string
 		for _, p := range changed {
 			for _, own := range domains[name] {

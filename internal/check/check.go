@@ -1,4 +1,6 @@
-package main
+// Package check implements the harness checkers (C1–C12) and `cinch check`
+// itself: doc-upstream and lateral validation of the corpus (D009).
+package check
 
 import (
 	"bytes"
@@ -10,9 +12,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
+
+	"cinch/internal/index"
+	"cinch/internal/manifest"
+	"cinch/internal/render"
 )
 
 // Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11, C12.
@@ -24,26 +29,11 @@ import (
 // A check that validates a doc's copy of a machine-readable fact is
 // doc-downstream; delete the duplication instead of adding the check.
 
-type finding struct {
-	code  string
-	level string // "error" | "warn"
-	msg   string
-}
-
-type report struct{ findings []finding }
-
-func (r *report) errf(code, format string, a ...any) {
-	r.findings = append(r.findings, finding{code, "error", fmt.Sprintf(format, a...)})
-}
-
-func (r *report) warnf(code, format string, a ...any) {
-	r.findings = append(r.findings, finding{code, "warn", fmt.Sprintf(format, a...)})
-}
-
-func cmdCheck(root string) error {
+// Run implements `cinch check`.
+func Run(root string) error {
 	r := &report{}
 
-	m, err := loadManifest(root)
+	m, err := manifest.LoadManifest(root)
 	if err != nil {
 		r.errf("C3", "%v", err)
 		return emit(r)
@@ -65,35 +55,14 @@ func cmdCheck(root string) error {
 	return emit(r)
 }
 
-func emit(r *report) error {
-	sort.SliceStable(r.findings, func(i, j int) bool { return r.findings[i].code < r.findings[j].code })
-
-	errs := 0
-	for _, f := range r.findings {
-		if f.level == "error" {
-			errs++
-		}
-		fmt.Printf("%-5s %-5s %s\n", f.code, f.level, f.msg)
-	}
-	if len(r.findings) == 0 {
-		fmt.Println("harness ok")
-		return nil
-	}
-	if errs > 0 {
-		return fmt.Errorf("%d error(s), %d warning(s)", errs, len(r.findings)-errs)
-	}
-	fmt.Printf("\n%d warning(s), no errors\n", len(r.findings))
-	return nil
-}
-
 // C1 — the committed index must match a fresh generation.
 func checkIndex(root string, r *report) {
-	want, err := buildIndex(root)
+	want, err := index.BuildIndex(root)
 	if err != nil {
 		r.errf("C1", "building index: %v", err)
 		return
 	}
-	got, err := os.ReadFile(indexPath(root))
+	got, err := os.ReadFile(index.IndexPath(root))
 	if err != nil {
 		r.errf("C1", ".agent/index.md missing — run `cinch index`")
 		return
@@ -107,38 +76,38 @@ func checkIndex(root string, r *report) {
 // hash must match their header (tamper). The two are distinguished so the
 // message tells you which happened.
 // cinch:rule HARNESS-004 — rendered output is never hand-edited (C2 tamper branch)
-func checkRendered(root string, m *Manifest, r *report) {
-	files, err := renderAll(root, m)
+func checkRendered(root string, m *manifest.Manifest, r *report) {
+	files, err := render.RenderAll(root, m)
 	if err != nil {
 		r.errf("C2", "%v", err)
 		return
 	}
 	for _, f := range files {
-		dst := filepath.Join(workflowsDir(root), f.rel)
+		dst := filepath.Join(render.WorkflowsDir(root), f.Rel)
 		raw, err := os.ReadFile(dst)
 		if err != nil {
-			r.errf("C2", "workflows/%s not rendered — run `cinch render`", f.rel)
+			r.errf("C2", "workflows/%s not rendered — run `cinch render`", f.Rel)
 			continue
 		}
-		hdr, body := splitGenerated(string(raw))
+		hdr, body := render.SplitGenerated(string(raw))
 		if hdr == "" {
-			r.errf("C2", "workflows/%s has no generated header — is it really generated?", f.rel)
+			r.errf("C2", "workflows/%s has no generated header — is it really generated?", f.Rel)
 			continue
 		}
 		switch {
-		case headerHash(hdr) != bodyHash(body):
-			r.errf("C2", "workflows/%s was hand-edited — revert it and edit templates/%s", f.rel, f.rel)
-		case body != f.body:
-			r.errf("C2", "workflows/%s is stale against the manifest — run `cinch render`", f.rel)
+		case render.HeaderHash(hdr) != render.BodyHash(body):
+			r.errf("C2", "workflows/%s was hand-edited — revert it and edit templates/%s", f.Rel, f.Rel)
+		case body != f.Body:
+			r.errf("C2", "workflows/%s is stale against the manifest — run `cinch render`", f.Rel)
 		}
 	}
 }
 
 // C3 — every test tier's cmd id resolves under development.commands.
-func checkCommandIDs(m *Manifest, r *report) {
-	cmds := m.commandKeys()
-	tiers := m.testTierCommands()
-	for _, tier := range sortedKeys(tiers) {
+func checkCommandIDs(m *manifest.Manifest, r *report) {
+	cmds := m.CommandKeys()
+	tiers := m.TestTierCommands()
+	for _, tier := range manifest.SortedKeys(tiers) {
 		cmd := tiers[tier]
 		if !cmds[cmd] {
 			r.errf("C3", "test tier %q declares cmd %q, which has no key under development.commands", tier, cmd)
@@ -147,9 +116,9 @@ func checkCommandIDs(m *Manifest, r *report) {
 }
 
 // C4 — every path binding points at something that exists.
-func checkManifestPaths(root string, m *Manifest, r *report) {
-	pv := m.pathValues()
-	for _, k := range sortedKeys(pv) {
+func checkManifestPaths(root string, m *manifest.Manifest, r *report) {
+	pv := m.PathValues()
+	for _, k := range manifest.SortedKeys(pv) {
 		p := filepath.Join(root, pv[k])
 		if _, err := os.Stat(p); err != nil {
 			r.errf("C4", "manifest %s -> %s does not exist", k, pv[k])
@@ -158,7 +127,7 @@ func checkManifestPaths(root string, m *Manifest, r *report) {
 }
 
 // C5 — the domain list is the filesystem; overview.md must agree with it.
-func checkDomains(root string, m *Manifest, r *report) {
+func checkDomains(root string, m *manifest.Manifest, r *report) {
 	bdir := m.Vars["paths.domain"]
 	if bdir == "" {
 		// No domain layer declared. Legitimate — a consumer with no domain
@@ -191,7 +160,7 @@ func checkDomains(root string, m *Manifest, r *report) {
 // C9 — plan hygiene: fix plans are deleted at completion; feature plans keep a
 // Status line.
 func checkPlans(root string, r *report) {
-	plans := filepath.Join(agentDir(root), "plans")
+	plans := filepath.Join(manifest.AgentDir(root), "plans")
 	statusRe := regexp.MustCompile(`(?mi)^Status:\s*\S+`)
 
 	_ = filepath.WalkDir(plans, func(p string, d fs.DirEntry, err error) error {
@@ -226,7 +195,7 @@ func checkPlans(root string, r *report) {
 func checkLinks(root string, r *report) {
 	linkRe := regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 	tickRe := regexp.MustCompile("`([^`]+)`")
-	adir := agentDir(root)
+	adir := manifest.AgentDir(root)
 
 	// resolve reports whether target resolves; pathless and non-relative
 	// targets (URLs, anchors, mailto) are always fine.
@@ -294,7 +263,7 @@ func checkLinks(root string, r *report) {
 		// backticked tokens are only checked when explicitly `.agent/`-
 		// prefixed, the one root-relative convention this repo defines
 		// (D045).
-		generated := strings.HasPrefix(string(b), headerPrefix)
+		generated := strings.HasPrefix(string(b), render.HeaderPrefix)
 		// References inside fenced code blocks are illustrative examples, not
 		// cross-references (e.g. a doc template showing [<Related> Rules](<related>.md)).
 		// Checking them would flag every placeholder, so skip fenced lines.
@@ -333,14 +302,14 @@ func checkLinks(root string, r *report) {
 // checks the data. Absent seams: section is legitimate — a repo may not have
 // declared them yet.
 // cinch:rule HARNESS-002 — the auditor seam is never cheap (C12)
-func checkSeams(m *Manifest, r *report) {
+func checkSeams(m *manifest.Manifest, r *report) {
 	seams, ok := m.Raw["seams"].(map[string]any)
 	if !ok {
 		return
 	}
 	known := map[string]bool{"cheap": true, "mid": true, "strong": true, "any": true}
 
-	for _, name := range sortedKeys(seams) {
+	for _, name := range manifest.SortedKeys(seams) {
 		decl, ok := seams[name].(map[string]any)
 		if !ok {
 			r.errf("C12", "seam %q is not a mapping", name)
@@ -377,7 +346,7 @@ func checkSeams(m *Manifest, r *report) {
 			if !ok || len(ids) == 0 {
 				r.errf("C12", "seam %q allow must be a non-empty list of command ids", name)
 			} else {
-				cmds := m.commandKeys()
+				cmds := m.CommandKeys()
 				for _, id := range ids {
 					s, ok := id.(string)
 					if !ok {
@@ -410,12 +379,12 @@ func yamlInt(v any) (int, bool) {
 // manifest-declared command (D028); the JSON contract it must emit is
 // docs/INTROSPECTION.md. Absent a declared producer or a models/ dir, the
 // check skips — same absence-is-a-declaration semantics as C5 and C12.
-func checkTypes(root string, m *Manifest, r *report) {
+func checkTypes(root string, m *manifest.Manifest, r *report) {
 	cmd := m.Vars["commands.introspect-types"]
 	if cmd == "" {
 		return
 	}
-	mdir := filepath.Join(agentDir(root), "models")
+	mdir := filepath.Join(manifest.AgentDir(root), "models")
 	if _, err := os.Stat(mdir); err != nil {
 		return
 	}
@@ -478,12 +447,12 @@ func checkTypes(root string, m *Manifest, r *report) {
 // routes should be documented (coverage, warn). A route is documented by an
 // `## METHOD /path` heading; headings inside fenced code blocks are skipped
 // (D046), same as C11.
-func checkRoutes(root string, m *Manifest, r *report) {
+func checkRoutes(root string, m *manifest.Manifest, r *report) {
 	cmd := m.Vars["commands.introspect-routes"]
 	if cmd == "" {
 		return
 	}
-	adir := filepath.Join(agentDir(root), "api")
+	adir := filepath.Join(manifest.AgentDir(root), "api")
 	if _, err := os.Stat(adir); err != nil {
 		return
 	}

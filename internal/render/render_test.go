@@ -1,10 +1,12 @@
-package main
+package render
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"cinch/internal/manifest"
 )
 
 // TestFrontMatterSelection — a template whose requires: keys are absent from
@@ -25,21 +27,21 @@ func TestFrontMatterSelection(t *testing.T) {
 	write("needs-domain.md", "---\nrequires: paths.domain\n---\n# Needs domain\n{{paths.domain}}\n")
 	write("plain.md", "# Plain\nok\n")
 
-	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
-	haveDomain, err := renderAll(root, m)
+	m := &manifest.Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	haveDomain, err := RenderAll(root, m)
 	if err != nil {
 		t.Fatalf("render with domain: %v", err)
 	}
-	if len(haveDomain) != 2 || haveDomain[0].rel != "needs-domain.md" || !strings.Contains(haveDomain[0].body, ".agent/domain") {
+	if len(haveDomain) != 2 || haveDomain[0].Rel != "needs-domain.md" || !strings.Contains(haveDomain[0].Body, ".agent/domain") {
 		t.Fatalf("with domain, expected needs-domain + plain, got %+v", haveDomain)
 	}
 
-	noDomain := &Manifest{Vars: map[string]string{}}
-	without, err := renderAll(root, noDomain)
+	noDomain := &manifest.Manifest{Vars: map[string]string{}}
+	without, err := RenderAll(root, noDomain)
 	if err != nil {
 		t.Fatalf("render without domain: %v", err)
 	}
-	if len(without) != 1 || without[0].rel != "plain.md" {
+	if len(without) != 1 || without[0].Rel != "plain.md" {
 		t.Fatalf("without domain, expected only plain, got %+v", without)
 	}
 }
@@ -62,13 +64,13 @@ func TestFragmentComposition(t *testing.T) {
 	}
 
 	// Fragment included when the key exists.
-	withCmd, err := renderAll(root, &Manifest{Vars: map[string]string{
+	withCmd, err := RenderAll(root, &manifest.Manifest{Vars: map[string]string{
 		"commands.start-backend": "make dev-backend",
 	}})
 	if err != nil {
 		t.Fatalf("render with key: %v", err)
 	}
-	body := withCmd[0].body
+	body := withCmd[0].Body
 	if !strings.Contains(body, "| Dev servers (`make dev-backend`) | x |") {
 		t.Fatalf("fragment not composed into base:\n%s", body)
 	}
@@ -81,11 +83,11 @@ func TestFragmentComposition(t *testing.T) {
 
 	// Fragment skipped when the key is absent; the anchor vanishes, the base
 	// stays complete.
-	withoutCmd, err := renderAll(root, &Manifest{Vars: map[string]string{}})
+	withoutCmd, err := RenderAll(root, &manifest.Manifest{Vars: map[string]string{}})
 	if err != nil {
 		t.Fatalf("render without key: %v", err)
 	}
-	body = withoutCmd[0].body
+	body = withoutCmd[0].Body
 	if strings.Contains(body, "Dev servers") {
 		t.Fatalf("fragment rendered without its key:\n%s", body)
 	}
@@ -108,7 +110,7 @@ func TestAnchorWithoutFragmentIsAnError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tdir, "fix.md"), []byte("# Fix\n<!-- compose: ghost -->\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := renderAll(root, &Manifest{Vars: map[string]string{}})
+	_, err := RenderAll(root, &manifest.Manifest{Vars: map[string]string{}})
 	if err == nil || !strings.Contains(err.Error(), "ghost") {
 		t.Fatalf("expected missing-fragment error, got %v", err)
 	}
@@ -127,11 +129,11 @@ func TestFragmentNeverRendersStandalone(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tdir, fragmentDir, "devservers.md"), []byte("dev row\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	files, err := renderAll(root, &Manifest{Vars: map[string]string{}})
+	files, err := RenderAll(root, &manifest.Manifest{Vars: map[string]string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 1 || files[0].rel != "fix.md" {
+	if len(files) != 1 || files[0].Rel != "fix.md" {
 		t.Fatalf("fragment rendered standalone: %+v", files)
 	}
 }
