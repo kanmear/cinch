@@ -1,4 +1,7 @@
-package main
+// Package manifest loads and flattens a consumer's manifest.yml, and resolves
+// the paths the other packages share (the .agent directory, sorted key
+// iteration).
+package manifest
 
 import (
 	"fmt"
@@ -16,8 +19,11 @@ type Manifest struct {
 	Vars map[string]string // dotted keys -> literal values
 }
 
-func loadManifest(root string) (*Manifest, error) {
-	path := filepath.Join(agentDir(root), "manifest.yml")
+// AgentDir returns the absolute path of the .agent directory.
+func AgentDir(root string) string { return filepath.Join(root, ".agent") }
+
+func LoadManifest(root string) (*Manifest, error) {
+	path := filepath.Join(AgentDir(root), "manifest.yml")
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading manifest.yml: %w", err)
@@ -91,8 +97,8 @@ func scalar(v any) string {
 	return fmt.Sprint(v)
 }
 
-// pathValues returns every dotted key under "paths." with its value.
-func (m *Manifest) pathValues() map[string]string {
+// PathValues returns every dotted key under "paths." with its value.
+func (m *Manifest) PathValues() map[string]string {
 	out := map[string]string{}
 	for k, v := range m.Vars {
 		if strings.HasPrefix(k, "paths.") {
@@ -102,8 +108,8 @@ func (m *Manifest) pathValues() map[string]string {
 	return out
 }
 
-// testTierCommands returns tier id -> declared cmd id.
-func (m *Manifest) testTierCommands() map[string]string {
+// TestTierCommands returns tier id -> declared cmd id.
+func (m *Manifest) TestTierCommands() map[string]string {
 	out := map[string]string{}
 	tax, _ := m.Raw["taxonomy"].(map[string]any)
 	tiers, _ := tax["test_tiers"].([]any)
@@ -121,8 +127,8 @@ func (m *Manifest) testTierCommands() map[string]string {
 	return out
 }
 
-// commandKeys returns the set of keys under development.commands.
-func (m *Manifest) commandKeys() map[string]bool {
+// CommandKeys returns the set of keys under development.commands.
+func (m *Manifest) CommandKeys() map[string]bool {
 	out := map[string]bool{}
 	dev, _ := m.Raw["development"].(map[string]any)
 	cmds, _ := dev["commands"].(map[string]any)
@@ -132,7 +138,20 @@ func (m *Manifest) commandKeys() map[string]bool {
 	return out
 }
 
-func sortedKeys[T any](m map[string]T) []string {
+// HasVars reports whether every key exists in the flattened variable view —
+// key presence is a shape declaration (D063).
+func (m *Manifest) HasVars(keys []string) bool {
+	for _, k := range keys {
+		if _, ok := m.Vars[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// SortedKeys returns the keys of m in sorted order — the one iteration order
+// the CLI prints and compares (deterministic output, D029).
+func SortedKeys[T any](m map[string]T) []string {
 	ks := make([]string, 0, len(m))
 	for k := range m {
 		ks = append(ks, k)

@@ -1,4 +1,4 @@
-package main
+package render
 
 import (
 	"io/fs"
@@ -24,7 +24,7 @@ import (
 // rendered/bound state against cinch's contracts, and templates/ has no
 // consumer-side referent (templates resolve next to the cinch binary, D047).
 // This validates cinch's own source, so it's a plain test.
-// cinch:rule HARNESS-003 — templates name no stack and no harness (C13 purity patterns)
+// cinch:rule HARNESS-003 — templates name no stack and no harness (TestTemplatePurity purity patterns)
 func TestTemplatePurity(t *testing.T) {
 	// Command-shaped inline-code token: backtick, slash, one lowercase-
 	// hyphenated word, backtick. The exact shape of a slash-command
@@ -46,7 +46,7 @@ func TestTemplatePurity(t *testing.T) {
 
 	stackLiterals := commandLiterals(t)
 
-	err := filepath.WalkDir("templates", func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(filepath.Join("..", "..", "templates"), func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
 			return nil
 		}
@@ -86,10 +86,10 @@ func TestTemplatePurity(t *testing.T) {
 
 // commandLiterals returns every string value under development.commands in
 // the scaffold example — the variable contract templates are written
-// against (D040/D045). Not loadManifest/agentDir: cinch's own repo has no
-// .agent/manifest.yml, the scaffold example is the contract here.
+// against (D040/D045). Not manifest.LoadManifest/AgentDir: cinch's own repo
+// has no .agent/manifest.yml, the scaffold example is the contract here.
 func commandLiterals(t *testing.T) []string {
-	b, err := os.ReadFile(filepath.Join("scaffold", "manifest.example.yml"))
+	b, err := os.ReadFile(filepath.Join("..", "..", "scaffold", "manifest.example.yml"))
 	if err != nil {
 		t.Fatalf("reading scaffold/manifest.example.yml: %v", err)
 	}

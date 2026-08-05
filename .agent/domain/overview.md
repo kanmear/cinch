@@ -5,7 +5,8 @@ the rendered result for drift, and indexing it. It is a different-shaped
 consumer than project_deltadocs (D062) — a CLI whose domain is its own
 behavior — and it exists here because the audit proved the rules are real:
 several were already enforced by tests before they were written down (C12,
-C13, C2) and others were prose in `AGENTS.md` that nothing checked.
+TestTemplatePurity, C2) and others were prose in `AGENTS.md` that nothing
+checked.
 
 ## Structure Convention
 

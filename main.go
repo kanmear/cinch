@@ -7,8 +7,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
+
+	"cinch/internal/check"
+	"cinch/internal/index"
+	"cinch/internal/render"
+	"cinch/internal/version"
 )
 
 const usage = `cinch — agent harness tooling
@@ -34,7 +38,7 @@ func main() {
 
 	// version is binary-relative and needs no git repository.
 	if os.Args[1] == "version" || os.Args[1] == "--version" {
-		if err := cmdVersion(os.Args[2:]); err != nil {
+		if err := version.Run(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
 			os.Exit(1)
 		}
@@ -49,13 +53,13 @@ func main() {
 
 	switch os.Args[1] {
 	case "render":
-		err = cmdRender(root)
+		err = render.Run(root)
 	case "index":
-		err = cmdIndex(root)
+		err = index.Run(root)
 	case "check":
-		err = cmdCheck(root)
+		err = check.Run(root)
 	case "ignores":
-		err = cmdIgnores(root)
+		err = check.Ignores(root)
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
@@ -75,6 +79,3 @@ func repoRoot() (string, error) {
 	}
 	return strings.TrimSpace(string(out)), nil
 }
-
-// agentDir returns the absolute path of the .agent directory.
-func agentDir(root string) string { return filepath.Join(root, ".agent") }

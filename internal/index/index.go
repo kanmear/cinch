@@ -1,4 +1,5 @@
-package main
+// Package index generates the committed .agent/index.md (D029).
+package index
 
 import (
 	"fmt"
@@ -7,6 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"cinch/internal/manifest"
 )
 
 // D029: the index is a committed generated file. Its one-line descriptions come
@@ -21,7 +24,7 @@ var indexSkip = map[string]bool{
 	"events":   true,
 }
 
-func indexPath(root string) string { return filepath.Join(agentDir(root), "index.md") }
+func IndexPath(root string) string { return filepath.Join(manifest.AgentDir(root), "index.md") }
 
 func firstHeading(path string) string {
 	b, err := os.ReadFile(path)
@@ -46,9 +49,9 @@ func firstHeading(path string) string {
 	return ""
 }
 
-// buildIndex renders the index content in memory.
-func buildIndex(root string) (string, error) {
-	adir := agentDir(root)
+// BuildIndex renders the index content in memory.
+func BuildIndex(root string) (string, error) {
+	adir := manifest.AgentDir(root)
 	var lines []string
 
 	err := filepath.WalkDir(adir, func(p string, d fs.DirEntry, err error) error {
@@ -80,12 +83,13 @@ func buildIndex(root string) (string, error) {
 	return indexHeader + strings.Join(lines, "\n") + "\n", nil
 }
 
-func cmdIndex(root string) error {
-	content, err := buildIndex(root)
+// Run implements `cinch index`.
+func Run(root string) error {
+	content, err := BuildIndex(root)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(indexPath(root), []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(IndexPath(root), []byte(content), 0o644); err != nil {
 		return err
 	}
 	fmt.Printf("wrote .agent/index.md (%d entries)\n",

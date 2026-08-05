@@ -5,9 +5,11 @@ that makes it portable across repositories.
 
 ## What this repo is
 
-- `*.go` — the CLI: `render`, `index`, `check`, `ignores`, `version`. Unit tests live next to
-  the code they exercise (module root today; `internal/` after the Phase 3 move); CLI-level
-  tests live in `tests/` and exercise the built binary.
+- `main.go` — entry point, usage, dispatch. `internal/` — the packages:
+  `manifest/` (manifest.yml loading), `render/` (render + templates purity test),
+  `index/` (generated index), `check/` (the C1–C12 checkers, one package),
+  `version/` (binary-relative version store). Unit tests live next to the code
+  they exercise; CLI-level tests live in `tests/` and exercise the built binary.
 - `templates/` — portable workflow templates. `render` walks every `*.md` under here
   and renders it into a consumer's `.agent/workflows/`, with no filename exclusion — a meta-doc
   placed in this directory (a README, notes-to-porters) gets rendered as if it were a workflow.

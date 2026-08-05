@@ -1,4 +1,4 @@
-package main
+package check
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"cinch/internal/manifest"
 )
 
 // C8 — the rule→marker closure (D027, D057, D064). Every rule ID in a
@@ -121,7 +123,7 @@ func ownsList(text string) []string {
 }
 
 // C8 — see the comment at the top of this file.
-func checkRules(root string, m *Manifest, r *report) {
+func checkRules(root string, m *manifest.Manifest, r *report) {
 	bdir := m.Vars["paths.domain"]
 	if bdir == "" {
 		return // no domain layer declared (C5 same semantics)
@@ -219,11 +221,11 @@ func scanRuleMarkers(root string) map[string]bool {
 	return found
 }
 
-// cmdIgnores lists every rule declared cinch:ignore — the enumerable inventory
+// Ignores lists every rule declared cinch:ignore — the enumerable inventory
 // of untested-but-legitimate rules for the check-rules and optimize-docs
 // audits.
-func cmdIgnores(root string) error {
-	m, err := loadManifest(root)
+func Ignores(root string) error {
+	m, err := manifest.LoadManifest(root)
 	if err != nil {
 		return err
 	}

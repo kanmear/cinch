@@ -1,10 +1,12 @@
-package main
+package check
 
 import (
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"cinch/internal/manifest"
 )
 
 func TestOwnsList(t *testing.T) {
@@ -101,7 +103,7 @@ const tabsDoc = "---\nrule_prefix: TAB\nowns:\n  - backend/tab.go\n---\n\n# Tabs
 
 func runDiffCoupling(t *testing.T, root string) []finding {
 	t.Helper()
-	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	m := &manifest.Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
 	r := &report{}
 	checkDiffCoupling(root, m, r)
 	return r.findings
@@ -213,7 +215,7 @@ func TestCheckDiffCoupling(t *testing.T) {
 		root := gitInit(t, map[string]string{"backend/tab.go": "v1\n"})
 		gitCommitAll(t, root)
 		r := &report{}
-		checkDiffCoupling(root, &Manifest{Vars: map[string]string{}}, r)
+		checkDiffCoupling(root, &manifest.Manifest{Vars: map[string]string{}}, r)
 		if len(r.findings) != 0 {
 			t.Fatalf("expected skip, got %v", r.findings)
 		}

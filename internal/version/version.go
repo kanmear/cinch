@@ -1,6 +1,8 @@
-package main
+// Package version implements `cinch version` — the version bump/show
+// subcommand, working off the binary's own clone rather than a git repo.
+package version
 
-// cinch version — the version bump/show script as a Go subcommand (core is
+// The version bump/show script as a Go subcommand (core is
 // Go; a node dependency would be wrong here).
 //
 // The scheme: one field per file, never grouped into a single const/struct — a dev-branch bump (minor/patch) and a
@@ -123,11 +125,11 @@ func bump(v map[string]int, typ string) map[string]int {
 	return next
 }
 
-// cmdVersion implements `cinch version [show]` and `cinch version bump <type>`.
+// Run implements `cinch version [show]` and `cinch version bump <type>`.
 // Unlike render/index/check it does not need a git repository: it works off
 // the binary's own clone, so a consumer can query the installed tool's version
 // from anywhere.
-func cmdVersion(args []string) error {
+func Run(args []string) error {
 	dir, err := versionDir()
 	if err != nil {
 		return err
