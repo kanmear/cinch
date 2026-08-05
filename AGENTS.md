@@ -39,7 +39,7 @@ structurally by `go test` (`templates_test.go`) — a template describing in pro
 happens to surface something is a judgment call for whoever ports it, not something a script
 catches by name.
 
-**Checkers are doc-upstream or lateral only.** A check that validates a doc's copy of a
+**Checkers are doc-upstream, lateral, or structural only.** A check that validates a doc's copy of a
 machine-readable fact means the duplication should be deleted instead.
 
 **Handoffs go to events/plan files, never `docs/`.** docs/ holds spec, contract, and plan+status

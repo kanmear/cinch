@@ -1,7 +1,7 @@
 # Harness philosophy
 
-Status: **advisory.** The complete, standalone spec for building and maintaining a **personal agent harness** — a framework/language-agnostic setup driven by any model tier, from a local 27B Q4 at ~90k context to a frontier agent at 1M. The tier is a configuration, not a fork. This doc is self-contained: the `## North stars` are the invariant principles, the
-`## Foundation` restates the portable mechanics the harness builds on, and the `## Forward vision` is the harness-specific design work. It depends on no other file.
+Status: **advisory.** The complete spec for building and maintaining a **personal agent harness** — a framework/language-agnostic setup driven by any model tier, from a local 27B Q4 at ~90k context to a frontier agent at 1M. The tier is a configuration, not a fork. The `## North stars` are the invariant principles, the
+`## Foundation` restates the portable mechanics the harness builds on, and the `## Forward vision` is the harness-specific design work. It depends on no project content; its one cross-reference is the derivability gate's operational statement in `templates/doc-philosophy.md` (see the Code-is-the-documentation north star below).
 
 ---
 
@@ -36,11 +36,12 @@ below).
 Docs exist only for what can't be derived from reading the source. Single source of truth —
 cross-reference, never duplicate. Adding features adds *files*, not length to existing ones.
 
-Crucially: **apply this to the harness itself.** A setup breaks its own rule the moment it grows
-300+ line workflows that duplicate one another, or an `AGENTS.md` that inlines the directory tree
-and so duplicates the filesystem. Both are addressed mechanically by the Foundation below (the
-shared task primitive collapses the duplicated workflows; the generated index replaces the inlined
-tree). The principle is what makes those the right moves.
+The derivability gate's operational form — the admission test — is
+`templates/doc-philosophy.md`, rendered into every consumer's `.agent/workflows/`.
+
+Apply this to the harness itself: the Foundation below is that principle's proof — the shared
+task primitive collapses the duplicated workflows, and the generated index replaces the inlined
+tree.
 
 ### rules → tests → tasks traceability
 
