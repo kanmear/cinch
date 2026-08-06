@@ -7,6 +7,7 @@ harness_version: 0.1.0
 
 paths:
   domain: .agent/domain # cinch's domain: rendering, checking, templating
+  audit: .agent/audit/coverage.md # committed rule-coverage audit report (C15)
   tests:
     integration: tests
     unit: tests

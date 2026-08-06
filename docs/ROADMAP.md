@@ -13,6 +13,8 @@ the plan files under Current work.
   Go restructure, fundamentals cross-check — D074–D080); plan closed complete, file kept.
 - `.agent/plans/drift-closure.md` — the drift-test follow-up, five phases: deltadocs `.agent`
   sync, `make drift-test` fixture, C10/C14 boundary decision + C14, blinded auditor, close.
+- `.agent/plans/audit-evidence.md` — C15: the coverage audit report becomes a committed
+  artifact whose rows must quote rule text and assertion lines verbatim.
 
 ---
 

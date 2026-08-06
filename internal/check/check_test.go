@@ -159,6 +159,39 @@ func c2Message(r report) string {
 	return ""
 }
 
+// TestCheckLinksSkipsAuditReport — C11 skips the manifest-declared audit
+// report: its cells quote rule texts verbatim, and a link inside a quote
+// resolves from the report's own directory, not the source's (D046 class).
+func TestCheckLinksSkipsAuditReport(t *testing.T) {
+	root := t.TempDir()
+	reportText := "# Rule Coverage Audit Report\n\n" +
+		"## signatures.md\n\n" +
+		"| Rule | Rule text (verbatim) | Testable | Covered | Test file | Test | Assertion (verbatim) |\n" +
+		"|---|---|---|---|---|---|---|\n" +
+		"| SIG-005 | `See [Tabs Rules](tabs.md) for the constraint.` | Yes | ✅ | x | x | x |\n"
+	adir := filepath.Join(root, ".agent")
+	if err := os.MkdirAll(filepath.Join(adir, "audit"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adir, "audit", "coverage.md"), []byte(reportText), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("declared audit path is skipped", func(t *testing.T) {
+		var rep report
+		checkLinks(root, &manifest.Manifest{Vars: map[string]string{"paths.audit": ".agent/audit/coverage.md"}}, &rep)
+		if len(rep.findings) != 0 {
+			t.Fatalf("expected no findings, got %v", rep.findings)
+		}
+	})
+
+	t.Run("undeclared audit path warns normally", func(t *testing.T) {
+		var rep report
+		checkLinks(root, &manifest.Manifest{Vars: map[string]string{}}, &rep)
+		hasFinding(t, rep.findings, "C11", "warn", "links to tabs.md")
+	})
+}
+
 func mustMkdir(t *testing.T, dirs ...string) {
 	t.Helper()
 	for _, d := range dirs {

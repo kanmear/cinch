@@ -10,6 +10,7 @@ harness_version: 0.1.0 # pinned core version; bump -> re-render -> cinch check
 
 paths:
   domain: .agent/domain # domain list = this dir's files, minus overview.md
+  audit: .agent/audit/coverage.md # committed rule-coverage audit report (C15)
   tests:
     integration: backend/tests
     unit: frontend/tests

@@ -1,4 +1,4 @@
-// Package check implements the harness checkers (C1–C12) and `cinch check`
+// Package check implements the harness checkers (C1–C15) and `cinch check`
 // itself: doc-upstream and lateral validation of the corpus (D009).
 package check
 
@@ -23,7 +23,8 @@ import (
 // Wave one of the checker layer (D030): C1, C2, C3, C4, C5, C9, C11, C12.
 // Wave two: C6/C7 (introspection, D028). C8 (rule markers, D027) landed with
 // the P4.1 migration (D057/D064) — see rule.go. P4.2: C10 (diff-coupling,
-// D065); C14 (rule-level diff-coupling, D082) — see diff.go.
+// D065); C14 (rule-level diff-coupling, D082) — see diff.go. C15 (audit
+// report evidence, D084) — see audit.go.
 //
 // D009 — the direction rule: only doc-upstream and lateral checks belong here.
 // A check that validates a doc's copy of a machine-readable fact is
@@ -49,8 +50,9 @@ func Run(root string) error {
 	checkRules(root, m, r)            // C8
 	checkDiffCoupling(root, m, r)     // C10
 	checkRuleDiffCoupling(root, m, r) // C14
+	checkAuditReport(root, m, r)      // C15
 	checkPlans(root, r)               // C9
-	checkLinks(root, r)               // C11
+	checkLinks(root, m, r)             // C11
 	checkSeams(m, r)                  // C12
 
 	return emit(r)
@@ -192,11 +194,16 @@ func checkPlans(root string, r *report) {
 // backticked token that looks like a path is a reference in prose — the
 // audit's §1.2 findings were all backtick-quoted paths, not links, so a
 // link-only checker missed every one of them. `.agent/...` tokens are
-// root-relative (D045), everything else resolves from the repo root.
-func checkLinks(root string, r *report) {
+// root-relative (D045), everything else resolves from the repo root. The
+// committed audit report (paths.audit) is skipped: its cells quote rule texts
+// and assertion lines verbatim, and links inside a quote resolve from the
+// report's own directory, not the source's — the same class as fenced
+// examples (D046) and records surfaces in scanRuleMarkers.
+func checkLinks(root string, m *manifest.Manifest, r *report) {
 	linkRe := regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 	tickRe := regexp.MustCompile("`([^`]+)`")
 	adir := manifest.AgentDir(root)
+	auditRel := strings.TrimPrefix(m.Vars["paths.audit"], ".agent/")
 
 	// resolve reports whether target resolves; pathless and non-relative
 	// targets (URLs, anchors, mailto) are always fine.
@@ -252,11 +259,14 @@ func checkLinks(root string, r *report) {
 		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
 			return nil
 		}
+		rel, _ := filepath.Rel(adir, p)
+		if auditRel != "" && rel == auditRel {
+			return nil
+		}
 		b, err := os.ReadFile(p)
 		if err != nil {
 			return nil
 		}
-		rel, _ := filepath.Rel(adir, p)
 		// Generated files carry the cinch header; their whole body is
 		// template-authored prose whose tokens are expected to resolve.
 		// Hand-authored docs may reference the project's own source tree,
