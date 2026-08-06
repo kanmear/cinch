@@ -208,7 +208,7 @@ nothing else structural.
   and "changed in commit \<sha\> but its marker file backend/tests/handlers/tab_test.go did
   not" — message names the rule, doc, marker file, and window.
 
-## Phase 4 — Blind the semantic pass, then the full fixture run [both]
+## Phase 4 — Blind the semantic pass, then the full fixture run [both] *(landed 2026-08-06 — D083, blinded step 3, claude-driver gate green, pin bumped)*
 
 Rewrite `templates/check-rules.md` step 3 (Fix 2, plus Fix 3's framing and Fix 4's restate-and-
 flag step): give the auditor the rule set and ask *which test enforces this?* — or the test set
@@ -232,6 +232,40 @@ fixture is what proves either way.
 
 **Exit:** `make drift-test` fully green including the semantic row; SIG-099-class call preserved;
 both consumers' rendered check-rules.md C2-green; one live auditor run per envelope.
+
+**Record.** *(Landed 2026-08-06 — scope per the session: claude driver only, deltadocs only; pi
+and the cinch-side live run deferred, D081 stands for later rounds.)* All exit criteria met,
+verified on today's binary: `go vet ./...` + `go test ./...` green (template-only change);
+cinch self-check exit 0 at the baseline (the designed C10 self-question on the template edit,
+answered: no harness rule changed); deltadocs `make check-harness` exit 0 with exactly the two
+designed warns — both consumers C2-green; `make drift-test` exit 0, score table reproduced on
+the bumped pin; `make drift-test-semantic` **exit 0 on the first blinded run** — the SIG-002
+row caught as `⚠️ TENSION` with the 409 SIGNATURE_PENDING assertion quoted against the mutated
+rule text, corroborated by the single-return `GetPendingSignature` and both relaunch tests,
+and C14's content question answered ("the rule text is stale, not the test"); SIG-099-class
+call preserved (marker typo, not a missing test — the audit even located SIG-012's correct
+marker home). Report: `/tmp/drift-test-semantic-report.md`; the run's core finding, decision
+entry, and pin-bump logic logged as D083.
+
+- **The pin bump, required not optional:** the template change makes the pinned tree C2-stale —
+  C2's stale branch is an *error* (`body != f.Body`), so the old pin would inject an unexpected
+  finding into the mechanical scoring on every run. The pin moved 96d91df → 03ec172 (the
+  deltadocs re-render commit), which is C2-clean and carries the blinded workflow inside the
+  semantic worktree natively. Patches applied byte-faithful on the bumped pin (fix-bug.md and
+  manifest untouched by the re-render; index.md unchanged). The plan draft's overlay idea was
+  dropped: it could not fix the mechanical run, and the bump makes it unnecessary.
+- **Gate upgrades** (`scripts/drift-test.sh`): claude gate is now token-based (shared
+  `UNCOVERED_RE` with the pi gate — the blinded report presents the drift as TENSION, not a
+  plain MISSING) and asserts **two** things: SIG-002 reported uncovered/contradicting, and
+  SIG-012 reported covered-with-typo (the SIG-099-class preservation check — the plan's exit
+  says the gate must "say so" if the protocol regresses it; it cannot without asserting it).
+  "Red by design" wording retired from the script header, the Makefile target comment, and the
+  expectations.json note: a red gate is now a regression signal.
+- **Live verification, deferred by scope:** the headless `claude -p --agent auditor` gate run
+  exercises the deltadocs Claude Code envelope end-to-end (agent definition + PreToolUse guard:
+  the audit's step 1 ran the harness checkers and `make ignores` inside the envelope). The
+  interactive E017-path session and cinch's opencode live run were explicitly out of this
+  round's scope per the user.
 
 ## Phase 5 — Close [both]
 
