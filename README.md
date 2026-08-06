@@ -18,7 +18,7 @@ Not a memory system; not a semantic validator — even at its best it detects
 
 - `main.go` — the entry point: usage, dispatch. `internal/` — the packages:
   `manifest/` (manifest.yml loading), `render/` (render + template purity),
-  `index/` (generated index), `check/` (the C1–C12 checkers), `version/`
+  `index/` (generated index), `check/` (the C1–C15 checkers), `version/`
   (binary-relative version store). Paths resolve from the git repository root;
   templates and the version store resolve next to the binary.
 - `templates/` — portable workflow templates and fragments, nothing else. Every
@@ -56,7 +56,7 @@ Not a memory system; not a semantic validator — even at its best it detects
   renders standalone (D063).
 - **manifest** — a consumer's `manifest.yml`: the single source of
   project-specific bindings.
-- **checker** — one of C1–C12, compiled into the binary and run by
+- **checker** — one of C1–C15, compiled into the binary and run by
   `cinch check`. (C13 is retired: the template-purity check is the unit test
   `TestTemplatePurity`, not a checker.)
 - **rule ID** — a permanent `PREFIX-NNN` identifier on a numbered rule in a
@@ -88,6 +88,7 @@ C10 | a change touching a domain's `owns:` paths leaves its domain doc warning-f
 C11 | links and backticked path tokens inside `.agent/` resolve | structural | warn | internal/check/check.go
 C12 | seam declarations: known tier, auditor strong, `allow` ids resolve | structural | error | internal/check/check.go
 C14 | a rule's text changed and the file carrying its `// cinch:rule` marker did not | lateral | warn | internal/check/diff.go
+C15 | the committed audit report (paths.audit) quotes rule text and assertion lines verbatim from their sources | lateral | error | internal/check/audit.go
 
 Direction rule (D009): doc-upstream, lateral, and structural checks only —
 never doc-downstream. A check that validates a doc's copy of a machine-readable

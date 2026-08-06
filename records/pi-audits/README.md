@@ -15,8 +15,25 @@ Provenance: five headless `pi` (Qwen3.6-27B via llama.cpp) runs with the
 `--auditor` extension against the drift-test worktree of project_deltadocs
 (pinned commit 96d91df for the 2026-08-05 runs; 03ec172 — the Phase-4 re-render
 commit — for the 2026-08-06 runs, which exercise the blinded check-rules step 3).
-Verdict record also in `.agent/plans/drift-closure.md` Phase 2/4, deltadocs
-E004/E005, and decisions D081/D083.
+The 2026-08-06 C15 baseline round ran against the live deltadocs HEAD. Verdict
+record also in `.agent/plans/drift-closure.md` Phase 2/4, `.agent/plans/audit-evidence.md`,
+deltadocs E004/E005, and decisions D081/D083/D084.
+
+## C15 round (2026-08-06) — the evidence requirement is mechanical now
+
+With the C15 checker (D084), the report must carry verbatim rule-text and
+assertion quotes, and every closure rule must have a row. The round's dual-driver
+baseline (claude + pi, one run each on the clean tree, new step-4 format):
+
+- **claude: C15-green** — 75/75 rules, verbatim quotes, committed at deltadocs
+  `paths.audit`.
+- **pi: C15-red** — the 27B produced an entirely improvised report (no canonical
+  per-domain tables, invented domain names, wrong counts); C15's verdict is a
+  single mechanical error ("has no coverage rows"), not a judgment call.
+  `2026-08-06-c15-baseline-pi.md`.
+
+The pi tier-boundary evidence changes shape: previously a wording-scored
+judgment ("paraphrase errors"), now a check result any executor can reproduce.
 
 ## Verdicts
 
