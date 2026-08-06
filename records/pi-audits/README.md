@@ -11,18 +11,37 @@ reports quote `// cinch:rule <ID>` tokens verbatim, and a record surface must
 never resolve as source markers — same treatment as `docs/` and
 `decisions.jsonl`.
 
-Provenance: three runs, headless `pi` (Qwen3.6-27B via llama.cpp) with the
-`--auditor` extension against the drift-test worktree (pinned commit
-96d91df of project_deltadocs). Verdict record also in `.agent/plans/drift-closure.md`
-Phase 2, deltadocs E004, and decisions D081.
+Provenance: five headless `pi` (Qwen3.6-27B via llama.cpp) runs with the
+`--auditor` extension against the drift-test worktree of project_deltadocs
+(pinned commit 96d91df for the 2026-08-05 runs; 03ec172 — the Phase-4 re-render
+commit — for the 2026-08-06 runs, which exercise the blinded check-rules step 3).
+Verdict record also in `.agent/plans/drift-closure.md` Phase 2/4, deltadocs
+E004/E005, and decisions D081/D083.
 
 ## Verdicts
 
 | Run | Tree | SIG-002 (the inverted rule) | File |
 |-----|------|------------------------------|------|
-| baseline | clean pin, no mutations | n/a — full audit performed, SIG-099-class diagnosis preserved | `2026-08-05-baseline.md` |
-| drift run 1 | fully mutated | **confabulated ✅** — cited `TestRequestSignature_AlreadyPending` (asserts the 409 conflict, the opposite of the mutated text) as coverage; the claude/P5.6 failure verbatim. Full text overwritten by run 2; only the quoted row survives | (lost — excerpt in `README` below and E004) |
-| drift run 2 | fully mutated | **caught it** — "⚠️ QUALITY — test contradicts rule", quoted the rule text against the `http.StatusConflict` assertion ("either the rule is aspirational or the test is incorrect") | `2026-08-05-drift-run2.md` |
+| baseline (08-05) | clean pin, no mutations | n/a — full audit performed, SIG-099-class diagnosis preserved | `2026-08-05-baseline.md` |
+| drift run 1 (08-05) | fully mutated | **confabulated ✅** — cited `TestRequestSignature_AlreadyPending` (asserts the 409 conflict, the opposite of the mutated text) as coverage; the claude/P5.6 failure verbatim. Full text overwritten by run 2; only the quoted row survives | (lost — excerpt in `README` below and E004) |
+| drift run 2 (08-05) | fully mutated | **caught it** — "⚠️ QUALITY — test contradicts rule", quoted the rule text against the `http.StatusConflict` assertion ("either the rule is aspirational or the test is incorrect") | `2026-08-05-drift-run2.md` |
+| baseline (08-06) | clean pin 03ec172, blinded workflow | n/a — full audit performed (75 rules, per-domain tables), verdicts and test locations correct; rule-text *summaries* are loose paraphrases (SIG-002 labeled "requires edit" — SIG-003's text) | `2026-08-06-baseline.md` |
+| drift run 1 (08-06) | fully mutated, blinded workflow | **missed** — ✅ with the wrong test matched by name (`TestCreateSignatureRequest_SnapshotsContentAndPinsHistory` — SIG-004's test, chosen for its name); rule text never engaged. Full text overwritten by run 2; key rows quoted in `README` below | (lost — excerpts below and E005) |
+| drift run 2 (08-06) | fully mutated, blinded workflow | **missed** — vacuous row `| SIG-002 | API | handlers/tab_test.go | handler test | ✅ |`; no rule text, no test name | `2026-08-06-drift-run2.md` |
+
+The blinded protocol (Phase 4, D083) turned the claude record around — claude
+1/1 green under blinding vs 3/3 confabulated before — and the pi record around
+the other way: **pi is 0/2 under blinding vs 1/2 before.** The 27B slips through
+a different hole now: the derive pass spreads attention over 75 rules, and the
+model skims — matching tests by name and paraphrasing rule text away without
+ever restating it against the marked test's assertions. The dual-driver
+comparison (D081) is therefore the standing evidence that the semantic row is a
+frontier-tier call: the fixture keeps the pi miss visible per round instead of
+hiding it in a single-driver verdict. D081's exit bar ("caught by both, not
+one") is NOT met by the pi driver; the fork — accept the 27B tier boundary as
+documented, or iterate the template's restate-and-flag layer (the weakest of
+the four fixes, now evidenced) — is the cinch-side decision recorded in
+drift-closure Phase 4's record.
 
 The claude record for comparison: 3/3 runs confabulated a ✅ on the SIG-002 row
 (P5.6 + two headless audits; `drift-closure.md` Phase 2). The local model is
@@ -40,8 +59,26 @@ reliable, for both drivers.
 - The pi semantic gate scores **contradiction wording**, not just MISSING:
   a 27B model flags the drift as "⚠️ QUALITY — test contradicts rule", not as a
   coverage gap.
+- **Extension flag conflict (found 2026-08-06 after the Phase-4 pin bump):**
+  the pin (03ec172) carries its own `.pi/extensions/auditor.ts`, which pi
+  auto-discovers from the worktree cwd — the fixture's explicit `--extension`
+  of the repo copy then registered the `--auditor` flag twice and died with a
+  flag conflict. The runner now loads the pinned tree's own extension exactly
+  once (`--no-extensions -e "$wt/.pi/extensions/auditor.ts"`).
 
-## Run 1 excerpt (full report overwritten by run 2; 2026-08-05 22:02)
+## Drift run 1 excerpts (08-06; full report overwritten by run 2)
+
+The run otherwise reproduced the run-2 structure: closure from the checkers
+(`SIG-099` dead marker, `SIG-012`/`TAB-003` unmarked), per-domain tables.
+SIG-012 was misdiagnosed as plainly unmarked — the run did not connect the
+SIG-099 typo to it (it guessed the marker should read `SIG-001`):
+
+```
+| **SIG-002** | Signature request creation | Testable — Model-enforced | (semantic: `TestCreateSignatureRequest_SnapshotsContentAndPinsHistory`) | `models/tab_test.go` |
+| **SIG-012** | Signature request cancellation | **UNMARKED** | — | — |
+```
+
+## Run 1 excerpt (2026-08-05; full report overwritten by run 2)
 
 ```
 | SIG-002 Multiple pending requests per tab | API | ✅ | `TestRequestSignature_AlreadyPending` (handlers/tab_test.go:388) |

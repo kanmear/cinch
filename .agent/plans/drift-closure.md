@@ -267,6 +267,33 @@ entry, and pin-bump logic logged as D083.
   interactive E017-path session and cinch's opencode live run were explicitly out of this
   round's scope per the user.
 
+- **The pi driver round (2026-08-06, deltadocs E005): claude 1/1 green, pi 0/2 red.** With the
+  blinded workflow inside the worktree (pin 03ec172), the pi gate ran twice against the same
+  mutated tree: run 1 matched SIG-002 to the wrong test by name
+  (`TestCreateSignatureRequest_SnapshotsContentAndPinsHistory` — SIG-004's test) without ever
+  engaging the mutated rule text; run 2 produced a vacuous row (no rule text, no test name,
+  ✅). Both misdiagnosed SIG-012 as plainly unmarked (guessing the SIG-099 marker should read
+  SIG-001) while preserving the dead-marker diagnosis itself. The 27B baseline on the new pin
+  performed the full audit (75 rules, correct verdicts and locations) with loose paraphrase
+  errors in rule summaries. **Finding: the blinded protocol turned claude around (3/3
+  confabulated → 1/1 TENSION catch, D083) and pi around the other way (1/2 → 0/2): the derive
+  pass spreads attention over the whole rule set and the 27B skims, matching by name and
+  paraphrasing meaning away. D081's exit bar — the row caught by both drivers — is not met by
+  the pi driver.** Reports archived at `records/pi-audits/` (2026-08-06-baseline.md,
+  2026-08-06-drift-run2.md; run 1 overwritten, excerpts in the README). Fixture fixes landed
+  in deltadocs 51627b3: the pinned tree's own auditor extension is loaded exactly once
+  (`--no-extensions -e` — the pin bump made the worktree carry its own copy, which
+  auto-discovery loaded *and* the explicit `--extension` of the repo copy passed, registering
+  `--auditor` twice → flag conflict), the pi gate was unified with the claude gate (same three
+  assertions), and `make drift-test-semantic-pi` / `drift-test-pi-baseline` targets added.
+  **Open fork, the cinch-side decision:** (a) accept the 27B tier boundary as documented —
+  pi-red is a standing property, the semantic gate stays dual-driver for comparison, and
+  Phase 4's exit bar is amended with the boundary stated; or (b) iterate the template's
+  restate-and-flag layer — the weakest of the four fixes, now evidenced — e.g. hard-order the
+  C14-named drift candidates first with verbatim rule-text and assertion quoting, re-render,
+  and re-run both drivers. Recommended: (b) once, because the fixture makes it cheap and
+  honest; if it does not lift pi, the boundary is proven and (a) is the record.
+
 ## Phase 5 — Close [both]
 
 Log decisions and events (the fixture-home decision, the C10/C14 boundary decision, the C14
