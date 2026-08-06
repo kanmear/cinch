@@ -291,8 +291,12 @@ entry, and pin-bump logic logged as D083.
   Phase 4's exit bar is amended with the boundary stated; or (b) iterate the template's
   restate-and-flag layer — the weakest of the four fixes, now evidenced — e.g. hard-order the
   C14-named drift candidates first with verbatim rule-text and assertion quoting, re-render,
-  and re-run both drivers. Recommended: (b) once, because the fixture makes it cheap and
-  honest; if it does not lift pi, the boundary is proven and (a) is the record.
+  and re-run both drivers. **Decision (2026-08-06, user): deferred.** The iteration is not
+  scheduled in this plan's remaining phase; the pi-red comparison stands as the recorded
+  evidence, the fixture keeps producing it per round, and the open item carries into the
+  next session (surface it at Phase 5 close or the next drift fixture touch). Phase 4's exit
+  is amended accordingly: the row is caught by the claude driver; pi's 0/2 miss is the
+  documented 27B-tier boundary, not a regression signal.
 
 ## Phase 5 — Close [both]
 
