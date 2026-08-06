@@ -46,24 +46,41 @@ it as uncovered and `{{commands.ignores}}` lists the inventory. Not a test cover
 
 ### 3. Find test coverage
 
-For each testable rule from step 2, search the test locations named in the classification — or
-`manifest.paths.tests` if no category named a directory — **semantically**: match by what the
-test exercises, not just by name. A test called `TestUpdate_<Subject>Pending` covers the rule
-"editing is always free while a request is pending" (asserts 200 OK and content updated while the
-request is pending) even though the names don't literally match.
+This is a **search with nonzero expected yield**: find the rules whose tests do not enforce
+them. Expect to find at least one — rules rot as behaviour changes. Do not frame it as
+"confirm each rule is enforced"; confirmation of an existing link is the leading question, and
+it verifies the marker's existence instead of the test's meaning.
 
-A rule already covered has a `// cinch:rule <ID>` marker above its enforcing test — `cinch check`
-(C8) verifies the closure. Your job here is the semantic half the checker cannot do: confirm the
-marked test actually exercises the rule, and that unmarked rules are genuinely untested rather
-than forgotten.
+**Derive the mapping from the tests, not from the markers.** Read the tests in the locations
+named in the classification — or `manifest.paths.tests` if no category named a directory — and
+for each test write down, in one sentence, what its assertions actually enforce (the response
+or state it pins, not its name). Then match each statement against the rules: which rule does
+that assertion enforce? A test called `TestUpdate_<Subject>Pending` enforces "editing is
+always free while a request is pending" (asserts 200 OK and content updated while the request
+is pending) even though the names don't literally match — the assertions are the evidence, not
+the name. This derived test→rule mapping is your answer; write it down before you consult the
+markers.
 
-Trust the closure's direction: if the checker reported **no unmarked rules**, a rule you judge
-under-tested is *not* missing a marker — C8 warns on every unmarked rule, so the rule is marked
-somewhere. Search the tree for `// cinch:rule <ID>` before reporting it MISSING, and judge the
-quality of the marker's test instead. A rule can be marked yet under-enforced (marker above a
-weak test); it cannot be unmarked under a zero-unmarked closure.
+**Then diff your mapping against the recorded one.** The markers — found by searching the tree
+for `// cinch:rule <ID>` — plus the closure's report are the recorded answer. Read every
+marked test and restate its rule's text and the test's assertions side by side, and flag any
+tension *before* deciding. A disagreement is a conflict, not a doubt:
 
-Read representative test files if you're unsure whether a test covers a rule.
+- the marked test's assertions contradict the rule's text → **TENSION** — report it; a rule
+  whose text changed without its marker file is also named by the checker's diff-coupling warn
+  (C14), and the content question — does the marker's test enforce the rule's *new* meaning? —
+  is yours
+- a rule you derived as enforced by a test that carries no marker above it → the marker is
+  missing or misplaced — C8 warns on every unmarked rule, so search the tree for
+  `// cinch:rule <ID>` first and judge the marker's placement and its test's quality
+- a rule with no derived enforcer → MISSING (cross-check against C8's unmarked list)
+- an unresolved marker (C8: a `// cinch:rule <ID>` naming no real rule) → judge the test the
+  marker sits above: a correct test with a mistyped marker is covered — report the marker typo,
+  not a missing test
+
+A rule can be marked yet under-enforced (marker above a weak test); it cannot be unmarked under
+a zero-unmarked closure. Read representative test files if you're unsure whether a test covers
+a rule.
 
 ### 4. Report
 
@@ -75,12 +92,14 @@ Produce a table per domain file:
 | Rule | Testable | Covered | Test |
 |------|----------|---------|------|
 | SIG-001 <rule summary> | Yes | ✅ | Test<Action>_<Condition> |
-| SIG-002 <rule summary> | Yes | ⚠️ MISSING | — |
-| SIG-003 <rule summary> | N/A | — | (cinch:ignore'd) |
+| SIG-002 <rule summary> | Yes | ⚠️ TENSION | Test<Action>_<Condition> asserts the opposite |
+| SIG-003 <rule summary> | Yes | ⚠️ MISSING | — |
+| SIG-004 <rule summary> | N/A | — | (cinch:ignore'd) |
 ```
 
-Use ✅ for covered, ⚠️ MISSING for gap, N/A for rules skipped in step 2. When a test covers a
-rule, the `// cinch:rule <ID>` marker goes above that test function.
+Use ✅ for covered, ⚠️ TENSION for a marked test whose assertions contradict its rule's text
+(restate the conflict in the Test column), ⚠️ MISSING for gap, N/A for rules skipped in step 2.
+When a test covers a rule, the `// cinch:rule <ID>` marker goes above that test function.
 
 ### 5. Suggest tests for gaps
 
@@ -108,6 +127,9 @@ Before finishing, confirm:
 - [ ] The rule closure came from the harness checkers — no hand re-enumeration of `{{paths.domain}}/`
 - [ ] Every rule was classified by its ID (API / Model / N/A)
 - [ ] N/A rules are declared `<!-- cinch:ignore <ID> -->` in their doc — not just skipped in the report
+- [ ] The test→rule mapping was derived from test assertions **before** markers were consulted
+- [ ] Every marked test was restated against its rule's text, and tensions flagged before deciding
 - [ ] Test files were read, not just searched by name — semantic matching used
+- [ ] TENSION rows restate the contradiction; unresolved-marker rows judge the test, not the typo
 - [ ] Covered rules carry a `// cinch:rule <ID>` marker above the enforcing test
 - [ ] MISSING entries have concrete test suggestions with names, assertions, and marker
