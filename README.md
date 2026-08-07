@@ -4,7 +4,7 @@ A referential integrity checker for agent documentation.
 
 ## Status: shell, rebuild pending
 
-The previous implementation was purged on 2026-08-07 (D085): every checker,
+The previous implementation was purged on 2026-08-07: every checker,
 template, self-harness, and operational artifact was deleted. Git history is
 the archive of everything that was tried; `docs/PRINCIPLES.md` is the memory
 of what survived contact with evidence — six principles ranked by what was
@@ -20,7 +20,6 @@ The shell compiles and tests green so the rebuild starts from a working build.
   (deterministic over semantic, the direction rule, the derivability and
   holdability gates, rule→test markers, bind values not shape, no proxy
   metrics), each with the evidence that earned it and its rebuild constraint.
-- `decisions.jsonl` — append-only decision log; D085 records the purge.
 - `tests/` — CLI-level tests exercising the built binary.
 - `Makefile` — `build`, `test`.
 
