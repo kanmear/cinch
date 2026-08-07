@@ -1,3 +1,6 @@
+// Package tests exercises the built cinch binary end-to-end (`make test` builds
+// bin/cinch before testing). The shell's one contract: no-args exits 2 with
+// usage; an unknown command names the purge.
 package tests
 
 import (
