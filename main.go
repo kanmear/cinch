@@ -5,10 +5,11 @@ import (
 	"os"
 )
 
-const usage = `cinch — referential integrity checker for agent documentation
+const usage = `cinch — referential integrity checker for the operational
+documentation that governs a repository (rules, workflows, conventions)
 
 This installation is a shell: the previous implementation was purged
-and the rebuild has not landed. See docs/PRINCIPLES.md for what the rebuild
+and the rebuild has not landed. See .docs/PRINCIPLES.md for what the rebuild
 must be.
 
 usage:
