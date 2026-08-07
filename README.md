@@ -1,12 +1,14 @@
 # cinch
 
-A referential integrity checker for agent documentation.
+A referential integrity checker for the operational documentation that governs
+a repository — the rules, workflows, and conventions code must conform to, read
+by humans and executed by agents.
 
 ## Status: shell, rebuild pending
 
 The previous implementation was purged on 2026-08-07: every checker,
 template, self-harness, and operational artifact was deleted. Git history is
-the archive of everything that was tried; `docs/PRINCIPLES.md` is the memory
+the archive of everything that was tried; `.docs/PRINCIPLES.md` is the memory
 of what survived contact with evidence — six principles ranked by what was
 tested and passed, not by what seemed clever.
 
@@ -16,7 +18,7 @@ The shell compiles and tests green so the rebuild starts from a working build.
 ## Layout
 
 - `main.go` — the shell stub: usage only, no commands yet.
-- `docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six principles
+- `.docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six principles
   (deterministic over semantic, the direction rule, the derivability and
   holdability gates, rule→test markers, bind values not shape, no proxy
   metrics), each with the evidence that earned it and its rebuild constraint.
@@ -27,6 +29,6 @@ Everything else was deleted and is recoverable from git.
 
 ## The rebuild
 
-Not planned yet. When it is, it is planned against `docs/PRINCIPLES.md` and
+Not planned yet. When it is, it is planned against `.docs/PRINCIPLES.md` and
 nothing else about the old design — the first checker ships with a mutation
 fixture that proves it catches its class.
