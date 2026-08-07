@@ -2,7 +2,7 @@
 
 Status: **spec.** This file is the memory of what survived contact with
 evidence. Everything else the previous cinch built or believed was deleted on
-2026-08-07 (D085); git history is the archive. A rebuild session reads this
+2026-08-07; git history is the archive. A rebuild session reads this
 file and nothing else about the old design — the old design is the history.
 
 ## The failure mode
