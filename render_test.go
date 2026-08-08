@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSubstitute_KnownVariableSubstitutes(t *testing.T) {
 	out, missing := substitute("see {{paths.domain}}/overview.md", map[string]string{"paths.domain": ".agent/domain"})
@@ -63,5 +66,53 @@ func TestHeader_DifferentBodyProducesDifferentHash(t *testing.T) {
 	b := header("templates/rules.md", "body two")
 	if a == b {
 		t.Fatalf("header: want different hash for different body, got identical %q", a)
+	}
+}
+
+func TestRenderAll_PhilosophyIsCopiedVerbatim(t *testing.T) {
+	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}})
+	if err != nil {
+		t.Fatalf("renderAll: %v", err)
+	}
+	for _, f := range files {
+		if f.Dest == ".agent/workflows/doc-philosophy.md" {
+			if f.Body != philosophySrc {
+				t.Fatalf("philosophy body was not copied verbatim")
+			}
+			if strings.Contains(f.Body, "{{") {
+				t.Fatalf("philosophy.md still has an unresolved {{}} token — it must need no renderer")
+			}
+			return
+		}
+	}
+	t.Fatalf("renderAll: doc-philosophy.md not produced")
+}
+
+func TestRenderAll_UndefinedVariableFires(t *testing.T) {
+	if _, err := renderAll(&Manifest{Vars: nil}); err == nil {
+		t.Fatalf("renderAll with no paths.domain: want error, got nil")
+	}
+}
+
+func TestRenderAll_IdempotentReRender(t *testing.T) {
+	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	first, err := renderAll(m)
+	if err != nil {
+		t.Fatalf("renderAll (first): %v", err)
+	}
+	second, err := renderAll(m)
+	if err != nil {
+		t.Fatalf("renderAll (second): %v", err)
+	}
+	if len(first) != len(second) {
+		t.Fatalf("renderAll: file count changed between runs: %d vs %d", len(first), len(second))
+	}
+	for i := range first {
+		if first[i] != second[i] {
+			t.Fatalf("renderAll: not idempotent at %q", first[i].Dest)
+		}
+		if header(first[i].Source, first[i].Body) != header(second[i].Source, second[i].Body) {
+			t.Fatalf("header: not idempotent for %q", first[i].Dest)
+		}
 	}
 }
