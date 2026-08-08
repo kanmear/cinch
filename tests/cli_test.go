@@ -80,6 +80,89 @@ func TestCheckExitCodesEndToEnd(t *testing.T) {
 	}
 }
 
+func TestCheck_CustomDocsRootFromManifest(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "mydocs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatalf("mkdir mydocs: %v", err)
+	}
+	content := "see [x](./missing.md) for details\n"
+	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write a.md: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".agent"), 0o755); err != nil {
+		t.Fatalf("mkdir .agent: %v", err)
+	}
+	manifest := "paths.docs = mydocs\n"
+	if err := os.WriteFile(filepath.Join(dir, ".agent", "manifest"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "check")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 1 {
+		t.Fatalf("check against custom docs root: want exit 1, got %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "links error") || !strings.Contains(string(out), "mydocs") {
+		t.Fatalf("check against custom docs root: finding not under mydocs:\n%s", out)
+	}
+
+	// A default .docs dir sitting alongside the configured one must be
+	// ignored entirely — the manifest key wins outright, not additively.
+	unusedDocs := filepath.Join(dir, ".docs")
+	if err := os.MkdirAll(unusedDocs, 0o755); err != nil {
+		t.Fatalf("mkdir .docs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(unusedDocs, "b.md"), []byte("see [y](./gone.md)\n"), 0o644); err != nil {
+		t.Fatalf("write b.md: %v", err)
+	}
+	cmd = exec.Command(binPath(t), "check")
+	cmd.Dir = dir
+	out, err = cmd.CombinedOutput()
+	ee, ok = err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 1 {
+		t.Fatalf("check with unused .docs present: want exit 1, got %v\n%s", err, out)
+	}
+	if strings.Contains(string(out), "gone.md") {
+		t.Fatalf("check with unused .docs present: unused .docs was scanned:\n%s", out)
+	}
+	if !strings.Contains(string(out), "missing.md") {
+		t.Fatalf("check with unused .docs present: expected mydocs finding missing:\n%s", out)
+	}
+}
+
+func TestCheck_AbsoluteDocsRootFromManifest(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(t.TempDir(), "elsewhere-docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatalf("mkdir elsewhere-docs: %v", err)
+	}
+	content := "see [x](./missing.md) for details\n"
+	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write a.md: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".agent"), 0o755); err != nil {
+		t.Fatalf("mkdir .agent: %v", err)
+	}
+	manifest := "paths.docs = " + docs + "\n"
+	if err := os.WriteFile(filepath.Join(dir, ".agent", "manifest"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "check")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 1 {
+		t.Fatalf("check against absolute docs root: want exit 1, got %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "links error") || !strings.Contains(string(out), "missing.md") {
+		t.Fatalf("check against absolute docs root: finding not named:\n%s", out)
+	}
+}
+
 func TestIgnores_ListsDeclarationsWithReasons(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, ".docs")
