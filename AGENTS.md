@@ -2,8 +2,9 @@
 
 A referential integrity checker for the operational documentation that governs
 a repository — the rules, workflows, and conventions code must conform to, read
-by humans and executed by agents. **Status: Stage 1 landed —
-three checks (links, rules, coupling), no config. See README.md.**
+by humans and executed by agents. **Status: Stage 2 landed —
+three checks (links, rules, coupling) plus `render` (philosophy verbatim,
+one templated workflow). See README.md.**
 
 ## What this repo is
 
@@ -11,12 +12,15 @@ three checks (links, rules, coupling), no config. See README.md.**
   ranked by evidence, each with its rebuild constraint. Read this before any
   rebuild work; it is the only memory of the old design that is allowed in the
   room — the old design itself is git history.
-- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan. Stage 1 done, Stage
-  2 next.
+- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan. Stage 1 and Stage 2
+  done, Stage 3 next.
 - `README.md` — the orientation artifact: status, layout map, pointers.
 - `main.go`, `check.go`, `links.go`, `rules.go`, `coupling.go` — the CLI and
   the three checks, each paired with a `_test.go` carrying its mutation
-  fixtures. `tests/` — CLI-level tests against the built binary. `Makefile` —
+  fixtures. `render.go`, `manifest.go` — the `render` command: `{{key}}`
+  substitution and the `.agent/manifest` parser. `philosophy.md`,
+  `templates/rules.md` — the content `render` ships, embedded via `go:embed`.
+  `tests/` — CLI-level tests against the built binary. `Makefile` —
   `build` / `test`.
 
 ## Rules
