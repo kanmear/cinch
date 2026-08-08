@@ -2,8 +2,8 @@
 
 A referential integrity checker for the operational documentation that governs
 a repository — the rules, workflows, and conventions code must conform to, read
-by humans and executed by agents. **Status: shell —
-the previous implementation was purged; the rebuild has not landed.**
+by humans and executed by agents. **Status: Stage 1 landed —
+three checks (links, rules, coupling), no config. See README.md.**
 
 ## What this repo is
 
@@ -11,9 +11,13 @@ the previous implementation was purged; the rebuild has not landed.**
   ranked by evidence, each with its rebuild constraint. Read this before any
   rebuild work; it is the only memory of the old design that is allowed in the
   room — the old design itself is git history.
+- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan. Stage 1 done, Stage
+  2 next.
 - `README.md` — the orientation artifact: status, layout map, pointers.
-- `main.go` — the shell stub (usage only), `tests/` — CLI tests against the
-  built binary, `Makefile` — `build` / `test`.
+- `main.go`, `check.go`, `links.go`, `rules.go`, `coupling.go` — the CLI and
+  the three checks, each paired with a `_test.go` carrying its mutation
+  fixtures. `tests/` — CLI-level tests against the built binary. `Makefile` —
+  `build` / `test`.
 
 ## Rules
 
@@ -35,5 +39,7 @@ Recovering old material from git is normal; committing it back is not.
 
 ## Session start
 
-Read `.docs/PRINCIPLES.md`. Not the roadmap — there is no roadmap; the purge
-deleted it and the rebuild is planned against the principles.
+Read `.docs/PRINCIPLES.md`, then `.docs/cinch-rebuild-plan.md`. The plan is
+deliberately short — if it grows past two pages, that's the failure it exists
+to avoid — and is not the old roadmap; the purge deleted that, and this one
+is planned against the principles, staged, one stage at a time.
