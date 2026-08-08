@@ -27,6 +27,7 @@ type Finding struct {
 func cmdCheck(msgFile string) int {
 	var findings []Finding
 	findings = append(findings, checkLinks(docsRoot)...)
+	findings = append(findings, checkRules(docsRoot, ".")...)
 
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
