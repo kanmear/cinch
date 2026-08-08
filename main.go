@@ -16,6 +16,10 @@ usage:
                           rule-reword escape hatch consults it.
   cinch ignores           list every cinch:ignore declaration and its
                           reason. Not a check: always exits 0.
+  cinch render            render philosophy.md and templates/*.md into
+                          .agent/workflows/, substituting values from
+                          .agent/manifest. Idempotent — a re-render diff
+                          proves tampering.
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -45,6 +49,11 @@ func main() {
 			os.Exit(usageError("ignores: takes no arguments"))
 		}
 		os.Exit(cmdIgnores(docsRoot))
+	case "render":
+		if len(os.Args) > 2 {
+			os.Exit(usageError("render: takes no arguments"))
+		}
+		os.Exit(cmdRender("."))
 	default:
 		fmt.Fprintf(os.Stderr, "cinch: %q is not a command\n", os.Args[1])
 		os.Exit(1)
