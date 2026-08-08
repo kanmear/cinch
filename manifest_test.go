@@ -50,3 +50,36 @@ func TestLoadManifest_MalformedLineFires(t *testing.T) {
 		t.Fatalf("loadManifest with malformed line: want error, got nil")
 	}
 }
+
+func TestLoadManifestOptional_MissingFileIsNotAnError(t *testing.T) {
+	dir := t.TempDir()
+	m, err := loadManifestOptional(dir)
+	if err != nil {
+		t.Fatalf("loadManifestOptional with no .agent/manifest: want nil error, got %v", err)
+	}
+	if m != nil {
+		t.Fatalf("loadManifestOptional with no .agent/manifest: want nil manifest, got %v", m)
+	}
+}
+
+func TestLoadManifestOptional_MalformedLineFires(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "not a key value line\n")
+
+	if _, err := loadManifestOptional(dir); err == nil {
+		t.Fatalf("loadManifestOptional with malformed line: want error, got nil")
+	}
+}
+
+func TestLoadManifestOptional_ParsesKeyValue(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "paths.docs = mydocs\n")
+
+	m, err := loadManifestOptional(dir)
+	if err != nil {
+		t.Fatalf("loadManifestOptional: %v", err)
+	}
+	if m.Vars["paths.docs"] != "mydocs" {
+		t.Fatalf("paths.docs: want %q, got %q", "mydocs", m.Vars["paths.docs"])
+	}
+}

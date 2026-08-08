@@ -13,11 +13,13 @@ of what survived contact with evidence — six principles ranked by what was
 tested and passed, not by what seemed clever. `.docs/cinch-rebuild-plan.md` is
 the staged plan the rebuild follows.
 
-`cinch check` runs three checks against the current directory, no
-configuration:
+`cinch check` runs three checks against the current directory. The docs root
+defaults to `.docs` and needs no configuration; a project can point it
+elsewhere with `paths.docs` in `.agent/manifest` (relative to the project
+root, or an absolute path):
 
-- **links** (error) — a relative markdown link under `.docs` that doesn't
-  resolve on disk.
+- **links** (error) — a relative markdown link under the docs root that
+  doesn't resolve on disk.
 - **rules** (error) — a rule ID (`1. **ID-NNN** ...`) with no `// cinch:rule`
   marker anywhere in source, or a marker that resolves to no rule ID. A rule
   can declare `<!-- cinch:ignore: <reason> -->` under itself instead of a
@@ -46,6 +48,7 @@ byte-identical output, so a re-render diff proves tampering.
 ```
 # .agent/manifest
 paths.domain = .agent/domain
+paths.docs = .docs
 ```
 
 Exit codes: `0` clean, `1` findings (`check`) or a render failure (`render`),
@@ -91,7 +94,8 @@ be clean against its own repo, since no real rule corpus lives here yet.
 ## The rebuild
 
 Stage 1 is done: three checks, three mutation-fixture suites, `cinch check`
-runs on any repo with no configuration. Stage 2 is done: `cinch render`
+runs on any repo with no configuration required (the docs root defaults to
+`.docs`, overridable via `.agent/manifest`'s `paths.docs`). Stage 2 is done: `cinch render`
 copies philosophy verbatim and templates one workflow (`rules.md`) by value
 substitution, and has rendered into a real repo. Next is Stage 3 — a second
 real repo, and letting it strain — per `.docs/cinch-rebuild-plan.md`.

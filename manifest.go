@@ -26,9 +26,32 @@ type Manifest struct {
 // without it.
 func loadManifest(root string) (*Manifest, error) {
 	path := filepath.Join(root, manifestPath)
+	m, err := parseManifestFile(path)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("%s: not found — cinch render needs a manifest binding its template variables, e.g.:\n  paths.domain = .agent/domain", path)
+	}
+	return m, err
+}
+
+// loadManifestOptional reads root's manifest file if one exists, returning
+// (nil, nil) when it doesn't — unlike loadManifest, a missing manifest is
+// not an error. Callers that must work with zero configuration (check,
+// ignores) use this instead. A malformed line is still an error either way.
+func loadManifestOptional(root string) (*Manifest, error) {
+	path := filepath.Join(root, manifestPath)
+	m, err := parseManifestFile(path)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	return m, err
+}
+
+// parseManifestFile reads and parses the manifest at path. Returns the raw
+// os.Open error (checkable with os.IsNotExist) when the file is absent.
+func parseManifestFile(path string) (*Manifest, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("%s: not found — cinch render needs a manifest binding its template variables, e.g.:\n  paths.domain = .agent/domain", path)
+		return nil, err
 	}
 	defer f.Close()
 

@@ -48,7 +48,12 @@ func main() {
 		if len(os.Args) > 2 {
 			os.Exit(usageError("ignores: takes no arguments"))
 		}
-		os.Exit(cmdIgnores(docsRoot))
+		docs, err := resolveDocsRoot(".")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
+			os.Exit(1)
+		}
+		os.Exit(cmdIgnores(docs))
 	case "render":
 		if len(os.Args) > 2 {
 			os.Exit(usageError("render: takes no arguments"))

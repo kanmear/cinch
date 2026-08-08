@@ -3,12 +3,34 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 )
 
-// docsRoot is the fixed, non-configurable corpus root (see commit 8b3c0ae:
-// "corpus root is .docs — single docs tree, cinch consumes its own spec").
-const docsRoot = ".docs"
+// resolveDocsRoot determines the docs corpus location for root, honoring an
+// optional `paths.docs` key in .agent/manifest. Defaults to ".docs" when no
+// manifest, or no such key, is present — check must stay zero-config by
+// default. An absolute value is used as-is; a relative value is resolved
+// against root.
+func resolveDocsRoot(root string) (string, error) {
+	const key = "paths.docs"
+	const defaultDocs = ".docs"
+
+	m, err := loadManifestOptional(root)
+	if err != nil {
+		return "", err
+	}
+	val := defaultDocs
+	if m != nil {
+		if v, ok := m.Vars[key]; ok && v != "" {
+			val = v
+		}
+	}
+	if filepath.IsAbs(val) {
+		return val, nil
+	}
+	return filepath.Join(root, val), nil
+}
 
 // Finding is one thing a check found wrong with the tree.
 type Finding struct {
@@ -25,6 +47,12 @@ type Finding struct {
 // commit-msg git hook) — only the coupling check's rule-reword escape hatch
 // consults it.
 func cmdCheck(msgFile string) int {
+	docsRoot, err := resolveDocsRoot(".")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
+		return 1
+	}
+
 	var findings []Finding
 	findings = append(findings, checkLinks(docsRoot)...)
 	findings = append(findings, checkRules(docsRoot, ".")...)
