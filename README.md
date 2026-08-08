@@ -4,7 +4,7 @@ A referential integrity checker for the operational documentation that governs
 a repository — the rules, workflows, and conventions code must conform to, read
 by humans and executed by agents.
 
-## Status: Stage 1 landed — three checks, no config
+## Status: Stage 2 landed — three checks, philosophy + one workflow templated
 
 The previous implementation was purged on 2026-08-07: every checker,
 template, self-harness, and operational artifact was deleted. Git history is
@@ -32,24 +32,48 @@ configuration:
   `rule-reword: <ID>` in a commit message, wired through `cinch check
   [MSGFILE]` (matches git's own `commit-msg` hook contract).
 
-Exit codes: `0` clean, `1` findings, `2` usage error.
+`cinch render` writes `.agent/workflows/doc-philosophy.md` (copied verbatim —
+no variables, no renderer needed) and `.agent/workflows/rules.md` (value-
+substituted against `.agent/manifest`), both stamped with a `generated —
+do not edit` header carrying a body-sha. Substitution is `{{key}}` literal
+replacement only — no loops, no conditionals — and an undefined variable is
+an error, never a blank. The render is idempotent: running it twice produces
+byte-identical output, so a re-render diff proves tampering.
+
+`.agent/manifest` binds the values templates reference — a flat
+`dotted.key = value` text format, no schema:
+
+```
+# .agent/manifest
+paths.domain = .agent/domain
+```
+
+Exit codes: `0` clean, `1` findings (`check`) or a render failure (`render`),
+`2` usage error.
 
 `make test` builds `bin/cinch` and runs `go vet` plus every check's mutation
 fixtures end-to-end.
 
 ## Layout
 
-- `main.go` — CLI dispatch (`check`, `ignores`).
+- `main.go` — CLI dispatch (`check`, `ignores`, `render`).
 - `check.go` — the `Finding` model and `cmdCheck` orchestrator.
 - `links.go`, `rules.go`, `coupling.go` — one file per check, each paired with
   a `_test.go` carrying its mutation fixtures.
+- `render.go` — the `{{key}}` substituter, header/body-sha, and `cmdRender`;
+  embeds `philosophy.md` and `templates/*.md` via `go:embed` (single static
+  binary, no runtime template resolution).
+- `manifest.go` — the `.agent/manifest` parser.
+- `philosophy.md` — copied verbatim into every consumer.
+- `templates/rules.md` — the one workflow template Stage 2 ships; more will
+  land as the taxonomy/fragment-free templates they need are written.
 - `.docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six
   principles (deterministic over semantic, the direction rule, the
   derivability and holdability gates, rule→test markers, bind values not
   shape, no proxy metrics), each with the evidence that earned it and its
   rebuild constraint.
-- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan; Stage 1 done, Stage
-  2 (philosophy/workflow templating) next.
+- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan; Stage 1 and Stage 2
+  done, Stage 3 (a second real repo, and letting it strain) next.
 - `tests/` — CLI-level tests exercising the built binary.
 - `Makefile` — `build`, `test`.
 
@@ -67,6 +91,7 @@ be clean against its own repo, since no real rule corpus lives here yet.
 ## The rebuild
 
 Stage 1 is done: three checks, three mutation-fixture suites, `cinch check`
-runs on any repo with no configuration. Next is Stage 2 — philosophy copied
-verbatim, workflows as value-substitution-only templates — per
-`.docs/cinch-rebuild-plan.md`.
+runs on any repo with no configuration. Stage 2 is done: `cinch render`
+copies philosophy verbatim and templates one workflow (`rules.md`) by value
+substitution, and has rendered into a real repo. Next is Stage 3 — a second
+real repo, and letting it strain — per `.docs/cinch-rebuild-plan.md`.
