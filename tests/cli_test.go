@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,12 +43,17 @@ func TestCheckNoDocsDir(t *testing.T) {
 	dir := t.TempDir()
 	cmd := exec.Command(binPath(t), "check")
 	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	err := cmd.Run()
 	if err != nil {
-		t.Fatalf("check with no .docs dir: want exit 0, got %v\n%s", err, out)
+		t.Fatalf("check with no .docs dir: want exit 0, got %v", err)
 	}
-	if len(out) != 0 {
-		t.Fatalf("check with no .docs dir: want no output, got:\n%s", out)
+	// No findings on stdout — a plain, non-git tempdir with no .docs is a
+	// clean pass. Coupling still writes its no-op notice to stderr (not
+	// asserted here); silence there would misread as "checked and clean".
+	if stdout.Len() != 0 {
+		t.Fatalf("check with no .docs dir: want no findings on stdout, got:\n%s", stdout.String())
 	}
 }
 
@@ -98,6 +104,36 @@ func TestIgnores_ListsDeclarationsWithReasons(t *testing.T) {
 		if !strings.Contains(string(out), want) {
 			t.Fatalf("ignores: output missing %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestCheckMsgFileArg(t *testing.T) {
+	dir := t.TempDir()
+
+	cmd := exec.Command(binPath(t), "check", "/nonexistent/msg/file")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("check with unreadable MSGFILE: want exit 2, got %v\n%s", err, out)
+	}
+
+	msgFile := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+	if err := os.WriteFile(msgFile, []byte("a commit message\n"), 0o644); err != nil {
+		t.Fatalf("write msg file: %v", err)
+	}
+	cmd = exec.Command(binPath(t), "check", msgFile)
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("check with a readable MSGFILE: want exit 0, got %v", err)
+	}
+
+	cmd = exec.Command(binPath(t), "check", msgFile, "extra")
+	cmd.Dir = dir
+	out, err = cmd.CombinedOutput()
+	ee, ok = err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("check with too many args: want exit 2, got %v\n%s", err, out)
 	}
 }
 

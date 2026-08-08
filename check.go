@@ -29,6 +29,15 @@ func cmdCheck(msgFile string) int {
 	findings = append(findings, checkLinks(docsRoot)...)
 	findings = append(findings, checkRules(docsRoot, ".")...)
 
+	coupling := checkCoupling(docsRoot, ".", msgFile)
+	findings = append(findings, coupling.Findings...)
+	if coupling.NoOp != "" {
+		fmt.Fprintln(os.Stderr, coupling.NoOp)
+	}
+	for _, s := range coupling.Suppressed {
+		fmt.Fprintln(os.Stderr, "coupling: "+s)
+	}
+
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.Check != b.Check {
