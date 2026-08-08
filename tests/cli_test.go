@@ -74,6 +74,33 @@ func TestCheckExitCodesEndToEnd(t *testing.T) {
 	}
 }
 
+func TestIgnores_ListsDeclarationsWithReasons(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatalf("mkdir .docs: %v", err)
+	}
+	content := "1. **CAT-003** tab display names derive from category name.\n" +
+		"   <!-- cinch:ignore: UI-derivation fact, no test to point at -->\n" +
+		"2. **MEMB-006** asserts the absence of a flow.\n" +
+		"   <!-- cinch:ignore: asserts absence of a flow -->\n"
+	if err := os.WriteFile(filepath.Join(docs, "rules.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write rules.md: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "ignores")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ignores: want exit 0, got %v\n%s", err, out)
+	}
+	for _, want := range []string{"CAT-003", "UI-derivation fact", "MEMB-006", "absence of a flow"} {
+		if !strings.Contains(string(out), want) {
+			t.Fatalf("ignores: output missing %q:\n%s", want, out)
+		}
+	}
+}
+
 // binPath returns the absolute path to the built cinch binary. Tests that
 // set cmd.Dir need this rather than a relative path: exec.Command resolves a
 // relative Path against cmd.Dir, not the test process's own working
