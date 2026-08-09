@@ -1,4 +1,4 @@
-package main
+package cinch
 
 import (
 	"strings"
@@ -35,7 +35,6 @@ func TestSubstitute_UndefinedVariableFires(t *testing.T) {
 	if missing[0] != "commands.check" || missing[1] != "paths.domain" {
 		t.Fatalf("want sorted [commands.check paths.domain], got %v", missing)
 	}
-	// Undefined variables are left in place, never blanked out.
 	want := "see {{paths.domain}}/x.md and {{commands.check}}"
 	if out != want {
 		t.Fatalf("substitute: want tokens left intact %q, got %q", want, out)

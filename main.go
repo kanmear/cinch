@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	impl "cinch/internal/cinch"
 )
 
 const usage = `cinch — referential integrity checker for the operational
@@ -43,24 +45,29 @@ func main() {
 				os.Exit(usageError("check: cannot read message file: " + msgFile))
 			}
 		}
-		os.Exit(cmdCheck(msgFile))
+		os.Exit(impl.CmdCheck(msgFile))
 	case "ignores":
 		if len(os.Args) > 2 {
 			os.Exit(usageError("ignores: takes no arguments"))
 		}
-		docs, err := resolveDocsRoot(".")
+		docs, err := impl.ResolveDocsRoot(".")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
 			os.Exit(1)
 		}
-		os.Exit(cmdIgnores(docs))
+		os.Exit(impl.CmdIgnores(docs))
 	case "render":
 		if len(os.Args) > 2 {
 			os.Exit(usageError("render: takes no arguments"))
 		}
-		os.Exit(cmdRender("."))
+		os.Exit(impl.CmdRender("."))
 	default:
 		fmt.Fprintf(os.Stderr, "cinch: %q is not a command\n", os.Args[1])
 		os.Exit(1)
 	}
+}
+
+func usageError(msg string) int {
+	fmt.Fprintln(os.Stderr, "cinch: "+msg)
+	return 2
 }

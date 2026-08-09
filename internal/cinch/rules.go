@@ -1,4 +1,4 @@
-package main
+package cinch
 
 import (
 	"bufio"
@@ -107,7 +107,6 @@ func parseRuleDoc(path string) []ruleItem {
 	return parseRuleItems(path, data)
 }
 
-// scanRuleDocs collects every rule item under root.
 func scanRuleDocs(root string) []ruleItem {
 	var items []ruleItem
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -223,10 +222,10 @@ func checkRules(docsDir, repoRoot string) []Finding {
 	return findings
 }
 
-// cmdIgnores lists every cinch:ignore declaration under root with its
+// CmdIgnores lists every cinch:ignore declaration under root with its
 // reason. Not a check: it never fails and carries no findings — it exists so
 // the ignore inventory is cheap to read periodically.
-func cmdIgnores(docsDir string) int {
+func CmdIgnores(docsDir string) int {
 	items := scanRuleDocs(docsDir)
 	for _, item := range items {
 		if !item.HasIgnore {

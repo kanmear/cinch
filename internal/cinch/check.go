@@ -1,4 +1,4 @@
-package main
+package cinch
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 	"sort"
 )
 
-// resolveDocsRoot determines the docs corpus location for root, honoring an
+// ResolveDocsRoot determines the docs corpus location for root, honoring an
 // optional `paths.docs` key in .agent/manifest. Defaults to ".docs" when no
 // manifest, or no such key, is present — check must stay zero-config by
 // default. An absolute value is used as-is; a relative value is resolved
 // against root.
-func resolveDocsRoot(root string) (string, error) {
+func ResolveDocsRoot(root string) (string, error) {
 	const key = "paths.docs"
 	const defaultDocs = ".docs"
 
@@ -41,13 +41,13 @@ type Finding struct {
 	Message string
 }
 
-// cmdCheck runs every check against the current working directory and
+// CmdCheck runs every check against the current working directory and
 // prints findings to stdout, one per line. msgFile, if non-empty, is a path
 // to a file containing the in-progress commit message (wired via a
 // commit-msg git hook) — only the coupling check's rule-reword escape hatch
 // consults it.
-func cmdCheck(msgFile string) int {
-	docsRoot, err := resolveDocsRoot(".")
+func CmdCheck(msgFile string) int {
+	docsRoot, err := ResolveDocsRoot(".")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
 		return 1
@@ -85,9 +85,4 @@ func cmdCheck(msgFile string) int {
 		return 1
 	}
 	return 0
-}
-
-func usageError(msg string) int {
-	fmt.Fprintln(os.Stderr, "cinch: "+msg)
-	return 2
 }

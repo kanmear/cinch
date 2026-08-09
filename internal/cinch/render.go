@@ -1,4 +1,4 @@
-package main
+package cinch
 
 import (
 	"crypto/sha256"
@@ -74,11 +74,11 @@ func renderAll(m *Manifest) ([]renderFile, error) {
 	}, nil
 }
 
-// cmdRender implements `cinch render`: writes every Stage 2 output under
+// CmdRender implements `cinch render`: writes every Stage 2 output under
 // root, header-stamped. Idempotent — re-running with the same manifest and
 // embedded templates produces byte-identical files, so a re-render diff
 // proves tampering.
-func cmdRender(root string) int {
+func CmdRender(root string) int {
 	m, err := loadManifest(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())

@@ -1,4 +1,4 @@
-package main
+package cinch
 
 import (
 	"path/filepath"
@@ -7,9 +7,9 @@ import (
 
 func TestResolveDocsRoot_DefaultsWithNoManifest(t *testing.T) {
 	dir := t.TempDir()
-	got, err := resolveDocsRoot(dir)
+	got, err := ResolveDocsRoot(dir)
 	if err != nil {
-		t.Fatalf("resolveDocsRoot: %v", err)
+		t.Fatalf("ResolveDocsRoot: %v", err)
 	}
 	want := filepath.Join(dir, ".docs")
 	if got != want {
@@ -21,9 +21,9 @@ func TestResolveDocsRoot_DefaultsWithManifestButNoKey(t *testing.T) {
 	dir := t.TempDir()
 	writeManifest(t, dir, "commands.check = make check\n")
 
-	got, err := resolveDocsRoot(dir)
+	got, err := ResolveDocsRoot(dir)
 	if err != nil {
-		t.Fatalf("resolveDocsRoot: %v", err)
+		t.Fatalf("ResolveDocsRoot: %v", err)
 	}
 	want := filepath.Join(dir, ".docs")
 	if got != want {
@@ -35,9 +35,9 @@ func TestResolveDocsRoot_RelativeKeyJoinsRoot(t *testing.T) {
 	dir := t.TempDir()
 	writeManifest(t, dir, "paths.docs = mydocs\n")
 
-	got, err := resolveDocsRoot(dir)
+	got, err := ResolveDocsRoot(dir)
 	if err != nil {
-		t.Fatalf("resolveDocsRoot: %v", err)
+		t.Fatalf("ResolveDocsRoot: %v", err)
 	}
 	want := filepath.Join(dir, "mydocs")
 	if got != want {
@@ -50,9 +50,9 @@ func TestResolveDocsRoot_AbsoluteKeyUsedAsIs(t *testing.T) {
 	abs := filepath.Join(t.TempDir(), "elsewhere", "docs")
 	writeManifest(t, dir, "paths.docs = "+abs+"\n")
 
-	got, err := resolveDocsRoot(dir)
+	got, err := ResolveDocsRoot(dir)
 	if err != nil {
-		t.Fatalf("resolveDocsRoot: %v", err)
+		t.Fatalf("ResolveDocsRoot: %v", err)
 	}
 	if got != abs {
 		t.Fatalf("want %q, got %q", abs, got)
@@ -63,7 +63,7 @@ func TestResolveDocsRoot_MalformedManifestFires(t *testing.T) {
 	dir := t.TempDir()
 	writeManifest(t, dir, "not a key value line\n")
 
-	if _, err := resolveDocsRoot(dir); err == nil {
-		t.Fatalf("resolveDocsRoot with malformed manifest: want error, got nil")
+	if _, err := ResolveDocsRoot(dir); err == nil {
+		t.Fatalf("ResolveDocsRoot with malformed manifest: want error, got nil")
 	}
 }
