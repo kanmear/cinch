@@ -13,7 +13,7 @@ Update domain documentation to reflect domain or product changes, including:
 - Domain doc reorganization (moving facts to the right file)
 
 **This workflow is not triggered by code changes.** For code-driven doc updates, use the sync-docs
-workflow (`.agent/workflows/sync-docs.md`).
+workflow (`{{paths.docs}}/workflows/sync-docs.md`).
 
 ## Instructions
 

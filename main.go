@@ -19,8 +19,9 @@ usage:
   cinch ignores           list every cinch:ignore declaration and its
                           reason. Not a check: always exits 0.
   cinch render            render philosophy.md and templates/*.md into
-                          .agent/workflows/, substituting values from
-                          .agent/manifest. Idempotent — a re-render diff
+                          paths.docs's workflows/ subdirectory (default
+                          .docs/workflows/), substituting values from
+                          .docs/manifest. Idempotent — a re-render diff
                           proves tampering.
 
 exit codes: 0 clean, 1 findings, 2 usage error.

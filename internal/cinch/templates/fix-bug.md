@@ -2,7 +2,7 @@
 
 Produce a structured bug fix plan that reproduces the issue, identifies the root cause, adds a regression test, and verifies the fix.
 
-Outputs `.agent/plans/fix/<bug-slug>.md` — a living fix file that tracks reproduction steps, root cause, regression test, and per-task execution checklists.
+Outputs `{{paths.docs}}/plans/fix/<bug-slug>.md` — a living fix file that tracks reproduction steps, root cause, regression test, and per-task execution checklists.
 
 **Do not write implementation code during this workflow.** Writing the plan file is the only output.
 
@@ -32,10 +32,10 @@ Most bugs are a single wrong line in one layer. The full five-phase workflow (th
 1. **Reproduce** (still mandatory — you can't fix what you can't see). Narrow the layer per §1.3.
 2. **Trace to root cause** — get the `file:line` and confirm the rule it violates (§2.1–2.2, §3.1).
 3. **⛔ Single combined checkpoint.** Present reproduction + root cause (`file:line`) + the existing rule + the one-line regression test you'll write. Ask: *"Confirm this is the bug and the fix — proceed?"* Wait for confirmation.
-4. **Regression test → fix.** Write the regression test (must fail), apply the fix (must pass), then run the layer's tier `cmd` from `.agent/manifest` `development.commands` (mapped via `taxonomy.test_tiers`). TDD stays non-negotiable.
+4. **Regression test → fix.** Write the regression test (must fail), apply the fix (must pass), then run the layer's tier `cmd` from `.docs/manifest` `development.commands` (mapped via `taxonomy.test_tiers`). TDD stays non-negotiable.
 5. **No persisted plan file.** The single checkpoint + the regression test are the record.
 6. Post-fix: troubleshooting update only if diagnosis was non-obvious (rare on this path).
-7. **Commit.** One commit for the fix, the regression test, and any troubleshooting note together, following the Commit Conventions in `.agent/workflows/execute-plan.md` — no plan file or Session Handoff needed here, but the commit format still applies.
+7. **Commit.** One commit for the fix, the regression test, and any troubleshooting note together, following the Commit Conventions in `{{paths.docs}}/workflows/execute-plan.md` — no plan file or Session Handoff needed here, but the commit format still applies.
 
 ### Escape hatch
 
@@ -59,22 +59,22 @@ Record what the user reported:
 ### 1.2 Reproduce the bug
 
 Attempt to reproduce the bug. Choose the appropriate method using commands from
-`.agent/manifest` `development.commands` (and `taxonomy.test_tiers` for layer → cmd mapping):
+`.docs/manifest` `development.commands` (and `taxonomy.test_tiers` for layer → cmd mapping):
 
 | Method | When to use |
 | -------- | ------------- |
 | Run existing tests | Bug might already be caught by a flaky test |
-| Layer test cmd — the tier's `cmd`, per `taxonomy.test_tiers` (`.agent/workflows/task-primitive.md` § Test tiers) | Suspect a specific layer |
+| Layer test cmd — the tier's `cmd`, per `taxonomy.test_tiers` (`{{paths.docs}}/workflows/task-primitive.md` § Test tiers) | Suspect a specific layer |
 | Manual API call (e.g., `curl`) | Backend-only issue |
 | Dev servers (`make dev-backend`, `make dev-frontend`) | Full-stack or UI issue |
-| Check troubleshooting files | `.agent/backend/troubleshooting.md`, `.agent/frontend/troubleshooting.md` |
+| Check troubleshooting files | `{{paths.docs}}/backend/troubleshooting.md`, `{{paths.docs}}/frontend/troubleshooting.md` |
 
 If the bug doesn't reproduce, document what you tried and ask the user for more details before proceeding.
 
 ### 1.3 Narrow the layer
 
 Identify which layer(s) are involved from the symptom, then read the relevant layer docs from
-the table in `.agent/conventions.md` or the affected domain's API/model docs.
+the table in `{{paths.docs}}/conventions.md` or the affected domain's API/model docs.
 
 ### 1.4 ⛔ CHECKPOINT — Present reproduction to user
 
@@ -97,7 +97,7 @@ Wait for confirmation before proceeding.
 ### 2.1 Read the affected code
 
 Start from the symptom and trace inward. Read only the files along the trace path — don't read the
-whole codebase. Prefer the domain's API/model docs and `.agent/conventions.md` for where to start.
+whole codebase. Prefer the domain's API/model docs and `{{paths.docs}}/conventions.md` for where to start.
 
 ### 2.2 Identify the root cause
 
@@ -147,7 +147,7 @@ Read the relevant `{{paths.docs}}/<domain>.md` file(s). Check:
 
 ### 3.2 Write missing rules
 
-If the bug revealed a missing rule, write it via the rules workflow (`.agent/workflows/maintain-domain.md`). Don't inline rule text in the plan file — reference the canonical location.
+If the bug revealed a missing rule, write it via the rules workflow (`{{paths.docs}}/workflows/maintain-domain.md`). Don't inline rule text in the plan file — reference the canonical location.
 
 ### 3.3 Skip if not applicable
 
@@ -169,7 +169,7 @@ Write one test that reproduces the exact conditions that triggered the bug. The 
 
 ### 4.2 Classify the test
 
-Classify by tier, per `.agent/workflows/task-primitive.md` § Test tiers (`manifest.taxonomy.test_tiers`):
+Classify by tier, per `{{paths.docs}}/workflows/task-primitive.md` § Test tiers (`manifest.taxonomy.test_tiers`):
 `integration` (backend), `unit` (frontend), `e2e` (opt-in, for cross-layer bugs), or `manual`.
 
 The regression test is **TDD-mandatory** regardless of tier: it must fail before the fix and pass
@@ -210,7 +210,7 @@ Wait for confirmation.
 ## Phase 5: Fix Tasks — via the task primitive
 
 With reproduction, root cause, and the regression test plan confirmed, decompose the fix using
-`.agent/workflows/task-primitive.md` — the same atomicity, context-manifest, verification-tier,
+`{{paths.docs}}/workflows/task-primitive.md` — the same atomicity, context-manifest, verification-tier,
 task-template, pre-flight-gate, completion, and compaction-anchor machinery that feature planning
 uses. A bug fix typically needs fewer tasks than a feature:
 
@@ -225,15 +225,15 @@ uses. A bug fix typically needs fewer tasks than a feature:
 
 - Planning checkpoints to clear: Phase 1 (reproduced + layer), Phase 2 (root cause, `file:line`),
   Phase 3 (domain rules checked — silent gate), Phase 4 (regression test plan confirmed).
-- Plan location: `.agent/plans/fix/<bug-slug>.md`, saved with status `in-progress`.
+- Plan location: `{{paths.docs}}/plans/fix/<bug-slug>.md`, saved with status `in-progress`.
 - Completion uses the **fix** lifecycle: the plan file is **deleted** once the regression test and
   any troubleshooting entry are committed (git history is the archive), plus the post-fix
   troubleshooting update.
-If a new test file was added, also record it in `.agent/backend/testing.md`'s coverage table when
+If a new test file was added, also record it in `{{paths.docs}}/backend/testing.md`'s coverage table when
 that doc maintains one.
 
 The **fast path** (above) is exempt from the primitive's gate and completion ritual — its single
 combined ⛔ checkpoint and the regression test are the whole record, with no persisted plan file.
 
-Task execution — working through `T1`, `T2`, … — happens via `.agent/workflows/execute-plan.md`,
+Task execution — working through `T1`, `T2`, … — happens via `{{paths.docs}}/workflows/execute-plan.md`,
 not inline here.

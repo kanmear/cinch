@@ -19,7 +19,7 @@ that runs it (`cmd`, resolved against `development.commands`), and whether it is
 a different stack redefines its tiers in the manifest; everything below is unchanged.
 
 For this repo's resolved tier bindings — which layer each tier enforces, its TDD policy, and the
-command that runs it — read `.agent/manifest`'s `taxonomy.test_tiers` directly rather than a copy
+command that runs it — read `.docs/manifest`'s `taxonomy.test_tiers` directly rather than a copy
 here; that block is the single source and each row is self-describing (`id`, `tdd`, `cmd`,
 `opt_in`, `automatable`).
 
@@ -31,7 +31,7 @@ gate and runs only on explicit request — so any agent, whatever its own house 
 browser automation, can respect it mechanically without a human spelling it out.
 
 **e2e tier / `manual` vs `e2e`:** see `manifest.taxonomy.test_tiers` `notes:` — the e2e row's
-operational doc renders here: `.agent/frontend/e2e.md`.
+operational doc renders here: `{{paths.docs}}/frontend/e2e.md`.
 
 ---
 
@@ -72,7 +72,7 @@ append them any time); auto-discovery means no wiring task is ever needed.
 
 ## Context manifest
 
-For each task, list the `.agent/` docs to load — **and nothing else**.
+For each task, list the `{{paths.docs}}/` docs to load — **and nothing else**.
 
 The constraint is a **context budget the running agent judges on the spot**, not a fixed count and
 not a fixed number of tokens. A task's full working context includes AGENTS.md, the system prompt,
@@ -87,9 +87,9 @@ something; include it if a decision hinges on it. List in loading order with a o
 **Good manifest (single-layer model task):**
 
 ```
-1. .agent/models/<entity>.md — struct and existing queries
+1. {{paths.docs}}/models/<entity>.md — struct and existing queries
 2. {{paths.docs}}/<domain>.md — rules this task must enforce
-3. .agent/<service>/conventions.md — query patterns (repository interface)
+3. {{paths.docs}}/<service>/conventions.md — query patterns (repository interface)
 ```
 
 For a justified multi-layer task, include the specific contract and convention docs needed for
@@ -99,13 +99,13 @@ orientation material.
 **Bad manifest (irrelevant docs crowd out source files):**
 
 ```
-- .agent/<service A>/architecture.md
-- .agent/<service A>/conventions.md
-- .agent/<service B>/architecture.md   ← irrelevant to a <layer A> task
-- .agent/<service B>/conventions.md    ← irrelevant to a <layer A> task
+- {{paths.docs}}/<service A>/architecture.md
+- {{paths.docs}}/<service A>/conventions.md
+- {{paths.docs}}/<service B>/architecture.md   ← irrelevant to a <layer A> task
+- {{paths.docs}}/<service B>/conventions.md    ← irrelevant to a <layer A> task
 - {{paths.docs}}/overview.md       ← too broad; load the specific domain file
-- .agent/models/<entity>.md
-- .agent/api/<domain>.md               ← irrelevant at the model layer
+- {{paths.docs}}/models/<entity>.md
+- {{paths.docs}}/api/<domain>.md               ← irrelevant at the model layer
 ```
 
 The problem isn't the count — it's that half these docs don't apply to the task's concern or
@@ -146,8 +146,8 @@ run in parallel; within a single pass, work in dependency order.
 why they cannot pass independently>
 
 **Context** (load in order, nothing else):
-1. .agent/xxx — rationale
-2. .agent/yyy — rationale
+1. {{paths.docs}}/xxx — rationale
+2. {{paths.docs}}/yyy — rationale
 
 **Files:**
 - `path/to/file.go` — what to add/change/fix
@@ -169,7 +169,7 @@ why they cannot pass independently>
 ```
 
 Task execution itself — working through `T1`, `T2`, … — happens via the execute-plan workflow
-(`.agent/workflows/execute-plan.md`), not inline here.
+(`{{paths.docs}}/workflows/execute-plan.md`), not inline here.
 
 ---
 
@@ -178,7 +178,7 @@ Task execution itself — working through `T1`, `T2`, … — happens via the ex
 Do not write the first task until:
 
 - [ ] Every planning-phase ⛔ checkpoint the calling workflow defines has been cleared with the user
-- [ ] New/clarified domain rules written via the rules workflow (`.agent/workflows/maintain-domain.md`)
+- [ ] New/clarified domain rules written via the rules workflow (`{{paths.docs}}/workflows/maintain-domain.md`)
       — not inlined in the plan
 - [ ] Every task is one independently verifiable concern; any multi-layer task explains why its
       layers cannot pass independently
@@ -201,8 +201,8 @@ The required checks are shared; the **plan-file lifecycle differs by plan type**
 ## Completion
 [ ] `make test` — full regression
 [ ] `make check` — typecheck + lint clean
-[ ] coverage audit (`.agent/workflows/audit-domain.md`) — every domain rule has a test
-[ ] doc sync (`.agent/workflows/sync-docs.md`) — update .agent/ docs if any interfaces changed
+[ ] coverage audit (`{{paths.docs}}/workflows/audit-domain.md`) — every domain rule has a test
+[ ] doc sync (`{{paths.docs}}/workflows/sync-docs.md`) — update {{paths.docs}}/ docs if any interfaces changed
 [ ] (opt-in) run each `taxonomy.test_tiers` row with `opt_in: true` via its `cmd` key when the work
     touched the flows it covers (auth, cross-domain happy paths). Needs its own prerequisites —
     see the tier's `notes` doc.
@@ -216,21 +216,21 @@ discretion, never a required gate.
 
 - **Feature plan** → final step is `Plan status → complete`. The plan file **persists** with status
   `complete` (it is the durable record of the decomposition).
-- **Fix plan** → final step is `Plan file deleted`. `.agent/plans/fix/` holds only *active* fixes;
+- **Fix plan** → final step is `Plan file deleted`. `{{paths.docs}}/plans/fix/` holds only *active* fixes;
   once the regression test and any troubleshooting entry are committed, the durable record lives in
-  the test and the docs, not the plan — delete `.agent/plans/fix/<bug-slug>.md`, git history is the
+  the test and the docs, not the plan — delete `{{paths.docs}}/plans/fix/<bug-slug>.md`, git history is the
   archive. Plus a **post-fix troubleshooting update**: if the bug was non-obvious to diagnose (more
   than a few minutes of tracing), add a **Symptom → Root Cause → Fix → Prevention** entry to the
   troubleshooting docs for the affected layer.
-The per-layer troubleshooting docs are `.agent/backend/troubleshooting.md` (backend) and
-`.agent/frontend/troubleshooting.md` (frontend).
+The per-layer troubleshooting docs are `{{paths.docs}}/backend/troubleshooting.md` (backend) and
+`{{paths.docs}}/frontend/troubleshooting.md` (frontend).
 
 ---
 
 ## Compaction anchor
 
 A workflow session can end two ways: a deliberate SESSION STOP
-(`.agent/workflows/execute-plan.md` § Session Boundaries) between tasks, or a mid-session
+(`{{paths.docs}}/workflows/execute-plan.md` § Session Boundaries) between tasks, or a mid-session
 summarization event the running agent's own context management triggers unasked — compacting away
 the instructions this file loaded at session start. The first is a cold boundary the Session
 Handoff template already covers. The second is a hot one: a long-running agent can compact

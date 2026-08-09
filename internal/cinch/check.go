@@ -23,7 +23,7 @@ func docsPathValue(m *Manifest) string {
 }
 
 // ResolveDocsRoot determines the docs corpus location for root, honoring an
-// optional `paths.docs` key in .agent/manifest. Defaults to ".docs" when no
+// optional `paths.docs` key in .docs/manifest. Defaults to ".docs" when no
 // manifest, or no such key, is present — check must stay zero-config by
 // default. An absolute value is used as-is; a relative value is resolved
 // against root.

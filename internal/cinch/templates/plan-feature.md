@@ -2,9 +2,9 @@
 
 Produce a structured, atomic feature plan before writing any implementation code.
 
-Outputs `.agent/plans/<feature-slug>.md` — a living plan file that tracks domain rules, the test plan, and per-task execution checklists with explicit context manifests.
+Outputs `{{paths.docs}}/plans/<feature-slug>.md` — a living plan file that tracks domain rules, the test plan, and per-task execution checklists with explicit context manifests.
 
-**Do not write implementation code during this workflow.** Writing domain rule docs (via the rule-maintenance workflow, `.agent/workflows/maintain-domain.md`) and plan file content is the only output.
+**Do not write implementation code during this workflow.** Writing domain rule docs (via the rule-maintenance workflow, `{{paths.docs}}/workflows/maintain-domain.md`) and plan file content is the only output.
 
 ---
 
@@ -12,7 +12,7 @@ Outputs `.agent/plans/<feature-slug>.md` — a living plan file that tracks doma
 
 Run this workflow at the start of every non-trivial feature that touches domain logic. Skip for
 pure style changes, dependency bumps, or doc-only edits. Bug work routes through
-`.agent/workflows/fix-bug.md`, not here.
+`{{paths.docs}}/workflows/fix-bug.md`, not here.
 
 ---
 
@@ -73,13 +73,13 @@ Wait for confirmation. Do not proceed until the user confirms or redirects.
 ### 1.5 Write new rules
 
 For each gap or new rule identified, write it to the appropriate `{{paths.docs}}/<domain>.md` via
-`.agent/workflows/maintain-domain.md`. Follow that workflow for placement, numbering, and style.
+`{{paths.docs}}/workflows/maintain-domain.md`. Follow that workflow for placement, numbering, and style.
 
 Do not inline rule text in the plan file. Reference the canonical location instead.
 
 ### 1.6 Fill in the plan file — Domain Rules section
 
-Record the final rule set in `.agent/plans/<feature-slug>.md`:
+Record the final rule set in `{{paths.docs}}/plans/<feature-slug>.md`:
 
 ```markdown
 ## Domain Rules
@@ -105,14 +105,14 @@ Record the final rule set in `.agent/plans/<feature-slug>.md`:
 
 For each rule from Phase 1, write one test row. For complex rules, add an additional row for each edge case.
 
-Classify each test by **tier** — the tiers are defined in `.agent/workflows/task-primitive.md` § Test
+Classify each test by **tier** — the tiers are defined in `{{paths.docs}}/workflows/task-primitive.md` § Test
 tiers (sourced from `manifest.taxonomy.test_tiers`): `integration`, `unit`, `e2e`, `manual`. That
 section holds the TDD policy per tier; e2e/`manual` operational guidance lives in the tier's `notes`
-doc (`.agent/frontend/e2e.md`). Read those rather than re-deriving tiers here.
+doc (`{{paths.docs}}/frontend/e2e.md`). Read those rather than re-deriving tiers here.
 
 ### 2.2 Mark TDD-mandatory tests
 
-Apply each tier's `tdd` policy from `.agent/workflows/task-primitive.md` § Test tiers — do not
+Apply each tier's `tdd` policy from `{{paths.docs}}/workflows/task-primitive.md` § Test tiers — do not
 re-derive it here. Mark TDD-mandatory rows explicitly.
 
 ### 2.3 For each test, record
@@ -154,15 +154,15 @@ Make targets here).
 ## Phase 3: Atomic Task Decomposition — via the task primitive
 
 With the Domain Rules and Test Plan sections confirmed and filled in, decompose the
-implementation using `.agent/workflows/task-primitive.md`. It supplies, unchanged for feature
+implementation using `{{paths.docs}}/workflows/task-primitive.md`. It supplies, unchanged for feature
 work: Atomicity, Context manifest, Verification tiers, Task template, Pre-flight gate, Completion
 ritual, and Compaction anchor — see that file's matching sections.
 
 **Feature-specific inputs to the primitive's gate/ritual:**
 
 - Planning checkpoints to clear: Phase 1 (rules confirmed) and Phase 2 (test plan confirmed).
-- Plan location: `.agent/plans/<feature-slug>.md`, saved with status `in-progress`.
+- Plan location: `{{paths.docs}}/plans/<feature-slug>.md`, saved with status `in-progress`.
 - Completion uses the **feature** lifecycle: the plan file **persists** with status `complete`.
 
-Task execution — working through `T1`, `T2`, … — happens via `.agent/workflows/execute-plan.md`,
+Task execution — working through `T1`, `T2`, … — happens via `{{paths.docs}}/workflows/execute-plan.md`,
 not inline here.
