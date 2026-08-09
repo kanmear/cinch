@@ -8,11 +8,11 @@ import (
 )
 
 func TestSubstitute_KnownVariableSubstitutes(t *testing.T) {
-	out, missing := substitute("see {{some.key}}/overview.md", map[string]string{"some.key": ".agent/domain"})
+	out, missing := substitute("see {{some.key}}/overview.md", map[string]string{"some.key": "some/value"})
 	if len(missing) != 0 {
 		t.Fatalf("want no missing keys, got %v", missing)
 	}
-	want := "see .agent/domain/overview.md"
+	want := "see some/value/overview.md"
 	if out != want {
 		t.Fatalf("substitute: want %q, got %q", want, out)
 	}
@@ -76,7 +76,7 @@ func TestRenderAll_PhilosophyIsCopiedVerbatim(t *testing.T) {
 		t.Fatalf("renderAll: %v", err)
 	}
 	for _, f := range files {
-		if f.Dest == ".agent/workflows/doc-philosophy.md" {
+		if f.Dest == ".docs/workflows/doc-philosophy.md" {
 			if f.Body != philosophySrc {
 				t.Fatalf("philosophy body was not copied verbatim")
 			}
@@ -95,7 +95,7 @@ func TestRenderAll_EmptyManifestDefaultsPathsDocs(t *testing.T) {
 		t.Fatalf("renderAll with empty manifest: want success (paths.docs defaults to %q), got %v", defaultDocsPath, err)
 	}
 	for _, f := range files {
-		if f.Dest == ".agent/workflows/maintain-domain.md" {
+		if f.Dest == ".docs/workflows/maintain-domain.md" {
 			if !strings.Contains(f.Body, defaultDocsPath) {
 				t.Fatalf("maintain-domain.md: want default %q substituted, got:\n%s", defaultDocsPath, f.Body)
 			}
@@ -141,9 +141,9 @@ func TestTitleAndTrigger(t *testing.T) {
 	}{
 		{
 			name:        "plain sentence trigger",
-			body:        "# Domain Rule Maintenance\n\nAdd, edit, or reorganize domain rules in `.agent/domain/`.\n\n## Usage\n",
+			body:        "# Domain Rule Maintenance\n\nAdd, edit, or reorganize domain rules in `.docs/domain/`.\n\n## Usage\n",
 			wantTitle:   "Domain Rule Maintenance",
-			wantTrigger: "Add, edit, or reorganize domain rules in `.agent/domain/`.",
+			wantTrigger: "Add, edit, or reorganize domain rules in `.docs/domain/`.",
 		},
 		{
 			name:        "bold-prefixed trigger, no blank line before it",
@@ -165,9 +165,9 @@ func TestTitleAndTrigger(t *testing.T) {
 		},
 		{
 			name:        "stops before a bullet immediately following, no blank line between",
-			body:        "# Documentation Sync\n\nUpdate `.agent/` documentation to reflect recent code changes.\n- **Note:** more detail here.\n",
+			body:        "# Documentation Sync\n\nUpdate `.docs/` documentation to reflect recent code changes.\n- **Note:** more detail here.\n",
 			wantTitle:   "Documentation Sync",
-			wantTrigger: "Update `.agent/` documentation to reflect recent code changes.",
+			wantTrigger: "Update `.docs/` documentation to reflect recent code changes.",
 		},
 	}
 	for _, tt := range tests {
@@ -190,7 +190,7 @@ func TestRenderAll_IndexListsEveryOtherWorkflow(t *testing.T) {
 	}
 	var index *renderFile
 	for i := range files {
-		if files[i].Dest == ".agent/workflows/index.md" {
+		if files[i].Dest == ".docs/workflows/index.md" {
 			index = &files[i]
 		}
 	}

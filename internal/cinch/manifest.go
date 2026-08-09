@@ -9,9 +9,12 @@ import (
 	"strings"
 )
 
-// manifestPath is the fixed, non-configurable manifest location — no config
-// key for it, matching docsRoot's convention in check.go.
-const manifestPath = ".agent/manifest"
+// manifestPath is the fixed, non-configurable manifest location. It can't
+// itself live under a configurable paths.docs — the manifest is what would
+// define that value, so reading it can't depend on it — so it's pinned to
+// paths.docs's own default instead: out of the box there's exactly one
+// directory, not two.
+const manifestPath = defaultDocsPath + "/manifest"
 
 // Manifest binds the values cinch's workflow templates reference: commands
 // and roots (Stage 2 — value substitution only, no shape). It's a flat

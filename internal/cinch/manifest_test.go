@@ -8,8 +8,8 @@ import (
 
 func writeManifest(t *testing.T, dir, content string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(dir, ".agent"), 0o755); err != nil {
-		t.Fatalf("mkdir .agent: %v", err)
+	if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(manifestPath)), 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", filepath.Dir(manifestPath), err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, manifestPath), []byte(content), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
@@ -38,7 +38,7 @@ func TestLoadManifest_ParsesKeyValue(t *testing.T) {
 func TestLoadManifest_MissingFileFires(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := loadManifest(dir); err == nil {
-		t.Fatalf("loadManifest with no .agent/manifest: want error, got nil")
+		t.Fatalf("loadManifest with no .docs/manifest: want error, got nil")
 	}
 }
 
@@ -55,10 +55,10 @@ func TestLoadManifestOptional_MissingFileIsNotAnError(t *testing.T) {
 	dir := t.TempDir()
 	m, err := loadManifestOptional(dir)
 	if err != nil {
-		t.Fatalf("loadManifestOptional with no .agent/manifest: want nil error, got %v", err)
+		t.Fatalf("loadManifestOptional with no .docs/manifest: want nil error, got %v", err)
 	}
 	if m != nil {
-		t.Fatalf("loadManifestOptional with no .agent/manifest: want nil manifest, got %v", m)
+		t.Fatalf("loadManifestOptional with no .docs/manifest: want nil manifest, got %v", m)
 	}
 }
 

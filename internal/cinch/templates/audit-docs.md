@@ -1,18 +1,18 @@
 # Documentation Audit
 
-Audit `.agent/` documentation for philosophy violations, bloat, and staleness.
+Audit `{{paths.docs}}/` documentation for philosophy violations, bloat, and staleness.
 
-Read `.agent/workflows/doc-philosophy.md` — every check below enforces these principles.
+Read `{{paths.docs}}/workflows/doc-philosophy.md` — every check below enforces these principles.
 
 ## Usage
 
-Scan all `.agent/` docs and fix violations.
+Scan all `{{paths.docs}}/` docs and fix violations.
 
 ## Instructions
 
 ### 1. Load context
-- Read `.agent/index.md` (the generated doc map) for the full doc index
-- Read `.agent/manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
+- Read `{{paths.docs}}/index.md` (the generated doc map) for the full doc index
+- Read `.docs/manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
 ### 2. Prune first — the admission test applied retroactively
 Apply the admission test (doc-philosophy, The Admission Test) to every existing doc, not just new content:
@@ -24,21 +24,21 @@ Apply the admission test (doc-philosophy, The Admission Test) to every existing 
   green, not just smaller.
 
 ### 3. Audit each doc file
-Read every `.md` file under `.agent/`. For each, check:
+Read every `.md` file under `{{paths.docs}}/`. For each, check:
 
 **Speculative content** (principle 5)
 - References to unimplemented features, "planned" sections, example code for things that don't exist
 - Check: does the described thing exist in the codebase?
 
 **Duplication** (principle 3)
-- Info that duplicates another doc or .agent/manifest
+- Info that duplicates another doc or .docs/manifest
 - Check: is the same fact stated in two places? Has it diverged?
-- Specifically watch for a value resolved from `.agent/manifest` (e.g. `taxonomy.test_tiers`,
+- Specifically watch for a value resolved from `.docs/manifest` (e.g. `taxonomy.test_tiers`,
   `development.commands`) restated as prose or a table in a workflow doc instead of referenced —
   this drifts silently whenever the manifest changes
 
 **Bloated link sections** (principle 4)
-- "Related Documentation" sections that list every doc (that's what the generated `.agent/index.md` is for)
+- "Related Documentation" sections that list every doc (that's what the generated `{{paths.docs}}/index.md` is for)
 - Check: are links scoped to directly related docs only (3-7 links)?
 
 **Code duplication** (principle 2)

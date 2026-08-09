@@ -1,8 +1,8 @@
 # Documentation Sync
 
-Update `.agent/` documentation to reflect recent code changes.
+Update `{{paths.docs}}/` documentation to reflect recent code changes.
 - **Note:** if the doc structure changed (a doc added, removed, renamed, or retitled), regenerate
-  the doc map and stage `.agent/index.md`. AGENTS.md itself only changes when a top-level
+  the doc map and stage `{{paths.docs}}/index.md`. AGENTS.md itself only changes when a top-level
   reading-guide entry point changes.
 
 Read [Doc Philosophy](doc-philosophy.md) before proceeding — it defines what to document and what to skip.
@@ -65,7 +65,7 @@ Read the changed source files and classify each change:
 **Regular Documentation Updates** (most changes):
 - New API endpoints or modified endpoint contracts → `api/[domain].md`
 - New/changed data models → `models/[entity].md`
-- Environment variables, ports, commands → `.agent/manifest`
+- Environment variables, ports, commands → `.docs/manifest`
 - File structure changes → relevant `architecture.md`
 - Architectural decisions → `conventions.md`
 
@@ -99,16 +99,16 @@ Detect these by looking for:
 | ----------- | ------------- |
 | New/changed API endpoint | `api/[domain].md` |
 | New/changed data model | `models/[entity].md` |
-| Env var / Make-npm command / port | `.agent/manifest` |
+| Env var / Make-npm command / port | `.docs/manifest` |
 | New directory / major file move | relevant `architecture.md` |
 | Project-wide convention or architectural decision | root `conventions.md` / relevant `architecture.md` |
 | Service-specific pattern | `[service]/conventions.md` |
-| Frontend quirk | `.agent/frontend/conventions.md` § Quirks and Gotchas |
-| Backend quirk | `.agent/backend/troubleshooting.md` § Quirks |
+| Frontend quirk | `{{paths.docs}}/frontend/conventions.md` § Quirks and Gotchas |
+| Backend quirk | `{{paths.docs}}/backend/troubleshooting.md` § Quirks |
 | Cross-cutting quirk | root docs only if a real quirks heading exists; otherwise the closest service troubleshooting § Quirks |
 | Common / recurring issue | `[service]/troubleshooting.md` § Common Issues (infra → `deployment.md`) |
 
-**For Regular Updates:** consult `.agent/index.md`, read only the affected docs, update ONLY the
+**For Regular Updates:** consult `{{paths.docs}}/index.md`, read only the affected docs, update ONLY the
 affected sections. Focus on facts: endpoint specs, config values, file locations, architectural
 decisions.
 
@@ -119,7 +119,7 @@ Keep it brief; reference the source file for full implementation.
 enough detail to diagnose and fix.
 
 **Out of scope:** `{{paths.docs}}/` docs are not updated by this workflow. Domain rule changes are
-managed separately via `.agent/workflows/maintain-domain.md`.
+managed separately via `{{paths.docs}}/workflows/maintain-domain.md`.
 
 **When to Create a New Doc File:**
 
@@ -129,12 +129,12 @@ Create a new file when:
 - A component/module has complex, non-obvious behavior that agents will need repeatedly
 
 Place new docs in the appropriate subfolder:
-- API contracts → `.agent/api/`
-- Data models → `.agent/models/`
-- Component-specific → `.agent/frontend/components/`
-- Module-specific → `.agent/backend/[module]/`
+- API contracts → `{{paths.docs}}/api/`
+- Data models → `{{paths.docs}}/models/`
+- Component-specific → `{{paths.docs}}/frontend/components/`
+- Module-specific → `{{paths.docs}}/backend/[module]/`
 
-**After adding, removing, renaming, or retitling any doc:** regenerate and stage `.agent/index.md`.
+**After adding, removing, renaming, or retitling any doc:** regenerate and stage `{{paths.docs}}/index.md`.
 The doc map is generated from each file's H1 — never hand-edit it, and never maintain a parallel
 tree elsewhere.
 
@@ -153,7 +153,7 @@ Classification decision rules (not covered by philosophy alone):
   and could recur); don't mark standard patterns as "quirks" (only actual workarounds); don't skip
   quirk detection just because code "seems normal" — if it required research to find the solution,
   it's a quirk.
-- **Wrong location within `.agent/`** — use the routing table in §4; API specs belong in
+- **Wrong location within `{{paths.docs}}/`** — use the routing table in §4; API specs belong in
   `api/[domain].md`, model schemas in `models/[entity].md`.
 
 ## Summary Checklist
