@@ -18,7 +18,7 @@ usage:
                           rule-reword escape hatch consults it.
   cinch ignores           list every cinch:ignore declaration and its
                           reason. Not a check: always exits 0.
-  cinch render            render philosophy.md and templates/*.md into
+  cinch render            render docs/philosophy.md and docs/templates/*.md into
                           paths.docs's workflows/ subdirectory (default
                           .docs/workflows/), substituting values from
                           .docs/manifest. Idempotent — a re-render diff

@@ -55,16 +55,16 @@ func TestSubstitute_NoVariablesIsUnchanged(t *testing.T) {
 }
 
 func TestHeader_IdenticalInputsProduceIdenticalHeader(t *testing.T) {
-	a := header("templates/maintain-domain.md", "same body")
-	b := header("templates/maintain-domain.md", "same body")
+	a := header("docs/templates/maintain-domain.md", "same body")
+	b := header("docs/templates/maintain-domain.md", "same body")
 	if a != b {
 		t.Fatalf("header: want identical output for identical input, got %q vs %q", a, b)
 	}
 }
 
 func TestHeader_DifferentBodyProducesDifferentHash(t *testing.T) {
-	a := header("templates/maintain-domain.md", "body one")
-	b := header("templates/maintain-domain.md", "body two")
+	a := header("docs/templates/maintain-domain.md", "body one")
+	b := header("docs/templates/maintain-domain.md", "body two")
 	if a == b {
 		t.Fatalf("header: want different hash for different body, got identical %q", a)
 	}

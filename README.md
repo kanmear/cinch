@@ -38,7 +38,7 @@ agent to write is guaranteed to be one `cinch check` actually scans:
 
 `cinch render` writes into `paths.docs`'s `workflows/` subdirectory (default
 `.docs/workflows/`): `doc-philosophy.md` (copied verbatim — no variables, no
-renderer needed), one file per template under `internal/cinch/templates/`
+renderer needed), one file per template under `internal/cinch/docs/templates/`
 (value-substituted against `.docs/manifest`), and `index.md` — a trigger
 table generated from every other rendered file's own title and opening line,
 no hand-authored content. Every
@@ -95,13 +95,13 @@ fixtures end-to-end.
   `internal/cinch/coupling.go` — one file per check, each paired with a
   `_test.go` carrying its mutation fixtures.
 - `internal/cinch/render.go` — the `{{key}}` substituter, header/body-sha,
-  the generated workflow index, and `CmdRender`; embeds `philosophy.md` and
-  the whole `templates/` directory via `go:embed` (single static binary, no
-  runtime template resolution) and iterates it, so adding a template needs no
-  code change.
+  the generated workflow index, and `CmdRender`; embeds `docs/philosophy.md`
+  and the whole `docs/templates/` directory via `go:embed` (single static
+  binary, no runtime template resolution) and iterates it, so adding a
+  template needs no code change.
 - `internal/cinch/manifest.go` — the `.docs/manifest` parser.
-- `internal/cinch/philosophy.md` — copied verbatim into every consumer.
-- `internal/cinch/templates/*.md` — the eight workflow templates Stage 2
+- `internal/cinch/docs/philosophy.md` — copied verbatim into every consumer.
+- `internal/cinch/docs/templates/*.md` — the eight workflow templates Stage 2
   ships (`audit-docs`, `audit-domain`, `execute-plan`, `fix-bug`,
   `maintain-domain`, `plan-feature`, `sync-docs`, `task-primitive`); each renders to
   `<paths.docs>/workflows/<name>.md`, plus a generated
