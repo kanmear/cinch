@@ -19,7 +19,7 @@ that runs it (`cmd`, resolved against `development.commands`), and whether it is
 a different stack redefines its tiers in the manifest; everything below is unchanged.
 
 For this repo's resolved tier bindings — which layer each tier enforces, its TDD policy, and the
-command that runs it — read `manifest.yml`'s `taxonomy.test_tiers` directly rather than a copy
+command that runs it — read `.agent/manifest`'s `taxonomy.test_tiers` directly rather than a copy
 here; that block is the single source and each row is self-describing (`id`, `tdd`, `cmd`,
 `opt_in`, `automatable`).
 
