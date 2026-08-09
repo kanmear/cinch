@@ -88,7 +88,7 @@ something; include it if a decision hinges on it. List in loading order with a o
 
 ```
 1. .agent/models/<entity>.md — struct and existing queries
-2. {{paths.domain}}/<domain>.md — rules this task must enforce
+2. {{paths.docs}}/<domain>.md — rules this task must enforce
 3. .agent/<service>/conventions.md — query patterns (repository interface)
 ```
 
@@ -103,7 +103,7 @@ orientation material.
 - .agent/<service A>/conventions.md
 - .agent/<service B>/architecture.md   ← irrelevant to a <layer A> task
 - .agent/<service B>/conventions.md    ← irrelevant to a <layer A> task
-- {{paths.domain}}/overview.md       ← too broad; load the specific domain file
+- {{paths.docs}}/overview.md       ← too broad; load the specific domain file
 - .agent/models/<entity>.md
 - .agent/api/<domain>.md               ← irrelevant at the model layer
 ```
@@ -178,7 +178,7 @@ Task execution itself — working through `T1`, `T2`, … — happens via the ex
 Do not write the first task until:
 
 - [ ] Every planning-phase ⛔ checkpoint the calling workflow defines has been cleared with the user
-- [ ] New/clarified domain rules written via the rules workflow (`.agent/workflows/rules.md`)
+- [ ] New/clarified domain rules written via the rules workflow (`.agent/workflows/maintain-domain.md`)
       — not inlined in the plan
 - [ ] Every task is one independently verifiable concern; any multi-layer task explains why its
       layers cannot pass independently
@@ -201,7 +201,7 @@ The required checks are shared; the **plan-file lifecycle differs by plan type**
 ## Completion
 [ ] `make test` — full regression
 [ ] `make check` — typecheck + lint clean
-[ ] coverage audit (`.agent/workflows/check-rules.md`) — every domain rule has a test
+[ ] coverage audit (`.agent/workflows/audit-domain.md`) — every domain rule has a test
 [ ] doc sync (`.agent/workflows/sync-docs.md`) — update .agent/ docs if any interfaces changed
 [ ] (opt-in) run each `taxonomy.test_tiers` row with `opt_in: true` via its `cmd` key when the work
     touched the flows it covers (auth, cross-domain happy paths). Needs its own prerequisites —

@@ -225,7 +225,7 @@ func TestRender_EndToEndAndIdempotent(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".agent"), 0o755); err != nil {
 		t.Fatalf("mkdir .agent: %v", err)
 	}
-	manifest := "paths.domain = .agent/domain\n"
+	manifest := "paths.docs = .agent/docs\n"
 	if err := os.WriteFile(filepath.Join(dir, ".agent", "manifest"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
@@ -242,11 +242,11 @@ func TestRender_EndToEndAndIdempotent(t *testing.T) {
 
 	wantNamed := []string{
 		".agent/workflows/doc-philosophy.md",
-		".agent/workflows/rules.md",
-		".agent/workflows/check-rules.md",
+		".agent/workflows/maintain-domain.md",
+		".agent/workflows/audit-domain.md",
 		".agent/workflows/execute-plan.md",
 		".agent/workflows/fix-bug.md",
-		".agent/workflows/optimize-docs.md",
+		".agent/workflows/audit-docs.md",
 		".agent/workflows/plan-feature.md",
 		".agent/workflows/sync-docs.md",
 		".agent/workflows/task-primitive.md",

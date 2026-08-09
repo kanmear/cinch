@@ -118,8 +118,8 @@ Keep it brief; reference the source file for full implementation.
 **For Common Issues:** format **Symptom** → **Root Cause** → **Fix** → **Prevention**. Include just
 enough detail to diagnose and fix.
 
-**Out of scope:** `{{paths.domain}}/` docs are not updated by this workflow. Domain rule changes are
-managed separately via `.agent/workflows/rules.md`.
+**Out of scope:** `{{paths.docs}}/` docs are not updated by this workflow. Domain rule changes are
+managed separately via `.agent/workflows/maintain-domain.md`.
 
 **When to Create a New Doc File:**
 
