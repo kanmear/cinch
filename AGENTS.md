@@ -15,11 +15,13 @@ one templated workflow). See README.md.**
 - `.docs/cinch-rebuild-plan.md` — the staged rebuild plan. Stage 1 and Stage 2
   done, Stage 3 next.
 - `README.md` — the orientation artifact: status, layout map, pointers.
-- `main.go`, `check.go`, `links.go`, `rules.go`, `coupling.go` — the CLI and
-  the three checks, each paired with a `_test.go` carrying its mutation
-  fixtures. `render.go`, `manifest.go` — the `render` command: `{{key}}`
-  substitution and the `.agent/manifest` parser. `philosophy.md`,
-  `templates/rules.md` — the content `render` ships, embedded via `go:embed`.
+- `main.go` — CLI dispatch, the only `package main` file. Everything else
+  lives in `internal/cinch` (compiler-enforced private to this module):
+  `check.go`, `links.go`, `rules.go`, `coupling.go` — the three checks, each
+  paired with a `_test.go` carrying its mutation fixtures. `render.go`,
+  `manifest.go` — the `render` command: `{{key}}` substitution and the
+  `.agent/manifest` parser. `philosophy.md`, `templates/rules.md` — the
+  content `render` ships, embedded via `go:embed`.
   `tests/` — CLI-level tests against the built binary. `Makefile` —
   `build` / `test`.
 

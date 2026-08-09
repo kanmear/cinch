@@ -59,17 +59,21 @@ fixtures end-to-end.
 
 ## Layout
 
-- `main.go` — CLI dispatch (`check`, `ignores`, `render`).
-- `check.go` — the `Finding` model and `cmdCheck` orchestrator.
-- `links.go`, `rules.go`, `coupling.go` — one file per check, each paired with
-  a `_test.go` carrying its mutation fixtures.
-- `render.go` — the `{{key}}` substituter, header/body-sha, and `cmdRender`;
-  embeds `philosophy.md` and `templates/*.md` via `go:embed` (single static
-  binary, no runtime template resolution).
-- `manifest.go` — the `.agent/manifest` parser.
-- `philosophy.md` — copied verbatim into every consumer.
-- `templates/rules.md` — the one workflow template Stage 2 ships; more will
-  land as the taxonomy/fragment-free templates they need are written.
+- `main.go` — CLI dispatch (`check`, `ignores`, `render`); the only
+  `package main` file — everything else lives in `internal/cinch`, a private
+  package the Go compiler forbids other modules from importing.
+- `internal/cinch/check.go` — the `Finding` model and `CmdCheck` orchestrator.
+- `internal/cinch/links.go`, `internal/cinch/rules.go`,
+  `internal/cinch/coupling.go` — one file per check, each paired with a
+  `_test.go` carrying its mutation fixtures.
+- `internal/cinch/render.go` — the `{{key}}` substituter, header/body-sha,
+  and `CmdRender`; embeds `philosophy.md` and `templates/*.md` via
+  `go:embed` (single static binary, no runtime template resolution).
+- `internal/cinch/manifest.go` — the `.agent/manifest` parser.
+- `internal/cinch/philosophy.md` — copied verbatim into every consumer.
+- `internal/cinch/templates/rules.md` — the one workflow template Stage 2
+  ships; more will land as the taxonomy/fragment-free templates they need
+  are written.
 - `.docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six
   principles (deterministic over semantic, the direction rule, the
   derivability and holdability gates, rule→test markers, bind values not
