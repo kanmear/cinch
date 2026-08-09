@@ -139,7 +139,7 @@ Wait for confirmation.
 
 ### 3.1 Cross-reference with domain rules
 
-Read the relevant `{{paths.domain}}/<domain>.md` file(s). Check:
+Read the relevant `{{paths.docs}}/<domain>.md` file(s). Check:
 
 1. **Is there an existing rule that this code should enforce?** If yes, the bug is a rule violation — the fix is to make the code match the rule.
 2. **Is there no rule for this case?** If the behavior is currently undefined, a new rule is needed before fixing.
@@ -147,7 +147,7 @@ Read the relevant `{{paths.domain}}/<domain>.md` file(s). Check:
 
 ### 3.2 Write missing rules
 
-If the bug revealed a missing rule, write it via the rules workflow (`.agent/workflows/rules.md`). Don't inline rule text in the plan file — reference the canonical location.
+If the bug revealed a missing rule, write it via the rules workflow (`.agent/workflows/maintain-domain.md`). Don't inline rule text in the plan file — reference the canonical location.
 
 ### 3.3 Skip if not applicable
 

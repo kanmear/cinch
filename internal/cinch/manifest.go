@@ -28,7 +28,7 @@ func loadManifest(root string) (*Manifest, error) {
 	path := filepath.Join(root, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("%s: not found — cinch render needs a manifest binding its template variables, e.g.:\n  paths.domain = .agent/domain", path)
+		return nil, fmt.Errorf("%s: not found — cinch render needs a manifest file to bind template variables against, e.g.:\n  paths.docs = .docs", path)
 	}
 	return m, err
 }

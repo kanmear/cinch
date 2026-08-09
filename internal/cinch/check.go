@@ -7,25 +7,32 @@ import (
 	"sort"
 )
 
+const pathsDocsKey = "paths.docs"
+const defaultDocsPath = ".docs"
+
+// docsPathValue returns m's paths.docs value, or the default when unset or m
+// is nil. Shared with render.go so {{paths.docs}} in templates always
+// resolves to the same root cinch check itself scans.
+func docsPathValue(m *Manifest) string {
+	if m != nil {
+		if v, ok := m.Vars[pathsDocsKey]; ok && v != "" {
+			return v
+		}
+	}
+	return defaultDocsPath
+}
+
 // ResolveDocsRoot determines the docs corpus location for root, honoring an
 // optional `paths.docs` key in .agent/manifest. Defaults to ".docs" when no
 // manifest, or no such key, is present — check must stay zero-config by
 // default. An absolute value is used as-is; a relative value is resolved
 // against root.
 func ResolveDocsRoot(root string) (string, error) {
-	const key = "paths.docs"
-	const defaultDocs = ".docs"
-
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return "", err
 	}
-	val := defaultDocs
-	if m != nil {
-		if v, ok := m.Vars[key]; ok && v != "" {
-			val = v
-		}
-	}
+	val := docsPathValue(m)
 	if filepath.IsAbs(val) {
 		return val, nil
 	}

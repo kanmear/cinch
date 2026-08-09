@@ -8,7 +8,7 @@ import (
 )
 
 func TestSubstitute_KnownVariableSubstitutes(t *testing.T) {
-	out, missing := substitute("see {{paths.domain}}/overview.md", map[string]string{"paths.domain": ".agent/domain"})
+	out, missing := substitute("see {{some.key}}/overview.md", map[string]string{"some.key": ".agent/domain"})
 	if len(missing) != 0 {
 		t.Fatalf("want no missing keys, got %v", missing)
 	}
@@ -19,7 +19,7 @@ func TestSubstitute_KnownVariableSubstitutes(t *testing.T) {
 }
 
 func TestSubstitute_CommandsVariableSubstitutes(t *testing.T) {
-	out, missing := substitute("run `{{commands.check}}` first", map[string]string{"commands.check": "make check"})
+	out, missing := substitute("run `{{other.key}}` first", map[string]string{"other.key": "make check"})
 	if len(missing) != 0 {
 		t.Fatalf("want no missing keys, got %v", missing)
 	}
@@ -30,14 +30,14 @@ func TestSubstitute_CommandsVariableSubstitutes(t *testing.T) {
 }
 
 func TestSubstitute_UndefinedVariableFires(t *testing.T) {
-	out, missing := substitute("see {{paths.domain}}/x.md and {{commands.check}}", nil)
+	out, missing := substitute("see {{some.key}}/x.md and {{other.key}}", nil)
 	if len(missing) != 2 {
 		t.Fatalf("want 2 missing keys, got %v", missing)
 	}
-	if missing[0] != "commands.check" || missing[1] != "paths.domain" {
-		t.Fatalf("want sorted [commands.check paths.domain], got %v", missing)
+	if missing[0] != "other.key" || missing[1] != "some.key" {
+		t.Fatalf("want sorted [other.key some.key], got %v", missing)
 	}
-	want := "see {{paths.domain}}/x.md and {{commands.check}}"
+	want := "see {{some.key}}/x.md and {{other.key}}"
 	if out != want {
 		t.Fatalf("substitute: want tokens left intact %q, got %q", want, out)
 	}
@@ -55,23 +55,23 @@ func TestSubstitute_NoVariablesIsUnchanged(t *testing.T) {
 }
 
 func TestHeader_IdenticalInputsProduceIdenticalHeader(t *testing.T) {
-	a := header("templates/rules.md", "same body")
-	b := header("templates/rules.md", "same body")
+	a := header("templates/maintain-domain.md", "same body")
+	b := header("templates/maintain-domain.md", "same body")
 	if a != b {
 		t.Fatalf("header: want identical output for identical input, got %q vs %q", a, b)
 	}
 }
 
 func TestHeader_DifferentBodyProducesDifferentHash(t *testing.T) {
-	a := header("templates/rules.md", "body one")
-	b := header("templates/rules.md", "body two")
+	a := header("templates/maintain-domain.md", "body one")
+	b := header("templates/maintain-domain.md", "body two")
 	if a == b {
 		t.Fatalf("header: want different hash for different body, got identical %q", a)
 	}
 }
 
 func TestRenderAll_PhilosophyIsCopiedVerbatim(t *testing.T) {
-	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}})
+	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.docs": ".docs"}})
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -89,10 +89,20 @@ func TestRenderAll_PhilosophyIsCopiedVerbatim(t *testing.T) {
 	t.Fatalf("renderAll: doc-philosophy.md not produced")
 }
 
-func TestRenderAll_UndefinedVariableFires(t *testing.T) {
-	if _, err := renderAll(&Manifest{Vars: nil}); err == nil {
-		t.Fatalf("renderAll with no paths.domain: want error, got nil")
+func TestRenderAll_EmptyManifestDefaultsPathsDocs(t *testing.T) {
+	files, err := renderAll(&Manifest{Vars: nil})
+	if err != nil {
+		t.Fatalf("renderAll with empty manifest: want success (paths.docs defaults to %q), got %v", defaultDocsPath, err)
 	}
+	for _, f := range files {
+		if f.Dest == ".agent/workflows/maintain-domain.md" {
+			if !strings.Contains(f.Body, defaultDocsPath) {
+				t.Fatalf("maintain-domain.md: want default %q substituted, got:\n%s", defaultDocsPath, f.Body)
+			}
+			return
+		}
+	}
+	t.Fatalf("renderAll: maintain-domain.md not produced")
 }
 
 func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndIndex(t *testing.T) {
@@ -100,7 +110,7 @@ func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading embedded templates: %v", err)
 	}
-	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}})
+	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.docs": ".docs"}})
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -111,7 +121,7 @@ func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndIndex(t *testing.T) {
 }
 
 func TestRenderAll_EveryTemplateFullySubstitutes(t *testing.T) {
-	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}})
+	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.docs": ".docs"}})
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -119,23 +129,6 @@ func TestRenderAll_EveryTemplateFullySubstitutes(t *testing.T) {
 		if strings.Contains(f.Body, "{{") {
 			t.Fatalf("%s: unresolved {{}} token in rendered body", f.Dest)
 		}
-	}
-}
-
-func TestRenderAll_UndefinedVariableNamesEveryAffectedTemplate(t *testing.T) {
-	_, err := renderAll(&Manifest{Vars: nil})
-	if err == nil {
-		t.Fatalf("renderAll with no paths.domain: want error, got nil")
-	}
-	msg := err.Error()
-	// paths.domain is used by more than one template — the error must name
-	// each affected template, not just the first one found.
-	count := strings.Count(msg, "paths.domain")
-	if count < 2 {
-		t.Fatalf("renderAll error: want paths.domain named for multiple templates, got %d mention(s):\n%s", count, msg)
-	}
-	if !strings.Contains(msg, "templates/check-rules.md") || !strings.Contains(msg, "templates/rules.md") {
-		t.Fatalf("renderAll error: want both templates/check-rules.md and templates/rules.md named:\n%s", msg)
 	}
 }
 
@@ -191,7 +184,7 @@ func TestTitleAndTrigger(t *testing.T) {
 }
 
 func TestRenderAll_IndexListsEveryOtherWorkflow(t *testing.T) {
-	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}})
+	files, err := renderAll(&Manifest{Vars: map[string]string{"paths.docs": ".docs"}})
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -216,7 +209,7 @@ func TestRenderAll_IndexListsEveryOtherWorkflow(t *testing.T) {
 }
 
 func TestRenderAll_IdempotentReRender(t *testing.T) {
-	m := &Manifest{Vars: map[string]string{"paths.domain": ".agent/domain"}}
+	m := &Manifest{Vars: map[string]string{"paths.docs": ".docs"}}
 	first, err := renderAll(m)
 	if err != nil {
 		t.Fatalf("renderAll (first): %v", err)

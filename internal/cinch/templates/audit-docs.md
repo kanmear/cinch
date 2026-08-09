@@ -18,7 +18,7 @@ Scan all `.agent/` docs and fix violations.
 Apply the admission test (doc-philosophy, The Admission Test) to every existing doc, not just new content:
 - Any content an agent could recover by reading the source is **removed — not trimmed, not refreshed**.
   Deletion is the fix, and the corpus must only shrink here.
-- What survives: business rules in `{{paths.domain}}/` (the non-derivable residue, IDed and guarded by the
+- What survives: business rules in `{{paths.docs}}/` (the non-derivable residue, IDed and guarded by the
   rule-ID closure and the change-coupling warning) and generated workflows (cinch-owned).
 - After pruning, re-run `cinch check` and regenerate the index — deletion must leave the corpus
   green, not just smaller.

@@ -4,7 +4,7 @@ Produce a structured, atomic feature plan before writing any implementation code
 
 Outputs `.agent/plans/<feature-slug>.md` — a living plan file that tracks domain rules, the test plan, and per-task execution checklists with explicit context manifests.
 
-**Do not write implementation code during this workflow.** Writing domain rule docs (via the rule-maintenance workflow, `.agent/workflows/rules.md`) and plan file content is the only output.
+**Do not write implementation code during this workflow.** Writing domain rule docs (via the rule-maintenance workflow, `.agent/workflows/maintain-domain.md`) and plan file content is the only output.
 
 ---
 
@@ -23,11 +23,11 @@ pure style changes, dependency bumps, or doc-only edits. Bug work routes through
 ### 1.1 Identify affected domains
 
 From the feature description, identify which domains are involved. The domain list is the set of
-files in `{{paths.domain}}/` minus `overview.md` — list that directory
+files in `{{paths.docs}}/` minus `overview.md` — list that directory
 to see the current domains; each `<domain>.md` is one domain. (There is deliberately no domain list
 in the manifest to copy out of sync — the filesystem is the source.)
 
-Read only the relevant files. If uncertain which domains apply, read `{{paths.domain}}/overview.md`
+Read only the relevant files. If uncertain which domains apply, read `{{paths.docs}}/overview.md`
 first for orientation.
 
 ### 1.2 List applicable rules
@@ -72,8 +72,8 @@ Wait for confirmation. Do not proceed until the user confirms or redirects.
 
 ### 1.5 Write new rules
 
-For each gap or new rule identified, write it to the appropriate `{{paths.domain}}/<domain>.md` via
-`.agent/workflows/rules.md`. Follow that workflow for placement, numbering, and style.
+For each gap or new rule identified, write it to the appropriate `{{paths.docs}}/<domain>.md` via
+`.agent/workflows/maintain-domain.md`. Follow that workflow for placement, numbering, and style.
 
 Do not inline rule text in the plan file. Reference the canonical location instead.
 
@@ -84,7 +84,7 @@ Record the final rule set in `.agent/plans/<feature-slug>.md`:
 ```markdown
 ## Domain Rules
 
-### Existing Rules (from {{paths.domain}}/)
+### Existing Rules (from {{paths.docs}}/)
 - [domain.md #N] Rule summary
 
 ### New Rules (written during planning)

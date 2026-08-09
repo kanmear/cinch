@@ -18,14 +18,14 @@ func writeManifest(t *testing.T, dir, content string) {
 
 func TestLoadManifest_ParsesKeyValue(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "# comment\npaths.domain = .agent/domain\ncommands.check = make check\n\n")
+	writeManifest(t, dir, "# comment\nfoo.bar = baz\ncommands.check = make check\n\n")
 
 	m, err := loadManifest(dir)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
 	}
-	if m.Vars["paths.domain"] != ".agent/domain" {
-		t.Fatalf("paths.domain: want %q, got %q", ".agent/domain", m.Vars["paths.domain"])
+	if m.Vars["foo.bar"] != "baz" {
+		t.Fatalf("foo.bar: want %q, got %q", "baz", m.Vars["foo.bar"])
 	}
 	if m.Vars["commands.check"] != "make check" {
 		t.Fatalf("commands.check: want %q, got %q", "make check", m.Vars["commands.check"])
