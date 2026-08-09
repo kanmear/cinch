@@ -10,8 +10,7 @@ The previous implementation was purged on 2026-08-07: every checker,
 template, self-harness, and operational artifact was deleted. Git history is
 the archive of everything that was tried; `.docs/PRINCIPLES.md` is the memory
 of what survived contact with evidence — six principles ranked by what was
-tested and passed, not by what seemed clever. `.docs/cinch-rebuild-plan.md` is
-the staged plan the rebuild follows.
+tested and passed, not by what seemed clever.
 
 `cinch check` runs three checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
@@ -111,8 +110,6 @@ fixtures end-to-end.
   derivability and holdability gates, rule→test markers, bind values not
   shape, no proxy metrics), each with the evidence that earned it and its
   rebuild constraint.
-- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan; Stage 1 and Stage 2
-  done, Stage 3 (a second real repo, and letting it strain) next.
 - `tests/` — CLI-level tests exercising the built binary.
 - `Makefile` — `build`, `test`.
 
@@ -135,4 +132,4 @@ runs on any repo with no configuration required (the docs root defaults to
 `cinch render` copies philosophy verbatim, templates eight workflows by value
 substitution, generates a workflow index from their rendered bodies, and has
 rendered into a real repo. Next is Stage 3 — a second real repo, and letting
-it strain — per `.docs/cinch-rebuild-plan.md`.
+it strain.
