@@ -169,11 +169,10 @@ func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
 // source's authored markers must agree in both directions (principle 4's own
 // worked example).
 //
-// cinch:ignore is a declaration, not a suppression (see standing rule 3 in
-// .docs/cinch-rebuild-plan.md): a rule marked ignore with a reason is exempt
-// from the missing-marker finding, but a rule that is both ignored and
-// marked is a contradiction and is itself a finding, and an ignore with no
-// reason is malformed and is itself a finding.
+// cinch:ignore is a declaration, not a suppression: a rule marked ignore
+// with a reason is exempt from the missing-marker finding, but a rule that
+// is both ignored and marked is a contradiction and is itself a finding,
+// and an ignore with no reason is malformed and is itself a finding.
 func checkRules(docsDir, repoRoot string) []Finding {
 	items := scanRuleDocs(docsDir)
 	markers := scanRuleMarkers(repoRoot, docsDir)

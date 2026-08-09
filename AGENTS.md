@@ -12,8 +12,6 @@ eight workflows templated). See README.md.**
   ranked by evidence, each with its rebuild constraint. Read this before any
   rebuild work; it is the only memory of the old design that is allowed in the
   room — the old design itself is git history.
-- `.docs/cinch-rebuild-plan.md` — the staged rebuild plan. Stage 1 and Stage 2
-  done, Stage 3 next.
 - `README.md` — the orientation artifact: status, layout map, pointers.
 - `main.go` — CLI dispatch, the only `package main` file. Everything else
   lives in `internal/cinch` (compiler-enforced private to this module):
@@ -45,7 +43,4 @@ Recovering old material from git is normal; committing it back is not.
 
 ## Session start
 
-Read `.docs/PRINCIPLES.md`, then `.docs/cinch-rebuild-plan.md`. The plan is
-deliberately short — if it grows past two pages, that's the failure it exists
-to avoid — and is not the old roadmap; the purge deleted that, and this one
-is planned against the principles, staged, one stage at a time.
+Read `.docs/PRINCIPLES.md` before any rebuild work.
