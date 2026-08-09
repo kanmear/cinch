@@ -20,7 +20,7 @@ eight workflows templated). See README.md.**
   `check.go`, `links.go`, `rules.go`, `coupling.go` — the three checks, each
   paired with a `_test.go` carrying its mutation fixtures. `render.go`,
   `manifest.go` — the `render` command: `{{key}}` substitution and the
-  `.agent/manifest` parser. `philosophy.md`, `templates/*.md` (eight
+  `.docs/manifest` parser. `philosophy.md`, `templates/*.md` (eight
   workflows) — the content `render` ships, embedded via `go:embed`.
   `tests/` — CLI-level tests against the built binary. `Makefile` —
   `build` / `test`.
