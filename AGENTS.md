@@ -4,7 +4,7 @@ A referential integrity checker for the operational documentation that governs
 a repository — the rules, workflows, and conventions code must conform to, read
 by humans and executed by agents. **Status: Stage 2 landed —
 three checks (links, rules, coupling) plus `render` (philosophy verbatim,
-one templated workflow). See README.md.**
+eight workflows templated). See README.md.**
 
 ## What this repo is
 
@@ -20,8 +20,8 @@ one templated workflow). See README.md.**
   `check.go`, `links.go`, `rules.go`, `coupling.go` — the three checks, each
   paired with a `_test.go` carrying its mutation fixtures. `render.go`,
   `manifest.go` — the `render` command: `{{key}}` substitution and the
-  `.agent/manifest` parser. `philosophy.md`, `templates/rules.md` — the
-  content `render` ships, embedded via `go:embed`.
+  `.agent/manifest` parser. `philosophy.md`, `templates/*.md` (eight
+  workflows) — the content `render` ships, embedded via `go:embed`.
   `tests/` — CLI-level tests against the built binary. `Makefile` —
   `build` / `test`.
 
