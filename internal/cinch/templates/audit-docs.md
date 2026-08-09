@@ -12,7 +12,7 @@ Scan all `.agent/` docs and fix violations.
 
 ### 1. Load context
 - Read `.agent/index.md` (the generated doc map) for the full doc index
-- Read `manifest.yml` for the source-of-truth on env vars, ports, commands, taxonomy, paths
+- Read `.agent/manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
 ### 2. Prune first — the admission test applied retroactively
 Apply the admission test (doc-philosophy, The Admission Test) to every existing doc, not just new content:
@@ -31,9 +31,9 @@ Read every `.md` file under `.agent/`. For each, check:
 - Check: does the described thing exist in the codebase?
 
 **Duplication** (principle 3)
-- Info that duplicates another doc or manifest.yml
+- Info that duplicates another doc or .agent/manifest
 - Check: is the same fact stated in two places? Has it diverged?
-- Specifically watch for a value resolved from `manifest.yml` (e.g. `taxonomy.test_tiers`,
+- Specifically watch for a value resolved from `.agent/manifest` (e.g. `taxonomy.test_tiers`,
   `development.commands`) restated as prose or a table in a workflow doc instead of referenced —
   this drifts silently whenever the manifest changes
 
