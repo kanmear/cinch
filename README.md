@@ -16,7 +16,9 @@ the staged plan the rebuild follows.
 `cinch check` runs three checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
 elsewhere with `paths.docs` in `.agent/manifest` (relative to the project
-root, or an absolute path):
+root, or an absolute path). `cinch render` substitutes the same value into
+templates as `{{paths.docs}}` — one root, so a rule doc a workflow tells an
+agent to write is guaranteed to be one `cinch check` actually scans:
 
 - **links** (error) — a relative markdown link under the docs root that
   doesn't resolve on disk.
@@ -59,15 +61,16 @@ Workflows: see .agent/workflows/index.md for what's available and when to use it
 Any agent that reads `AGENTS.md` — not just one harness's proprietary skill
 system — can follow the trigger table straight to the workflow file that
 applies. The trade-off: harnesses with native slash-command UX (typing
-`/rules`) lose that explicit affordance in exchange for zero duplication and
+`/domain`) lose that explicit affordance in exchange for zero duplication and
 agent-neutrality.
 
 `.agent/manifest` binds the values templates reference — a flat
-`dotted.key = value` text format, no schema:
+`dotted.key = value` text format, no schema. `paths.docs` is the one variable
+any shipped template uses (it's the same root `cinch check` scans), and
+defaults to `.docs` when unset:
 
 ```
 # .agent/manifest
-paths.domain = .agent/domain
 paths.docs = .docs
 ```
 
@@ -94,8 +97,8 @@ fixtures end-to-end.
 - `internal/cinch/manifest.go` — the `.agent/manifest` parser.
 - `internal/cinch/philosophy.md` — copied verbatim into every consumer.
 - `internal/cinch/templates/*.md` — the eight workflow templates Stage 2
-  ships (`check-rules`, `execute-plan`, `fix-bug`, `optimize-docs`,
-  `plan-feature`, `rules`, `sync-docs`, `task-primitive`); each renders to
+  ships (`audit-docs`, `audit-domain`, `execute-plan`, `fix-bug`,
+  `maintain-domain`, `plan-feature`, `sync-docs`, `task-primitive`); each renders to
   `.agent/workflows/<name>.md`, plus a generated `.agent/workflows/index.md`
   derived from all of them.
 - `.docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six
