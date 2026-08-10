@@ -25,7 +25,7 @@ func TestRules_PresentMarkerIsClean(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, ".docs")
 	writeFile(t, filepath.Join(docs, "rules.md"), "1. **CIN-001** the rule text.\n")
-	writeFile(t, filepath.Join(root, "foo_test.go"), "// cinch:rule CIN-001\nfunc TestFoo(t *testing.T) {}\n")
+	writeFile(t, filepath.Join(root, "foo_test.go"), marker("CIN-001")+"\nfunc TestFoo(t *testing.T) {}\n")
 
 	findings := checkRules(docs, root)
 
@@ -37,7 +37,7 @@ func TestRules_PresentMarkerIsClean(t *testing.T) {
 func TestRules_DanglingMarkerFires(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, ".docs")
-	writeFile(t, filepath.Join(root, "foo_test.go"), "// cinch:rule CIN-999\nfunc TestFoo(t *testing.T) {}\n")
+	writeFile(t, filepath.Join(root, "foo_test.go"), marker("CIN-999")+"\nfunc TestFoo(t *testing.T) {}\n")
 
 	findings := checkRules(docs, root)
 
@@ -96,13 +96,40 @@ func TestRules_IgnoreWithoutReasonFires(t *testing.T) {
 	}
 }
 
+func TestRules_FencedMarkerIsIgnored(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	writeFile(t, filepath.Join(docs, "example.md"),
+		"```\n"+marker("CIN-001")+"\n```\n")
+
+	findings := checkRules(docs, root)
+
+	got := findingsForCheck(findings, "rules")
+	if len(got) != 0 {
+		t.Fatalf("want 0 findings for a fenced marker, got %d: %+v", len(got), got)
+	}
+}
+
+func TestRules_TruncatedIDNotMatched(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	writeFile(t, filepath.Join(root, "foo_test.go"), marker("SIG-0NN")+"\nfunc TestFoo(t *testing.T) {}\n")
+
+	findings := checkRules(docs, root)
+
+	got := findingsForCheck(findings, "rules")
+	if len(got) != 0 {
+		t.Fatalf("want 0 findings — SIG-0NN must not truncate to a bogus SIG-0, got %d: %+v", len(got), got)
+	}
+}
+
 func TestRules_IgnoreAndMarkerBothPresentFires(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, ".docs")
 	writeFile(t, filepath.Join(docs, "rules.md"),
 		"1. **CIN-002** asserts the absence of a flow.\n"+
 			"   <!-- cinch:ignore: asserts absence of a flow -->\n")
-	writeFile(t, filepath.Join(root, "foo_test.go"), "// cinch:rule CIN-002\nfunc TestFoo(t *testing.T) {}\n")
+	writeFile(t, filepath.Join(root, "foo_test.go"), marker("CIN-002")+"\nfunc TestFoo(t *testing.T) {}\n")
 
 	findings := checkRules(docs, root)
 

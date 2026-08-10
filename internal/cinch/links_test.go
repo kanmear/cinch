@@ -26,6 +26,10 @@ func findingsForCheck(findings []Finding, check string) []Finding {
 	return out
 }
 
+// marker returns a // cinch:rule line for id, composed at runtime so this
+// file's own source carries no literal marker for the scan to find.
+func marker(id string) string { return "// cinch:" + "rule " + id }
+
 func TestLinks_BrokenLinkFires(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, ".docs")

@@ -48,8 +48,8 @@ func seedCoupledRule(t *testing.T, dir string) {
 		"1. **CIN-001** the first rule's text, opening line.\n"+
 			"   Second line of the first rule's text.\n"+
 			"2. **CIN-002** the second rule's text.\n")
-	writeFile(t, filepath.Join(dir, "foo_test.go"), "// cinch:rule CIN-001\nfunc TestFoo(t *testing.T) {}\n")
-	writeFile(t, filepath.Join(dir, "bar_test.go"), "// cinch:rule CIN-002\nfunc TestBar(t *testing.T) {}\n")
+	writeFile(t, filepath.Join(dir, "foo_test.go"), marker("CIN-001")+"\nfunc TestFoo(t *testing.T) {}\n")
+	writeFile(t, filepath.Join(dir, "bar_test.go"), marker("CIN-002")+"\nfunc TestBar(t *testing.T) {}\n")
 	gitCommitAll(t, dir, "seed")
 }
 
@@ -82,7 +82,7 @@ func TestCoupling_TextAndMarkerBothChangedIsClean(t *testing.T) {
 		"1. **CIN-001** the first rule's text, opening line.\n"+
 			"   Second line of the first rule's text, CHANGED.\n"+
 			"2. **CIN-002** the second rule's text.\n")
-	writeFile(t, filepath.Join(dir, "foo_test.go"), "// cinch:rule CIN-001\nfunc TestFoo(t *testing.T) { /* updated */ }\n")
+	writeFile(t, filepath.Join(dir, "foo_test.go"), marker("CIN-001")+"\nfunc TestFoo(t *testing.T) { /* updated */ }\n")
 
 	result := checkCoupling(filepath.Join(dir, ".docs"), dir, "")
 
@@ -150,7 +150,7 @@ func TestCoupling_UnrelatedRuleUnaffected(t *testing.T) {
 		"1. **CIN-001** the first rule's text, opening line.\n"+
 			"   Second line of the first rule's text.\n"+
 			"2. **CIN-002** the second rule's text, CHANGED.\n")
-	writeFile(t, filepath.Join(dir, "bar_test.go"), "// cinch:rule CIN-002\nfunc TestBar(t *testing.T) { /* updated */ }\n")
+	writeFile(t, filepath.Join(dir, "bar_test.go"), marker("CIN-002")+"\nfunc TestBar(t *testing.T) { /* updated */ }\n")
 
 	result := checkCoupling(filepath.Join(dir, ".docs"), dir, "")
 
