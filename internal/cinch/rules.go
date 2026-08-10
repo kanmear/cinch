@@ -14,7 +14,7 @@ var (
 	ruleItemRe = regexp.MustCompile(`^\s*\d+\.\s+\*\*([A-Z0-9]+-[0-9]+)\*\*`)
 	anyItemRe  = regexp.MustCompile(`^\s*\d+\.\s`)
 	ignoreRe   = regexp.MustCompile(`<!--\s*cinch:ignore\s*(?::\s*(.*?))?\s*-->`)
-	markerRe   = regexp.MustCompile(`//\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)`)
+	markerRe   = regexp.MustCompile(`//\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)\b`)
 )
 
 // ruleItem is one rule: a numbered list item with a bolded ID
@@ -151,10 +151,19 @@ func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
 			return nil
 		}
 		lineNo := 0
+		inFence := false
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
 			lineNo++
-			if m := markerRe.FindStringSubmatch(scanner.Text()); m != nil {
+			line := scanner.Text()
+			if fenceRe.MatchString(line) {
+				inFence = !inFence
+				continue
+			}
+			if inFence {
+				continue
+			}
+			if m := markerRe.FindStringSubmatch(line); m != nil {
 				markers[m[1]] = append(markers[m[1]], markerLoc{File: path, Line: lineNo})
 			}
 		}
