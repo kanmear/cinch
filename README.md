@@ -4,6 +4,50 @@ A referential integrity checker for the operational documentation that governs
 a repository — the rules, workflows, and conventions code must conform to, read
 by humans and executed by agents.
 
+## Overview
+
+Operational documentation — the rules, conventions, and workflows a codebase
+expects contributors (human or AI) to follow — tends to drift from what the
+code actually does. Nobody remembers to update the troubleshooting doc after
+fixing the bug it describes; a "business rule" written down eighteen months
+ago quietly stops being enforced by any test; a workflow file tells an agent
+to read a path that hasn't existed since the last refactor. The failure mode
+is always the same: the doc *looks* authoritative and isn't, and nothing
+catches the gap until someone — increasingly, an autonomous agent — trusts
+it and acts on stale information.
+
+cinch closes that gap by making a repo's operational docs *checkable*, not
+just readable. It doesn't understand what a rule means — it enforces that
+every rule is bound to something concrete and verifiable:
+
+- a **rule** in a doc must have a matching `// cinch:rule <ID>` marker
+  somewhere in the source that enforces it (or an explicit, reasoned
+  declaration that it's untestable) — so "documented" and "enforced" can't
+  quietly diverge
+- a **relative link** between docs must resolve on disk
+- a rule's **text and its enforcing test** must change together — editing
+  one without the other is a blocked commit, not a silent drift
+- the **rendered output** — shared workflow guidance, a generated doc map,
+  git hook shims — must match what re-generating it right now would
+  produce, byte for byte, so a hand-edit or tampering attempt is caught the
+  same way a code change would be
+- an optional **commit message convention** can be enforced the same way
+
+All five are one command, `cinch check`, with no configuration required by
+default. `cinch init` scaffolds a new consumer end to end: a manifest, a docs
+directory structure, a set of rendered onboarding workflows (bug fixing,
+feature planning, domain-rule maintenance, doc sync, and more — all generic,
+with no assumption about a project's stack or directory layout), and
+activated git hooks that run `cinch check` on every commit. From there, cinch
+enforces itself: a commit that breaks a rule, tampers with generated output,
+or violates a project's own registered checks gets blocked — a project's own
+script (say, `check_error_codes.sh`) hooks in through the manifest, scoped by
+path prefix, with no bespoke `.githooks/` scripting required.
+
+The point is to make "the docs are accurate" a property a script verifies on
+every commit, the way a linter verifies formatting — not a hope that has to
+survive contact with a deadline.
+
 ## Status: 0.1.0 — init, self-enforcement, manifest-driven extension
 
 `cinch init` scaffolds a new consumer end to end: a manifest, the docs
