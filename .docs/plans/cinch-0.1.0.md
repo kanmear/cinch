@@ -103,10 +103,14 @@ These are decisions to accept explicitly, not to discover later.
    its contents.** "AGENTS.MD initialized" was the first proxy metric ever cut
    (principle 6) — it stays cut. When the file exists, init prints the line to
    add and touches nothing.
-7. **Known wart, unchanged:** `manifestPath` is pinned to `.docs/manifest` so
-   reading it cannot depend on the value it defines. A repo that sets
-   `paths.docs = .agent` (deltadocs does) therefore ends up with two
-   directories — the exact outcome the pin's own comment says it avoids.
+7. **Fixed, not deferred:** `manifestPath` was pinned to `.docs/manifest`, so
+   reading it couldn't depend on the value it defines. A repo that sets
+   `paths.docs = .agent` (deltadocs does) would then end up with two
+   directories — the exact outcome the pin's own comment said it avoided.
+   Resolved by relocating the manifest to the repo root as `cinch_manifest`
+   (Step 0), fully decoupled from `paths.docs`: the manifest's own location
+   no longer depends on a value it defines, and `paths.docs` now exclusively
+   controls where rendered/authored docs live.
 
 ---
 
@@ -223,7 +227,7 @@ missing-H1 fires.
 **New `internal/cinch/generated.go`** — `checkGenerated(root string) generatedResult`
 (same `Findings` / `NoOp` shape as `couplingResult`):
 
-- No `.docs/manifest`, or the workflows dir doesn't exist → `NoOp` on stderr
+- No `cinch_manifest`, or the workflows dir doesn't exist → `NoOp` on stderr
   ("cinch render has not run — nothing to verify"), never a silent pass.
 - Otherwise call `renderAll` in memory and compare against disk:
   missing file, or bytes differ → `Finding{Check: "generated", Level: "error"}`
@@ -290,7 +294,7 @@ same repo with the script's paths untouched → commit succeeds.
 **New `internal/cinch/init.go`** — `CmdInit(root string) int`, idempotent and
 non-destructive to anything authored:
 
-1. `.docs/manifest`: keep if present; otherwise write a starter with
+1. `cinch_manifest`: keep if present; otherwise write a starter with
    `paths.docs`, `paths.hooks`, and a commented `hooks.pre-commit.*` example.
 2. `mkdir` `<paths.docs>/` and `<paths.docs>/plans/` (with `.gitkeep`).
 3. Render everything (workflows, doc map, hook shims).
@@ -321,7 +325,7 @@ Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>
 
 ## Step 10 — cinch self-hosts, and the docs land
 
-- Add this repo's `.docs/manifest` (`paths.docs = .docs`, plus
+- Add this repo's `cinch_manifest` (`paths.docs = .docs`, plus
   `hooks.pre-commit.build.run = make test`), run `cinch init`, commit the
   rendered tree and `.githooks/`, set `core.hooksPath`.
 - **README.md:** new commands and manifest keys; the extension boundary from

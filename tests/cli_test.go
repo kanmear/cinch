@@ -90,11 +90,8 @@ func TestCheck_CustomDocsRootFromManifest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write a.md: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(dir, ".docs"), 0o755); err != nil {
-		t.Fatalf("mkdir .docs: %v", err)
-	}
 	manifest := "paths.docs = mydocs\n"
-	if err := os.WriteFile(filepath.Join(dir, ".docs", "manifest"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -143,11 +140,8 @@ func TestCheck_AbsoluteDocsRootFromManifest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write a.md: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(dir, ".docs"), 0o755); err != nil {
-		t.Fatalf("mkdir .docs: %v", err)
-	}
 	manifest := "paths.docs = " + docs + "\n"
-	if err := os.WriteFile(filepath.Join(dir, ".docs", "manifest"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -222,11 +216,8 @@ func TestCheckMsgFileArg(t *testing.T) {
 
 func TestRender_EndToEndAndIdempotent(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, ".docs"), 0o755); err != nil {
-		t.Fatalf("mkdir .docs: %v", err)
-	}
 	manifest := "paths.docs = mydocs\n"
-	if err := os.WriteFile(filepath.Join(dir, ".docs", "manifest"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -303,7 +294,7 @@ func TestRender_MissingManifestFires(t *testing.T) {
 	if !ok || ee.ExitCode() != 1 {
 		t.Fatalf("render with no manifest: want exit 1, got %v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), ".docs/manifest") {
+	if !strings.Contains(string(out), "cinch_manifest") {
 		t.Fatalf("render with no manifest: error doesn't name the file:\n%s", out)
 	}
 }

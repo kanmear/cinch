@@ -38,7 +38,7 @@ func TestLoadManifest_ParsesKeyValue(t *testing.T) {
 func TestLoadManifest_MissingFileFires(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := loadManifest(dir); err == nil {
-		t.Fatalf("loadManifest with no .docs/manifest: want error, got nil")
+		t.Fatalf("loadManifest with no cinch_manifest: want error, got nil")
 	}
 }
 
@@ -55,10 +55,10 @@ func TestLoadManifestOptional_MissingFileIsNotAnError(t *testing.T) {
 	dir := t.TempDir()
 	m, err := loadManifestOptional(dir)
 	if err != nil {
-		t.Fatalf("loadManifestOptional with no .docs/manifest: want nil error, got %v", err)
+		t.Fatalf("loadManifestOptional with no cinch_manifest: want nil error, got %v", err)
 	}
 	if m != nil {
-		t.Fatalf("loadManifestOptional with no .docs/manifest: want nil manifest, got %v", m)
+		t.Fatalf("loadManifestOptional with no cinch_manifest: want nil manifest, got %v", m)
 	}
 }
 
@@ -81,5 +81,33 @@ func TestLoadManifestOptional_ParsesKeyValue(t *testing.T) {
 	}
 	if m.Vars["paths.docs"] != "mydocs" {
 		t.Fatalf("paths.docs: want %q, got %q", "mydocs", m.Vars["paths.docs"])
+	}
+}
+
+func TestLoadManifest_ReadsFromRepoRootNotDocsDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = mydocs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+	if m.Vars["paths.docs"] != "mydocs" {
+		t.Fatalf("paths.docs: want %q, got %q", "mydocs", m.Vars["paths.docs"])
+	}
+
+	// A manifest nested under paths.docs (the old .docs/manifest location)
+	// must NOT be picked up — its location no longer depends on paths.docs.
+	nested := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(nested, "mydocs"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "mydocs", "manifest"), []byte("paths.docs = mydocs\n"), 0o644); err != nil {
+		t.Fatalf("write nested manifest: %v", err)
+	}
+	if _, err := loadManifest(nested); err == nil {
+		t.Fatalf("loadManifest: want error when manifest only exists nested under paths.docs, got nil")
 	}
 }
