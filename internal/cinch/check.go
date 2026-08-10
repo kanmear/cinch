@@ -79,6 +79,8 @@ func CmdCheck(msgFile string) int {
 		fmt.Fprintln(os.Stderr, generated.NoOp)
 	}
 
+	findings = append(findings, checkCommit(".", msgFile)...)
+
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.Check != b.Check {

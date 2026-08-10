@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 // generatedResult separates real findings from the no-op case: no manifest,
@@ -45,7 +44,7 @@ func checkGenerated(root string) generatedResult {
 		expected[dst] = true
 		renderDirs[filepath.Dir(dst)] = true
 
-		want := header(f.Source, f.Body) + f.Body
+		want := header(f.Source, f.Body, f.Style) + f.Body
 		got, err := os.ReadFile(dst)
 		switch {
 		case err != nil:
@@ -75,7 +74,7 @@ func checkGenerated(root string) generatedResult {
 				continue
 			}
 			data, err := os.ReadFile(p)
-			if err != nil || !strings.HasPrefix(string(data), headerPrefix) {
+			if err != nil || !hasGeneratedHeader(string(data)) {
 				continue
 			}
 			rel, err := filepath.Rel(root, p)
