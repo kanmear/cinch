@@ -32,6 +32,8 @@ usage:
                           (pre-commit, commit-msg). Runs cinch check, then
                           any hooks.EVENT.* entries from cinch_manifest whose
                           'when' path prefixes match the staged set.
+  cinch workflows         print the generated workflow trigger table.
+  cinch workflow NAME     print one rendered workflow's full content.
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -81,6 +83,16 @@ func main() {
 			os.Exit(usageError("hook: requires an event argument"))
 		}
 		os.Exit(impl.CmdHook(".", os.Args[2], os.Args[3:]))
+	case "workflows":
+		if len(os.Args) > 2 {
+			os.Exit(usageError("workflows: takes no arguments"))
+		}
+		os.Exit(impl.CmdWorkflows("."))
+	case "workflow":
+		if len(os.Args) != 3 {
+			os.Exit(usageError("workflow: requires exactly one NAME argument"))
+		}
+		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
 	default:
 		fmt.Fprintf(os.Stderr, "cinch: %q is not a command\n", os.Args[1])
 		os.Exit(1)
