@@ -22,6 +22,11 @@ const manifestPath = "cinch_manifest"
 // dependency, no schema.
 type Manifest struct {
 	Vars map[string]string
+
+	// order is the declaration order of keys as first seen in the manifest
+	// file. Hook dispatch (step 7) runs entries in the order the author
+	// wrote them, not alphabetically.
+	order []string
 }
 
 // loadManifest reads root's manifest file. A missing file, or a malformed
@@ -59,6 +64,7 @@ func parseManifestFile(path string) (*Manifest, error) {
 	defer f.Close()
 
 	vars := map[string]string{}
+	var order []string
 	sc := bufio.NewScanner(f)
 	line := 0
 	for sc.Scan() {
@@ -77,12 +83,66 @@ func parseManifestFile(path string) (*Manifest, error) {
 		if key == "" {
 			return nil, fmt.Errorf("%s:%d: empty key", path, line)
 		}
+		if _, seen := vars[key]; !seen {
+			order = append(order, key)
+		}
 		vars[key] = val
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	return &Manifest{Vars: vars}, nil
+	return &Manifest{Vars: vars, order: order}, nil
+}
+
+// List returns key's value comma-split and trimmed, dropping empty items.
+// A missing key returns nil, distinguishable from a key present but empty
+// (which also returns nil, since an empty string has no items to split).
+func (m *Manifest) List(key string) []string {
+	if m == nil {
+		return nil
+	}
+	val, ok := m.Vars[key]
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, part := range strings.Split(val, ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
+// Names returns the distinct next path segment after prefix among the
+// manifest's keys, in declaration order. Names("hooks.pre-commit") over
+//
+//	hooks.pre-commit.error-codes.run  = scripts/check_error_codes.sh
+//	hooks.pre-commit.error-codes.when = frontend/
+//	hooks.pre-commit.frontend.run     = make check-frontend
+//
+// returns ["error-codes", "frontend"].
+func (m *Manifest) Names(prefix string) []string {
+	if m == nil {
+		return nil
+	}
+	want := prefix + "."
+	seen := map[string]bool{}
+	var out []string
+	for _, key := range m.order {
+		if !strings.HasPrefix(key, want) {
+			continue
+		}
+		rest := key[len(want):]
+		name, _, _ := strings.Cut(rest, ".")
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	return out
 }
 
 func sortedKeys(m map[string]bool) []string {

@@ -111,3 +111,77 @@ func TestLoadManifest_ReadsFromRepoRootNotDocsDir(t *testing.T) {
 		t.Fatalf("loadManifest: want error when manifest only exists nested under paths.docs, got nil")
 	}
 }
+
+func TestManifestList_SplitsTrimsAndDropsEmpties(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "hooks.pre-commit.error-codes.when = frontend/src/lib/api/ , backend/errors/ ,, \n")
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+
+	got := m.List("hooks.pre-commit.error-codes.when")
+	want := []string{"frontend/src/lib/api/", "backend/errors/"}
+	if len(got) != len(want) {
+		t.Fatalf("List: want %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("List: want %v, got %v", want, got)
+		}
+	}
+}
+
+func TestManifestList_MissingKeyReturnsNil(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "paths.docs = .docs\n")
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+
+	if got := m.List("no.such.key"); got != nil {
+		t.Fatalf("List of missing key: want nil, got %v", got)
+	}
+}
+
+func TestManifestNames_DeclarationOrderAndDistinct(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir,
+		"hooks.pre-commit.error-codes.run  = scripts/check_error_codes.sh\n"+
+			"hooks.pre-commit.error-codes.when = frontend/src/lib/api/, backend/errors/\n"+
+			"hooks.pre-commit.frontend.run     = make check-frontend\n"+
+			"hooks.pre-commit.frontend.when    = frontend/\n")
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+
+	got := m.Names("hooks.pre-commit")
+	want := []string{"error-codes", "frontend"}
+	if len(got) != len(want) {
+		t.Fatalf("Names: want %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("Names: want %v (declaration order), got %v", want, got)
+		}
+	}
+}
+
+func TestManifestNames_NoMatchReturnsNil(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "paths.docs = .docs\n")
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+
+	if got := m.Names("hooks.pre-commit"); got != nil {
+		t.Fatalf("Names with no matches: want nil, got %v", got)
+	}
+}
