@@ -11,6 +11,10 @@ const usage = `cinch — referential integrity checker for the operational
 documentation that governs a repository (rules, workflows, conventions)
 
 usage:
+  cinch init              scaffold a new consumer: manifest (if absent),
+                          paths.docs/plans, a full render, activated git
+                          hooks (in a git repo), and AGENTS.md (if absent).
+                          Idempotent.
   cinch check [MSGFILE]   run all checks against the current directory.
                           MSGFILE, if given, is a path to a file containing
                           the in-progress commit message (wired via a
@@ -39,6 +43,11 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "init":
+		if len(os.Args) > 2 {
+			os.Exit(usageError("init: takes no arguments"))
+		}
+		os.Exit(impl.CmdInit("."))
 	case "check":
 		args := os.Args[2:]
 		if len(args) > 1 {
