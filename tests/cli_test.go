@@ -479,3 +479,106 @@ func TestInit_TwiceIsByteIdentical(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkflows_PrintsTriggerTable(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+
+	cmd := exec.Command(binPath(t), "workflows")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("workflows: want exit 0, got %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "# Workflow Index") || !strings.Contains(string(out), "maintain-domain.md") {
+		t.Fatalf("workflows: missing expected content:\n%s", out)
+	}
+}
+
+func TestWorkflows_RenderNotRunFires(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "workflows")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 1 {
+		t.Fatalf("workflows with no render: want exit 1, got %v\n%s", err, out)
+	}
+}
+
+// TestWorkflow_CustomDocsRootFromManifest confirms `cinch workflow NAME`
+// resolves with no path argument anywhere, even when paths.docs is
+// customized — the whole point of routing consumer AGENTS.md files through
+// a command instead of a hardcoded path.
+func TestWorkflow_CustomDocsRootFromManifest(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = mydocs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+
+	cmd := exec.Command(binPath(t), "workflow", "maintain-domain")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("workflow maintain-domain: want exit 0, got %v\n%s", err, out)
+	}
+	want, err := os.ReadFile(filepath.Join(dir, "mydocs", "workflows", "maintain-domain.md"))
+	if err != nil {
+		t.Fatalf("read rendered maintain-domain.md: %v", err)
+	}
+	if string(out) != string(want) {
+		t.Fatalf("workflow maintain-domain: output doesn't match the rendered file on disk")
+	}
+}
+
+func TestWorkflow_UnknownNameFires(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+
+	cmd := exec.Command(binPath(t), "workflow", "bogus")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 1 {
+		t.Fatalf("workflow bogus: want exit 1, got %v\n%s", err, out)
+	}
+}
+
+func TestWorkflow_MissingNameArgIsUsageError(t *testing.T) {
+	out, err := exec.Command(binPath(t), "workflow").CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("workflow with no NAME: want exit 2, got %v\n%s", err, out)
+	}
+}
+
+func TestWorkflow_TooManyArgsIsUsageError(t *testing.T) {
+	out, err := exec.Command(binPath(t), "workflow", "a", "b").CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("workflow with two args: want exit 2, got %v\n%s", err, out)
+	}
+}

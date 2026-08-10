@@ -114,7 +114,7 @@ func renderAll(m *Manifest, root string) ([]renderFile, error) {
 	}
 
 	docsRoot := docsPathValue(m)
-	workflowsDir := docsRoot + "/workflows"
+	workflowsDir := docsRoot + "/" + workflowsSubdir
 	hooksDir := hooksPathValue(m)
 
 	vars := map[string]string{}
