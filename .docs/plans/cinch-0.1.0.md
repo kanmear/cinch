@@ -187,11 +187,15 @@ The templates hardcode deltadocs' structure — `{{paths.docs}}/backend/troubles
 the one artifact every consumer receives. Keep only the paths cinch itself
 owns: `workflows/`, `plans/`, `plans/fix/`, `index.md`.
 
-Rewrite roughly 15 references across `audit-docs.md`, `audit-domain.md`,
-`fix-bug.md`, `maintain-domain.md`, `sync-docs.md` to route through the doc map
+Rewrote 15 references (the `{{paths.docs}}/(backend|frontend|api|models)`
+pattern the mechanical guard below enforces) to route through the doc map
 instead — e.g. "the troubleshooting doc for the affected area (find it in
 `{{paths.docs}}/index.md`)". The doc map is the indirection that lets workflow
-prose stop guessing at a project's layout.
+prose stop guessing at a project's layout. They landed in `fix-bug.md`,
+`task-primitive.md`, `sync-docs.md`, and `plan-feature.md` — not the file
+list originally guessed here; `audit-docs.md`, `audit-domain.md`, and
+`maintain-domain.md` had no `backend|frontend|api|models` references to begin
+with.
 
 **Mechanical guard (`render_test.go`):** `TestTemplates_NoStackSpecificPaths` —
 walk the embedded templates and fail on

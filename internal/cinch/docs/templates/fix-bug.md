@@ -67,7 +67,7 @@ Attempt to reproduce the bug. Choose the appropriate method using commands from
 | Layer test cmd — the tier's `cmd`, per `taxonomy.test_tiers` (`{{paths.docs}}/workflows/task-primitive.md` § Test tiers) | Suspect a specific layer |
 | Manual API call (e.g., `curl`) | Backend-only issue |
 | Dev servers (`make dev-backend`, `make dev-frontend`) | Full-stack or UI issue |
-| Check troubleshooting files | `{{paths.docs}}/backend/troubleshooting.md`, `{{paths.docs}}/frontend/troubleshooting.md` |
+| Check troubleshooting files | the layer's troubleshooting doc (find it in `{{paths.docs}}/index.md`) |
 
 If the bug doesn't reproduce, document what you tried and ask the user for more details before proceeding.
 
@@ -229,8 +229,8 @@ uses. A bug fix typically needs fewer tasks than a feature:
 - Completion uses the **fix** lifecycle: the plan file is **deleted** once the regression test and
   any troubleshooting entry are committed (git history is the archive), plus the post-fix
   troubleshooting update.
-If a new test file was added, also record it in `{{paths.docs}}/backend/testing.md`'s coverage table when
-that doc maintains one.
+If a new test file was added, also record it in the layer's testing doc (find it in
+`{{paths.docs}}/index.md`)'s coverage table when that doc maintains one.
 
 The **fast path** (above) is exempt from the primitive's gate and completion ritual — its single
 combined ⛔ checkpoint and the regression test are the whole record, with no persisted plan file.

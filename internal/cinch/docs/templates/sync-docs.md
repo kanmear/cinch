@@ -103,8 +103,8 @@ Detect these by looking for:
 | New directory / major file move | relevant `architecture.md` |
 | Project-wide convention or architectural decision | root `conventions.md` / relevant `architecture.md` |
 | Service-specific pattern | `[service]/conventions.md` |
-| Frontend quirk | `{{paths.docs}}/frontend/conventions.md` § Quirks and Gotchas |
-| Backend quirk | `{{paths.docs}}/backend/troubleshooting.md` § Quirks |
+| Frontend quirk | the frontend layer's conventions doc (find it in `{{paths.docs}}/index.md`) § Quirks and Gotchas |
+| Backend quirk | the backend layer's troubleshooting doc (find it in `{{paths.docs}}/index.md`) § Quirks |
 | Cross-cutting quirk | root docs only if a real quirks heading exists; otherwise the closest service troubleshooting § Quirks |
 | Common / recurring issue | `[service]/troubleshooting.md` § Common Issues (infra → `deployment.md`) |
 
@@ -128,11 +128,8 @@ Create a new file when:
 - A new entity is introduced (e.g., Thing model → `models/<entity>.md`)
 - A component/module has complex, non-obvious behavior that agents will need repeatedly
 
-Place new docs in the appropriate subfolder:
-- API contracts → `{{paths.docs}}/api/`
-- Data models → `{{paths.docs}}/models/`
-- Component-specific → `{{paths.docs}}/frontend/components/`
-- Module-specific → `{{paths.docs}}/backend/[module]/`
+Place new docs alongside existing similar docs — check `{{paths.docs}}/index.md` for this project's
+current layout and naming conventions before creating a new file.
 
 **After adding, removing, renaming, or retitling any doc:** regenerate and stage `{{paths.docs}}/index.md`.
 The doc map is generated from each file's H1 — never hand-edit it, and never maintain a parallel
