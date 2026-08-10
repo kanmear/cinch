@@ -2,9 +2,12 @@
 
 A referential integrity checker for the operational documentation that governs
 a repository — the rules, workflows, and conventions code must conform to, read
-by humans and executed by agents. **Status: Stage 2 landed —
-three checks (links, rules, coupling) plus `render` (philosophy verbatim,
-eight workflows templated). See README.md.**
+by humans and executed by agents. **Status: 0.1.0 — init, self-enforcement,
+manifest-driven extension. Five checks (links, rules, coupling, generated,
+commit), `render` (philosophy, workflows, doc map, hook shims), `init`,
+`hook`, `workflows`/`workflow`. See README.md.**
+
+Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one.
 
 ## What this repo is
 
@@ -12,16 +15,22 @@ eight workflows templated). See README.md.**
   ranked by evidence, each with its rebuild constraint. Read this before any
   rebuild work; it is the only memory of the old design that is allowed in the
   room — the old design itself is git history.
+- `.docs/plans/cinch-0.1.0.md` — the plan that took cinch from Stage 2 to
+  0.1.0: init, the `generated` check, and manifest-driven extension.
 - `README.md` — the orientation artifact: status, layout map, pointers.
+- `cinch_manifest` — this repo's own manifest (`paths.docs = .docs`, plus a
+  `hooks.pre-commit.build.run` entry) — cinch self-hosts.
 - `main.go` — CLI dispatch, the only `package main` file. Everything else
   lives in `internal/cinch` (compiler-enforced private to this module):
-  `check.go`, `links.go`, `rules.go`, `coupling.go` — the three checks, each
-  paired with a `_test.go` carrying its mutation fixtures. `render.go`,
-  `manifest.go` — the `render` command: `{{key}}` substitution and the
-  `cinch_manifest` parser. `docs/philosophy.md`, `docs/templates/*.md` (eight
-  workflows) — the content `render` ships, embedded via `go:embed`.
-  `tests/` — CLI-level tests against the built binary. `Makefile` —
-  `build` / `test`.
+  `check.go`, `links.go`, `rules.go`, `coupling.go`, `generated.go`,
+  `commit.go` — the five checks, each paired with a `_test.go` carrying its
+  mutation fixtures. `render.go`, `manifest.go` — the `render` command:
+  `{{key}}` substitution, the doc map, hook shims, and the `cinch_manifest`
+  parser. `hook.go` — the `cinch hook` dispatcher. `init.go` — `cinch init`.
+  `workflow.go` — `cinch workflows` / `cinch workflow NAME`.
+  `docs/philosophy.md`, `docs/templates/*.md` (nine workflows) — the content
+  `render` ships, embedded via `go:embed`. `tests/` — CLI-level tests
+  against the built binary. `Makefile` — `build` / `test`.
 
 ## Rules
 
