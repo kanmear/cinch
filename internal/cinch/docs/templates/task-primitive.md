@@ -31,7 +31,7 @@ gate and runs only on explicit request — so any agent, whatever its own house 
 browser automation, can respect it mechanically without a human spelling it out.
 
 **e2e tier / `manual` vs `e2e`:** see `manifest.taxonomy.test_tiers` `notes:` — the e2e row's
-operational doc renders here: `{{paths.docs}}/frontend/e2e.md`.
+operational doc is listed in `{{paths.docs}}/index.md`.
 
 ---
 
@@ -87,7 +87,7 @@ something; include it if a decision hinges on it. List in loading order with a o
 **Good manifest (single-layer model task):**
 
 ```
-1. {{paths.docs}}/models/<entity>.md — struct and existing queries
+1. {{paths.docs}}/<entity>.md — struct and existing queries
 2. {{paths.docs}}/<domain>.md — rules this task must enforce
 3. {{paths.docs}}/<service>/conventions.md — query patterns (repository interface)
 ```
@@ -104,8 +104,8 @@ orientation material.
 - {{paths.docs}}/<service B>/architecture.md   ← irrelevant to a <layer A> task
 - {{paths.docs}}/<service B>/conventions.md    ← irrelevant to a <layer A> task
 - {{paths.docs}}/overview.md       ← too broad; load the specific domain file
-- {{paths.docs}}/models/<entity>.md
-- {{paths.docs}}/api/<domain>.md               ← irrelevant at the model layer
+- {{paths.docs}}/<entity>.md
+- {{paths.docs}}/<domain>-api.md               ← irrelevant at the model layer
 ```
 
 The problem isn't the count — it's that half these docs don't apply to the task's concern or
@@ -222,8 +222,7 @@ discretion, never a required gate.
   archive. Plus a **post-fix troubleshooting update**: if the bug was non-obvious to diagnose (more
   than a few minutes of tracing), add a **Symptom → Root Cause → Fix → Prevention** entry to the
   troubleshooting docs for the affected layer.
-The per-layer troubleshooting docs are `{{paths.docs}}/backend/troubleshooting.md` (backend) and
-`{{paths.docs}}/frontend/troubleshooting.md` (frontend).
+Find each layer's troubleshooting doc in `{{paths.docs}}/index.md`.
 
 ---
 

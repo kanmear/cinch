@@ -3,6 +3,7 @@ package cinch
 import (
 	"io/fs"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -204,6 +205,30 @@ func TestRenderAll_IndexListsEveryOtherWorkflow(t *testing.T) {
 		name := filepath.Base(f.Dest)
 		if !strings.Contains(index.Body, name) {
 			t.Fatalf("index.md: missing entry for %s:\n%s", name, index.Body)
+		}
+	}
+}
+
+var stackSpecificPathRe = regexp.MustCompile(`\{\{paths\.docs\}\}/(backend|frontend|api|models)`)
+
+// TestTemplates_NoStackSpecificPaths guards against a shipped template
+// re-hardcoding one consumer's directory layout (deltadocs' backend/,
+// frontend/, api/, models/) as if every consumer had the same structure.
+// Workflow prose must route through the generated doc map
+// ({{paths.docs}}/index.md) instead.
+func TestTemplates_NoStackSpecificPaths(t *testing.T) {
+	entries, err := fs.ReadDir(templatesFS, templatesDir)
+	if err != nil {
+		t.Fatalf("reading embedded templates: %v", err)
+	}
+	for _, e := range entries {
+		src := templatesDir + "/" + e.Name()
+		raw, err := fs.ReadFile(templatesFS, src)
+		if err != nil {
+			t.Fatalf("reading %s: %v", src, err)
+		}
+		if m := stackSpecificPathRe.FindString(string(raw)); m != "" {
+			t.Fatalf("%s: stack-specific path %q — route through {{paths.docs}}/index.md instead", src, m)
 		}
 	}
 }
