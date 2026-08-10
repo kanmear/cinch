@@ -41,7 +41,7 @@ func ResolveDocsRoot(root string) (string, error) {
 
 // Finding is one thing a check found wrong with the tree.
 type Finding struct {
-	Check   string // "links" | "rules" | "coupling"
+	Check   string // "links" | "rules" | "coupling" | "generated"
 	Level   string // "error" | "block"
 	File    string // repo-relative
 	Line    int    // 1-based
@@ -71,6 +71,12 @@ func CmdCheck(msgFile string) int {
 	}
 	for _, s := range coupling.Suppressed {
 		fmt.Fprintln(os.Stderr, "coupling: "+s)
+	}
+
+	generated := checkGenerated(".")
+	findings = append(findings, generated.Findings...)
+	if generated.NoOp != "" {
+		fmt.Fprintln(os.Stderr, generated.NoOp)
 	}
 
 	sort.Slice(findings, func(i, j int) bool {
