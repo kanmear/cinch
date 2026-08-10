@@ -21,7 +21,7 @@ usage:
   cinch render            render docs/philosophy.md and docs/templates/*.md into
                           paths.docs's workflows/ subdirectory (default
                           .docs/workflows/), substituting values from
-                          .docs/manifest. Idempotent — a re-render diff
+                          cinch_manifest. Idempotent — a re-render diff
                           proves tampering.
 
 exit codes: 0 clean, 1 findings, 2 usage error.

@@ -12,9 +12,9 @@ import (
 // manifestPath is the fixed, non-configurable manifest location. It can't
 // itself live under a configurable paths.docs — the manifest is what would
 // define that value, so reading it can't depend on it — so it's pinned to
-// paths.docs's own default instead: out of the box there's exactly one
-// directory, not two.
-const manifestPath = defaultDocsPath + "/manifest"
+// the repo root instead, decoupled from paths.docs entirely: paths.docs
+// controls where rendered/authored docs live, never the manifest itself.
+const manifestPath = "cinch_manifest"
 
 // Manifest binds the values cinch's workflow templates reference: commands
 // and roots (Stage 2 — value substitution only, no shape). It's a flat

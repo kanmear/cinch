@@ -14,7 +14,7 @@ tested and passed, not by what seemed clever.
 
 `cinch check` runs three checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
-elsewhere with `paths.docs` in `.docs/manifest` (relative to the project
+elsewhere with `paths.docs` in `cinch_manifest` (relative to the project
 root, or an absolute path). `cinch render` substitutes the same value into
 templates as `{{paths.docs}}` — one root, so a rule doc a workflow tells an
 agent to write is guaranteed to be one `cinch check` actually scans:
@@ -38,7 +38,7 @@ agent to write is guaranteed to be one `cinch check` actually scans:
 `cinch render` writes into `paths.docs`'s `workflows/` subdirectory (default
 `.docs/workflows/`): `doc-philosophy.md` (copied verbatim — no variables, no
 renderer needed), one file per template under `internal/cinch/docs/templates/`
-(value-substituted against `.docs/manifest`), and `index.md` — a trigger
+(value-substituted against `cinch_manifest`), and `index.md` — a trigger
 table generated from every other rendered file's own title and opening line,
 no hand-authored content. Every
 output is stamped with a `generated — do not edit` header carrying a
@@ -67,14 +67,15 @@ applies. The trade-off: harnesses with native slash-command UX (typing
 `/domain`) lose that explicit affordance in exchange for zero duplication and
 agent-neutrality.
 
-`.docs/manifest` binds the values templates reference — a flat
+`cinch_manifest` binds the values templates reference — a flat
 `dotted.key = value` text format, no schema. `paths.docs` is the one variable
 any shipped template uses (it's the same root `cinch check` scans), and
-defaults to `.docs` when unset. Its own location can't be configurable — it's
-what defines `paths.docs` — so it's pinned to that key's default:
+defaults to `.docs` when unset. The manifest itself always lives at the repo
+root, independent of `paths.docs` — its own location can't depend on a value
+it defines, so it's pinned outside the directory `paths.docs` controls:
 
 ```
-# .docs/manifest
+# cinch_manifest
 paths.docs = .docs
 ```
 
@@ -98,7 +99,7 @@ fixtures end-to-end.
   and the whole `docs/templates/` directory via `go:embed` (single static
   binary, no runtime template resolution) and iterates it, so adding a
   template needs no code change.
-- `internal/cinch/manifest.go` — the `.docs/manifest` parser.
+- `internal/cinch/manifest.go` — the `cinch_manifest` parser.
 - `internal/cinch/docs/philosophy.md` — copied verbatim into every consumer.
 - `internal/cinch/docs/templates/*.md` — the eight workflow templates Stage 2
   ships (`audit-docs`, `audit-domain`, `execute-plan`, `fix-bug`,
@@ -128,7 +129,7 @@ be clean against its own repo, since no real rule corpus lives here yet.
 
 Stage 1 is done: three checks, three mutation-fixture suites, `cinch check`
 runs on any repo with no configuration required (the docs root defaults to
-`.docs`, overridable via `.docs/manifest`'s `paths.docs`). Stage 2 is done:
+`.docs`, overridable via `cinch_manifest`'s `paths.docs`). Stage 2 is done:
 `cinch render` copies philosophy verbatim, templates eight workflows by value
 substitution, generates a workflow index from their rendered bodies, and has
 rendered into a real repo. Next is Stage 3 — a second real repo, and letting
