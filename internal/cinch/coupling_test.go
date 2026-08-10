@@ -105,6 +105,51 @@ func TestCoupling_CleanTreeAnnouncesNoOp(t *testing.T) {
 	}
 }
 
+func TestCoupling_UntrackedMarkerFileCountsAsChanged(t *testing.T) {
+	dir := gitInitRepo(t)
+	seedCoupledRule(t, dir)
+
+	// Change CIN-001's text and move its marker into a brand-new file that
+	// is never staged. `git diff HEAD` alone doesn't see untracked files —
+	// only `git ls-files --others` does — so without unioning the two, this
+	// false-positives a block finding even though the marker did move.
+	writeFile(t, filepath.Join(dir, ".docs", "rules.md"),
+		"1. **CIN-001** the first rule's text, opening line.\n"+
+			"   Second line of the first rule's text, CHANGED.\n"+
+			"2. **CIN-002** the second rule's text.\n")
+	if err := os.Remove(filepath.Join(dir, "foo_test.go")); err != nil {
+		t.Fatalf("remove foo_test.go: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "foo_new_test.go"), marker("CIN-001")+"\nfunc TestFoo(t *testing.T) { /* updated */ }\n")
+
+	result := checkCoupling(filepath.Join(dir, ".docs"), dir, "")
+
+	if len(result.Findings) != 0 {
+		t.Fatalf("want 0 findings — untracked marker file should count as changed, got %+v", result.Findings)
+	}
+}
+
+func TestCoupling_DocsRootOutsideRepoAnnouncesNoOp(t *testing.T) {
+	dir := gitInitRepo(t)
+	seedCoupledRule(t, dir)
+
+	// A real, uncommitted change so the check doesn't take the unrelated
+	// "working tree matches HEAD" no-op path — the only thing under test
+	// here is the paths.docs-escapes-the-repo guard.
+	writeFile(t, filepath.Join(dir, "foo_test.go"), marker("CIN-001")+"\nfunc TestFoo(t *testing.T) { /* updated */ }\n")
+
+	outside := t.TempDir()
+
+	result := checkCoupling(outside, dir, "")
+
+	if len(result.Findings) != 0 {
+		t.Fatalf("want 0 findings, got %+v", result.Findings)
+	}
+	if !strings.Contains(result.NoOp, "outside the repository") {
+		t.Fatalf("want a no-op naming paths.docs as outside the repository, got: %q", result.NoOp)
+	}
+}
+
 func TestCoupling_NotAGitRepoAnnouncesNoOp(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, ".docs", "rules.md"), "1. **CIN-001** text.\n")

@@ -36,6 +36,19 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 		return couplingResult{NoOp: "coupling: no commits yet — check did not run"}
 	}
 
+	absRoot, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return couplingResult{NoOp: "coupling: could not resolve repo root — check did not run"}
+	}
+	absDocs, err := filepath.Abs(docsDir)
+	if err != nil {
+		return couplingResult{NoOp: "coupling: could not resolve paths.docs — check did not run"}
+	}
+	if rel, err := filepath.Rel(absRoot, absDocs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return couplingResult{NoOp: "coupling: paths.docs is outside the repository — check did not run"}
+	}
+	docsDir, repoRoot = absDocs, absRoot
+
 	changed, err := gitChangedFiles(repoRoot)
 	if err != nil {
 		return couplingResult{NoOp: "coupling: git diff failed — check did not run"}
@@ -150,21 +163,47 @@ func hasHead(root string) bool {
 	return cmd.Run() == nil
 }
 
+// gitChangedFiles returns the union of files changed in the working tree
+// relative to HEAD and untracked files not yet known to git. Without the
+// untracked half, a rule's marker landing in a brand-new test file that
+// hasn't been `git add`-ed yet is invisible to the diff, so a coupling
+// finding false-positives on a file the author did, in fact, touch.
 func gitChangedFiles(root string) ([]string, error) {
-	cmd := exec.Command("git", "diff", "HEAD", "--name-only")
+	tracked, err := gitOutputLines(root, "diff", "HEAD", "--name-only")
+	if err != nil {
+		return nil, err
+	}
+	untracked, err := gitOutputLines(root, "ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]bool{}
+	var files []string
+	for _, f := range append(tracked, untracked...) {
+		if !seen[f] {
+			seen[f] = true
+			files = append(files, f)
+		}
+	}
+	return files, nil
+}
+
+func gitOutputLines(root string, args ...string) ([]string, error) {
+	cmd := exec.Command("git", args...)
 	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
-	var files []string
+	var lines []string
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
 	for scanner.Scan() {
 		if line := strings.TrimSpace(scanner.Text()); line != "" {
-			files = append(files, line)
+			lines = append(lines, line)
 		}
 	}
-	return files, nil
+	return lines, nil
 }
 
 // gitShow returns a file's content at the given revision-and-path spec
