@@ -316,3 +316,86 @@ func binPath(t *testing.T) string {
 	}
 	return abs
 }
+
+// gitEnv runs git non-interactively against a throwaway identity, with
+// bin/'s directory prepended to PATH so a generated hook shim's `exec cinch
+// hook ...` resolves to the binary this test suite just built.
+func gitEnv(t *testing.T) []string {
+	t.Helper()
+	return append(os.Environ(),
+		"PATH="+filepath.Dir(binPath(t))+":"+os.Getenv("PATH"),
+		"GIT_CONFIG_GLOBAL=/dev/null",
+		"GIT_CONFIG_SYSTEM=/dev/null",
+		"GIT_AUTHOR_NAME=cinch-test",
+		"GIT_AUTHOR_EMAIL=cinch-test@example.com",
+		"GIT_COMMITTER_NAME=cinch-test",
+		"GIT_COMMITTER_EMAIL=cinch-test@example.com",
+	)
+}
+
+func runGit(t *testing.T, dir string, args ...string) ([]byte, error) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = gitEnv(t)
+	return cmd.CombinedOutput()
+}
+
+// TestHook_PreCommitDispatchesByWhen is the load-bearing proof that the
+// generated shim, core.hooksPath, and cinch hook's `when` prefix matching
+// all actually wire together against a real `git commit` — not just the
+// dispatch logic in isolation (hook_test.go covers that).
+func TestHook_PreCommitDispatchesByWhen(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := runGit(t, dir, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+
+	manifest := "paths.docs = .docs\n" +
+		"hooks.pre-commit.demo.run  = false\n" +
+		"hooks.pre-commit.demo.when = src/\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+
+	if out, err := runGit(t, dir, "config", "core.hooksPath", ".githooks"); err != nil {
+		t.Fatalf("git config core.hooksPath: %v\n%s", err, out)
+	}
+
+	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
+		t.Fatalf("mkdir src: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "src", "app.go"), []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write src/app.go: %v", err)
+	}
+	if out, err := runGit(t, dir, "add", "src/app.go"); err != nil {
+		t.Fatalf("git add src/app.go: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, dir, "commit", "-q", "-m", "add src"); err == nil {
+		t.Fatalf("commit under src/: want blocked by the registered script, got success\n%s", out)
+	}
+	// A blocked commit does not clear the index — unstage src/app.go so the
+	// next commit's staged set doesn't still include it.
+	if out, err := runGit(t, dir, "rm", "--cached", "-q", "src/app.go"); err != nil {
+		t.Fatalf("git rm --cached src/app.go: %v\n%s", err, out)
+	}
+
+	if err := os.MkdirAll(filepath.Join(dir, "docs"), 0o755); err != nil {
+		t.Fatalf("mkdir docs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "docs", "notes.md"), []byte("# Notes\n"), 0o644); err != nil {
+		t.Fatalf("write docs/notes.md: %v", err)
+	}
+	if out, err := runGit(t, dir, "add", "docs/notes.md"); err != nil {
+		t.Fatalf("git add docs/notes.md: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, dir, "commit", "-q", "-m", "add docs"); err != nil {
+		t.Fatalf("commit under docs/ (script's when untouched): want success, got blocked: %v\n%s", err, out)
+	}
+}

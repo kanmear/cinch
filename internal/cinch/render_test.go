@@ -57,16 +57,16 @@ func TestSubstitute_NoVariablesIsUnchanged(t *testing.T) {
 }
 
 func TestHeader_IdenticalInputsProduceIdenticalHeader(t *testing.T) {
-	a := header("docs/templates/maintain-domain.md", "same body")
-	b := header("docs/templates/maintain-domain.md", "same body")
+	a := header("docs/templates/maintain-domain.md", "same body", styleMarkdown)
+	b := header("docs/templates/maintain-domain.md", "same body", styleMarkdown)
 	if a != b {
 		t.Fatalf("header: want identical output for identical input, got %q vs %q", a, b)
 	}
 }
 
 func TestHeader_DifferentBodyProducesDifferentHash(t *testing.T) {
-	a := header("docs/templates/maintain-domain.md", "body one")
-	b := header("docs/templates/maintain-domain.md", "body two")
+	a := header("docs/templates/maintain-domain.md", "body one", styleMarkdown)
+	b := header("docs/templates/maintain-domain.md", "body two", styleMarkdown)
 	if a == b {
 		t.Fatalf("header: want different hash for different body, got identical %q", a)
 	}
@@ -116,9 +116,9 @@ func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
-	want := len(entries) + 3 // + doc-philosophy.md + workflows/index.md + doc map index.md
+	want := len(entries) + 5 // + doc-philosophy.md + workflows/index.md + doc map index.md + 2 hook shims
 	if len(files) != want {
-		t.Fatalf("renderAll: want %d files (one per template + philosophy + workflow index + doc map), got %d", want, len(files))
+		t.Fatalf("renderAll: want %d files (one per template + philosophy + workflow index + doc map + hook shims), got %d", want, len(files))
 	}
 }
 
@@ -313,7 +313,7 @@ func TestRenderAll_IdempotentAcrossDiskWrite(t *testing.T) {
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
-		if err := os.WriteFile(dst, []byte(header(f.Source, f.Body)+f.Body), 0o644); err != nil {
+		if err := os.WriteFile(dst, []byte(header(f.Source, f.Body, f.Style)+f.Body), 0o644); err != nil {
 			t.Fatalf("write %s: %v", dst, err)
 		}
 	}
@@ -350,7 +350,7 @@ func TestRenderAll_IdempotentReRender(t *testing.T) {
 		if first[i] != second[i] {
 			t.Fatalf("renderAll: not idempotent at %q", first[i].Dest)
 		}
-		if header(first[i].Source, first[i].Body) != header(second[i].Source, second[i].Body) {
+		if header(first[i].Source, first[i].Body, first[i].Style) != header(second[i].Source, second[i].Body, second[i].Style) {
 			t.Fatalf("header: not idempotent for %q", first[i].Dest)
 		}
 	}

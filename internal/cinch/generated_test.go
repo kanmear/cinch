@@ -22,8 +22,12 @@ func renderToScratch(t *testing.T, root string) {
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
-		content := header(f.Source, f.Body) + f.Body
-		if err := os.WriteFile(dst, []byte(content), 0o644); err != nil {
+		content := header(f.Source, f.Body, f.Style) + f.Body
+		mode := f.Mode
+		if mode == 0 {
+			mode = 0o644
+		}
+		if err := os.WriteFile(dst, []byte(content), mode); err != nil {
 			t.Fatalf("write %s: %v", dst, err)
 		}
 	}
