@@ -399,3 +399,83 @@ func TestHook_PreCommitDispatchesByWhen(t *testing.T) {
 		t.Fatalf("commit under docs/ (script's when untouched): want success, got blocked: %v\n%s", err, out)
 	}
 }
+
+// TestInit_ThenCheckExitsClean is the load-bearing proof the whole plan
+// hinges on: `cinch init` in an empty repo must leave a tree `cinch check`
+// passes with no configuration. If this holds, the release works.
+func TestInit_ThenCheckExitsClean(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := runGit(t, dir, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+
+	initCmd := exec.Command(binPath(t), "init")
+	initCmd.Dir = dir
+	if out, err := initCmd.CombinedOutput(); err != nil {
+		t.Fatalf("init: want exit 0, got %v\n%s", err, out)
+	}
+
+	checkCmd := exec.Command(binPath(t), "check")
+	checkCmd.Dir = dir
+	if out, err := checkCmd.CombinedOutput(); err != nil {
+		t.Fatalf("check after init: want exit 0, got %v\n%s", err, out)
+	}
+}
+
+// TestInit_TwiceIsByteIdentical is the CLI-level twin of
+// TestCmdInit_TwiceIsByteIdentical (internal/cinch/init_test.go), driving
+// the real binary rather than calling CmdInit directly.
+func TestInit_TwiceIsByteIdentical(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := runGit(t, dir, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+
+	run := func() {
+		cmd := exec.Command(binPath(t), "init")
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("init: want exit 0, got %v\n%s", err, out)
+		}
+	}
+
+	snapshot := func() map[string][]byte {
+		out := map[string][]byte{}
+		_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				if info.Name() == ".git" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			rel, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			out[rel] = data
+			return nil
+		})
+		return out
+	}
+
+	run()
+	before := snapshot()
+	run()
+	after := snapshot()
+
+	if len(before) != len(after) {
+		t.Fatalf("init twice: file count changed: %d vs %d", len(before), len(after))
+	}
+	for path, content := range before {
+		if string(after[path]) != string(content) {
+			t.Fatalf("init twice: %s not byte-identical", path)
+		}
+	}
+}
