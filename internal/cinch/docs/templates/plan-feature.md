@@ -108,7 +108,7 @@ For each rule from Phase 1, write one test row. For complex rules, add an additi
 Classify each test by **tier** — the tiers are defined in `{{paths.docs}}/workflows/task-primitive.md` § Test
 tiers (sourced from `manifest.taxonomy.test_tiers`): `integration`, `unit`, `e2e`, `manual`. That
 section holds the TDD policy per tier; e2e/`manual` operational guidance lives in the tier's `notes`
-doc (find it in `{{paths.docs}}/index.md`). Read those rather than re-deriving tiers here.
+doc (find it via `cinch docs`). Read those rather than re-deriving tiers here.
 
 ### 2.2 Mark TDD-mandatory tests
 

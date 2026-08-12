@@ -112,7 +112,7 @@ After editing, check both directions:
 - Search for references to the old location of any moved facts
 - Replace stale references with cross-references to the new location
 
-There is no doc index to regenerate — `ls -1R {{paths.docs}}` is always current.
+Nothing to regenerate — `cinch docs` (or `ls -1R {{paths.docs}}`) is always current.
 
 ## Decision Tree
 

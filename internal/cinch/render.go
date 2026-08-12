@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -91,17 +90,6 @@ func hasGeneratedHeader(data string) bool {
 	return false
 }
 
-// renderFault is a renderAll error that knows which repo file is at fault, so
-// checkGenerated can report it as a finding against that file rather than
-// against the render as a whole. Error() keeps the "<file>: <msg>" form the
-// plain fmt.Errorf it replaced produced, so CmdRender's stderr is unchanged.
-type renderFault struct {
-	File string // repo-relative
-	Msg  string
-}
-
-func (e *renderFault) Error() string { return e.File + ": " + e.Msg }
-
 // renderFile is one output cinch render produces.
 type renderFile struct {
 	Dest   string // repo-relative path to write
@@ -113,12 +101,10 @@ type renderFile struct {
 
 // renderAll produces every Stage 2+ output in memory: philosophy copied
 // verbatim (it has no variables — see docs/philosophy.md), every
-// docs/templates/*.md file substituted against the manifest, a generated
-// workflow index derived from the rendered bodies, and a generated doc map
-// covering the whole docs corpus. root is the filesystem location to read
-// already-authored docs from when building the doc map; it plays no role in
-// substitution or the workflow output paths, which stay relative to docsRoot.
-func renderAll(m *Manifest, root string) ([]renderFile, error) {
+// docs/templates/*.md file substituted against the manifest, and hook shims.
+// Workflow and doc navigation are computed on demand (`cinch workflows`,
+// `cinch docs`) rather than persisted here — see workflow.go and docs.go.
+func renderAll(m *Manifest) ([]renderFile, error) {
 	entries, err := fs.ReadDir(templatesFS, templatesDir)
 	if err != nil {
 		return nil, fmt.Errorf("internal: reading embedded templates: %w", err)
@@ -163,14 +149,6 @@ func renderAll(m *Manifest, root string) ([]renderFile, error) {
 
 	sort.Slice(files, func(i, j int) bool { return files[i].Dest < files[j].Dest })
 
-	files = append(files, buildIndex(files, workflowsDir))
-
-	docMap, err := buildDocMap(files, docsRoot, root)
-	if err != nil {
-		return nil, err
-	}
-	files = append(files, docMap)
-
 	files = append(files, buildHookShims(hooksDir)...)
 
 	return files, nil
@@ -213,181 +191,6 @@ func buildHookShims(hooksDir string) []renderFile {
 	return files
 }
 
-// buildDocMap derives a doc index over the whole docs corpus: every already-
-// authored .md file on disk under docsRoot, unioned with the files this
-// render pass is about to write. The union matters on a first render — the
-// workflows this pass writes don't exist on disk yet, so without it the
-// index would omit them, and a second render (where they now do exist) would
-// then produce a different index, breaking idempotency. Where a path appears
-// in both sets, the render pass's fresh body wins over whatever stale
-// content is currently on disk.
-//
-// Excludes plans/ (transient work artifacts) and index.md itself. A file
-// with no H1 fails the render, naming the file — there is no derivable
-// title to list it under.
-func buildDocMap(files []renderFile, docsRoot, root string) (renderFile, error) {
-	dest := docsRoot + "/index.md"
-
-	type entry struct {
-		rel   string
-		title string
-	}
-	seen := map[string]bool{}
-	var entries []entry
-
-	include := func(rel, body string) error {
-		rel = filepath.ToSlash(rel)
-		if seen[rel] || rel == "index.md" || strings.HasPrefix(rel, "plans/") {
-			return nil
-		}
-		seen[rel] = true
-		title, _ := titleAndTrigger(body)
-		if title == "" {
-			return &renderFault{
-				File: filepath.Join(docsRoot, rel),
-				Msg:  "every doc needs a `# Title` line",
-			}
-		}
-		entries = append(entries, entry{rel: rel, title: title})
-		return nil
-	}
-
-	for _, f := range files {
-		if !strings.HasSuffix(f.Dest, ".md") {
-			continue
-		}
-		rel, err := filepath.Rel(docsRoot, f.Dest)
-		if err != nil {
-			continue
-		}
-		if err := include(rel, f.Body); err != nil {
-			return renderFile{}, err
-		}
-	}
-
-	absDocsRoot := docsRoot
-	if !filepath.IsAbs(absDocsRoot) {
-		absDocsRoot = filepath.Join(root, docsRoot)
-	}
-	walkErr := filepath.WalkDir(absDocsRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil // absDocsRoot (or a subpath) doesn't exist yet — nothing on disk to add
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return nil
-		}
-		rel, err := filepath.Rel(absDocsRoot, path)
-		if err != nil {
-			return nil
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-		return include(rel, string(data))
-	})
-	if walkErr != nil {
-		return renderFile{}, walkErr
-	}
-
-	sort.Slice(entries, func(i, j int) bool { return entries[i].rel < entries[j].rel })
-
-	var b strings.Builder
-	b.WriteString("# Doc index\n\n")
-	for _, e := range entries {
-		fmt.Fprintf(&b, "- `%s` — %s\n", e.rel, e.title)
-	}
-	return renderFile{Dest: dest, Source: "generated", Body: b.String()}, nil
-}
-
-// buildIndex derives a trigger table from the workflow files already
-// rendered — no authored content, no manifest variables. Title is a file's
-// first "# " line; trigger is the first non-blank line after it. Any agent
-// that reads AGENTS.md can be pointed at this one file instead of a
-// per-harness skill wrapper per workflow.
-func buildIndex(files []renderFile, workflowsDir string) renderFile {
-	var b strings.Builder
-	b.WriteString("# Workflow Index\n\n")
-	b.WriteString("Generated by cinch. Read the linked file when its trigger applies.\n\n")
-	b.WriteString("| Workflow | Trigger |\n")
-	b.WriteString("|---|---|\n")
-	for _, f := range files {
-		name := filepath.Base(f.Dest)
-		_, trigger := titleAndTrigger(f.Body)
-		fmt.Fprintf(&b, "| [%s](%s) | %s |\n", name, name, trigger)
-	}
-	return renderFile{Dest: workflowsDir + "/index.md", Source: "templates/*.md", Body: b.String()}
-}
-
-// titleAndTrigger extracts a workflow's H1 title and its trigger (the first
-// sentence after it — when to read the file), both verbatim. Some workflows
-// hand-wrap that opening sentence across physical lines, so the trigger
-// joins continuation lines until one ends in sentence punctuation, a blank
-// line, or a new block (bullet, heading, fence, table, quote) — whichever
-// comes first.
-func titleAndTrigger(body string) (title, trigger string) {
-	lines := strings.Split(body, "\n")
-	titleIdx := -1
-	for i, l := range lines {
-		if t, ok := strings.CutPrefix(l, "# "); ok {
-			title = t
-			titleIdx = i
-			break
-		}
-	}
-	if titleIdx == -1 {
-		return "", ""
-	}
-
-	var parts []string
-	for _, l := range lines[titleIdx+1:] {
-		line := strings.TrimSpace(l)
-		if line == "" {
-			if len(parts) > 0 {
-				break
-			}
-			continue // blank lines before the trigger starts (e.g. under the H1)
-		}
-		if len(parts) > 0 && startsNewBlock(line) {
-			break
-		}
-		parts = append(parts, line)
-		if endsSentence(line) {
-			break
-		}
-	}
-	trigger = strings.Join(parts, " ")
-	return title, trigger
-}
-
-// startsNewBlock reports whether line opens a new markdown block (heading,
-// list item, fence, table row, blockquote) rather than continuing prose.
-func startsNewBlock(line string) bool {
-	for _, prefix := range []string{"#", "-", "*", "```", "|", ">"} {
-		if strings.HasPrefix(line, prefix) {
-			return true
-		}
-	}
-	if i := strings.IndexByte(line, '.'); i > 0 && i <= 2 {
-		if _, err := strconv.Atoi(line[:i]); err == nil {
-			return true // ordered list item, e.g. "1. "
-		}
-	}
-	return false
-}
-
-// endsSentence reports whether line's last character terminates a sentence.
-func endsSentence(line string) bool {
-	if line == "" {
-		return false
-	}
-	switch line[len(line)-1] {
-	case '.', '!', '?':
-		return true
-	}
-	return false
-}
-
 // CmdRender implements `cinch render`: writes every Stage 2 output under
 // root, header-stamped. Idempotent — re-running with the same manifest and
 // embedded templates produces byte-identical files, so a re-render diff
@@ -399,7 +202,7 @@ func CmdRender(root string) int {
 		return 1
 	}
 
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
 		return 1

@@ -31,7 +31,7 @@ gate and runs only on explicit request — so any agent, whatever its own house 
 browser automation, can respect it mechanically without a human spelling it out.
 
 **e2e tier / `manual` vs `e2e`:** see `manifest.taxonomy.test_tiers` `notes:` — the e2e row's
-operational doc is listed in `{{paths.docs}}/index.md`.
+operational doc is findable via `cinch docs`.
 
 ---
 
@@ -222,7 +222,7 @@ discretion, never a required gate.
   archive. Plus a **post-fix troubleshooting update**: if the bug was non-obvious to diagnose (more
   than a few minutes of tracing), add a **Symptom → Root Cause → Fix → Prevention** entry to the
   troubleshooting docs for the affected layer.
-Find each layer's troubleshooting doc in `{{paths.docs}}/index.md`.
+Find each layer's troubleshooting doc via `cinch docs`.
 
 ---
 

@@ -27,10 +27,10 @@ every rule is bound to something concrete and verifiable:
 - a **relative link** between docs must resolve on disk
 - a rule's **text and its enforcing test** must change together — editing
   one without the other is a blocked commit, not a silent drift
-- the **rendered output** — shared workflow guidance, a generated doc map,
-  git hook shims — must match what re-generating it right now would
-  produce, byte for byte, so a hand-edit or tampering attempt is caught the
-  same way a code change would be
+- the **rendered output** — shared workflow guidance, git hook shims — must
+  match what re-generating it right now would produce, byte for byte, so a
+  hand-edit or tampering attempt is caught the same way a code change would
+  be
 - an optional **commit message convention** can be enforced the same way
 
 All five are one command, `cinch check`, with no configuration required by
@@ -98,38 +98,41 @@ agent to write is guaranteed to be one `cinch check` actually scans:
 - **generated** (error) — the render output on disk doesn't match what
   `cinch render` would produce right now: a missing file, altered bytes, an
   orphaned generated file (one no longer produced by the current render), or
-  a doc that makes `cinch render` fail outright (an authored doc with no
-  `# Title`, say) — that last one is a finding naming the offending file, not
-  a silent skip, since a render that would fail is a defect this check can
-  decide rather than an absence. A re-render diff proves tampering — this is
-  the check that makes that claim true, and it's what makes hook shims
-  tamper-evident: you cannot edit a generated `pre-commit` hook to skip cinch
-  without `cinch check` failing, and deleting the docs directory to get out of
-  the way doesn't help — verification is gated on *every* expected output
-  being absent, not on one directory existing. A no-op, not a pass, when
-  render genuinely hasn't run yet.
+  a render that fails outright (an undefined `{{key}}` in a template, say) —
+  that last one is a finding naming the manifest, not a silent skip, since a
+  render that would fail is a defect this check can decide rather than an
+  absence. A re-render diff proves tampering — this is the check that makes
+  that claim true, and it's what makes hook shims tamper-evident: you cannot
+  edit a generated `pre-commit` hook to skip cinch without `cinch check`
+  failing, and deleting the docs directory to get out of the way doesn't
+  help — verification is gated on *every* expected output being absent, not
+  on one directory existing. A no-op, not a pass, when render genuinely
+  hasn't run yet.
 - **commit** (error) — when `MSGFILE` is given and the manifest's
   `commit.pattern` key is set, the commit's subject line must match it.
   Absent key, no behavior change.
 
 `cinch render` writes into `paths.docs`'s `workflows/` subdirectory (default
 `.docs/workflows/`): `doc-philosophy.md` (copied verbatim — no variables, no
-renderer needed), one file per template under `internal/cinch/docs/templates/`
-(value-substituted against `cinch_manifest`), and `index.md` — a trigger
-table generated from every other rendered file's own title and opening line,
-no hand-authored content. It also writes `<paths.docs>/index.md` — a doc map
-covering the *whole* docs corpus (every markdown file under `paths.docs`,
-authored or rendered, excluding `plans/`), so workflow prose can say "find it
-in the doc map" instead of guessing at a project's layout. And it writes a
-thin shim per supported git hook event under `paths.hooks` (default
-`.githooks/`): `exec cinch hook <event> "$@"` — the dispatch table lives in
-the manifest and is read at runtime, so editing it takes effect immediately
-with no re-render. Every generated output is stamped with a header carrying
-a body-sha (comment-syntax aware: a shell script's shebang stays the literal
-first line, with the marker on the line below). Substitution is `{{key}}`
-literal replacement only — no loops, no conditionals — and an undefined
-variable is an error, never a blank. The render is idempotent: running it
-twice produces byte-identical output, so a re-render diff proves tampering.
+renderer needed) and one file per template under
+`internal/cinch/docs/templates/` (value-substituted against
+`cinch_manifest`). And it writes a thin shim per supported git hook event
+under `paths.hooks` (default `.githooks/`): `exec cinch hook <event> "$@"` —
+the dispatch table lives in the manifest and is read at runtime, so editing
+it takes effect immediately with no re-render. Every generated output is
+stamped with a header carrying a body-sha (comment-syntax aware: a shell
+script's shebang stays the literal first line, with the marker on the line
+below). Substitution is `{{key}}` literal replacement only — no loops, no
+conditionals — and an undefined variable is an error, never a blank. The
+render is idempotent: running it twice produces byte-identical output, so a
+re-render diff proves tampering.
+
+Workflow and doc navigation are *not* part of the render output — nothing is
+persisted, so nothing can drift or need re-rendering. `cinch workflows`
+computes and prints the workflow trigger table from whatever is under
+`workflows/` right now; `cinch docs` computes and prints every doc's path
+and title from whatever is under `paths.docs` right now (excluding
+`plans/`). Both read the current tree at call time.
 
 **Version-skew note:** upgrading the cinch binary can redden every
 consumer's `generated` check until `cinch render` is re-run — there's no
@@ -176,26 +179,30 @@ hooks.pre-commit.frontend.when    = frontend/
 commit.pattern = ^\[[a-z-]+\] .+
 ```
 
-### Workflow index instead of per-harness skills
+### Commands instead of per-harness skills or a persisted index
 
 Don't hand-maintain a `SKILL.md`/slash-command wrapper per workflow per agent
 harness — that's one file per workflow times one per harness, all of it
-duplicated boilerplate that only ever says "read this generated file." Add
-one line to the consumer repo's `AGENTS.md`, once — `cinch init` writes it
-for you if `AGENTS.md` doesn't already exist:
+duplicated boilerplate that only ever says "read this file." And don't
+persist a doc/workflow index either — a written-to-disk index is one more
+render output that can drift and one more thing `cinch check` has to verify.
+Compute both on demand instead. Add two lines to the consumer repo's
+`AGENTS.md`, once — `cinch init` writes them for you if `AGENTS.md` doesn't
+already exist:
 
 ```
 Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one.
+Docs: run `cinch docs` to see every doc's path and title.
 ```
 
-That's a command, not a path, so it cannot go stale under a customized
-`paths.docs`. `cinch workflows` prints the generated trigger table;
-`cinch workflow NAME` prints one workflow's full rendered content. Any agent
-that reads `AGENTS.md` — not just one harness's proprietary skill system —
-can run the command and follow the trigger table straight to the workflow
-that applies. The trade-off: harnesses with native slash-command UX (typing
-`/domain`) lose that explicit affordance in exchange for zero duplication and
-agent-neutrality.
+Both are commands, not paths, so neither can go stale under a customized
+`paths.docs`. `cinch workflows` computes and prints the workflow trigger
+table; `cinch workflow NAME` prints one workflow's full rendered content;
+`cinch docs` computes and prints the whole doc corpus's path + title list.
+Any agent that reads `AGENTS.md` — not just one harness's proprietary skill
+system — can run these commands directly. The trade-off: harnesses with
+native slash-command UX (typing `/domain`) lose that explicit affordance in
+exchange for zero duplication and agent-neutrality.
 
 `cinch_manifest` binds the values templates and hooks reference — a flat
 `dotted.key = value` text format, no schema, with declaration order preserved
@@ -214,33 +221,36 @@ fixtures end-to-end.
 ## Layout
 
 - `main.go` — CLI dispatch (`init`, `check`, `render`, `hook`, `workflows`,
-  `workflow`, `ignores`); the only `package main` file — everything else
-  lives in `internal/cinch`, a private package the Go compiler forbids other
-  modules from importing.
+  `workflow`, `docs`, `ignores`); the only `package main` file — everything
+  else lives in `internal/cinch`, a private package the Go compiler forbids
+  other modules from importing.
 - `internal/cinch/check.go` — the `Finding` model and `CmdCheck` orchestrator.
 - `internal/cinch/links.go`, `internal/cinch/rules.go`,
   `internal/cinch/coupling.go`, `internal/cinch/generated.go`,
   `internal/cinch/commit.go` — one file per check, each paired with a
   `_test.go` carrying its mutation fixtures.
 - `internal/cinch/render.go` — the `{{key}}` substituter, header/body-sha
-  (comment-style aware), the generated workflow index, the doc map, hook
-  shims, and `CmdRender`; embeds `docs/philosophy.md` and the whole
-  `docs/templates/` directory via `go:embed` (single static binary, no
-  runtime template resolution) and iterates it, so adding a template needs
-  no code change.
+  (comment-style aware), hook shims, and `CmdRender`; embeds
+  `docs/philosophy.md` and the whole `docs/templates/` directory via
+  `go:embed` (single static binary, no runtime template resolution) and
+  iterates it, so adding a template needs no code change.
+- `internal/cinch/title.go` — H1 title/trigger extraction, shared by
+  `workflow.go` and `docs.go`.
 - `internal/cinch/manifest.go` — the `cinch_manifest` parser and its
   accessors (`List`, `Names`, declaration order).
 - `internal/cinch/hook.go` — `cinch hook`'s dispatcher: staged-set
   computation, `when` prefix matching, command execution.
 - `internal/cinch/init.go` — `cinch init`.
-- `internal/cinch/workflow.go` — `cinch workflows` / `cinch workflow NAME`.
+- `internal/cinch/workflow.go` — `cinch workflows` / `cinch workflow NAME`,
+  computed on demand from `workflows/` on disk.
+- `internal/cinch/docs.go` — `cinch docs`, computed on demand from
+  `paths.docs` on disk.
 - `internal/cinch/docs/philosophy.md` — copied verbatim into every consumer.
 - `internal/cinch/docs/templates/*.md` — the nine workflow templates cinch
   ships (`audit-docs`, `audit-domain`, `execute-plan`, `fix-bug`,
   `maintain-domain`, `plan-feature`, `sync-docs`, `task-primitive`, plus
   `doc-philosophy` copied verbatim); each renders to
-  `<paths.docs>/workflows/<name>.md`, plus a generated
-  `<paths.docs>/workflows/index.md` derived from all of them.
+  `<paths.docs>/workflows/<name>.md`.
 - `.docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six
   principles (deterministic over semantic, the direction rule, the
   derivability and holdability gates, rule→test markers, bind values not

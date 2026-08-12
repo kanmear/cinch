@@ -1,7 +1,6 @@
 package cinch
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,16 +30,11 @@ func checkGenerated(root string) generatedResult {
 	// while `cinch check` — the thing wired into the hook — goes quiet, so
 	// one untitled doc silently disables verification of every generated
 	// file in the repo.
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
-		file, msg := manifestPath, err.Error()
-		var fault *renderFault
-		if errors.As(err, &fault) {
-			file, msg = fault.File, fault.Msg
-		}
 		return generatedResult{Findings: []Finding{{
-			Check: "generated", Level: "error", File: file, Line: 1,
-			Message: msg + " — cinch render fails here, so no generated output can be verified",
+			Check: "generated", Level: "error", File: manifestPath, Line: 1,
+			Message: err.Error() + " — cinch render fails here, so no generated output can be verified",
 		}}}
 	}
 

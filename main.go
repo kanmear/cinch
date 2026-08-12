@@ -25,15 +25,16 @@ usage:
   cinch render            render docs/philosophy.md and docs/templates/*.md into
                           paths.docs's workflows/ subdirectory (default
                           .docs/workflows/), substituting values from
-                          cinch_manifest, plus a generated doc map and git
-                          hook shims under paths.hooks (default .githooks/).
-                          Idempotent — a re-render diff proves tampering.
+                          cinch_manifest, plus git hook shims under
+                          paths.hooks (default .githooks/). Idempotent — a
+                          re-render diff proves tampering.
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
                           (pre-commit, commit-msg). Runs cinch check, then
                           any hooks.EVENT.* entries from cinch_manifest whose
                           'when' path prefixes match the staged set.
-  cinch workflows         print the generated workflow trigger table.
+  cinch workflows         compute and print the workflow trigger table.
   cinch workflow NAME     print one rendered workflow's full content.
+  cinch docs              compute and print every doc's path and title.
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -93,6 +94,11 @@ func main() {
 			os.Exit(usageError("workflow: requires exactly one NAME argument"))
 		}
 		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
+	case "docs":
+		if len(os.Args) > 2 {
+			os.Exit(usageError("docs: takes no arguments"))
+		}
+		os.Exit(impl.CmdDocs("."))
 	default:
 		fmt.Fprintf(os.Stderr, "cinch: %q is not a command\n", os.Args[1])
 		os.Exit(1)
