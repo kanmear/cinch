@@ -111,7 +111,7 @@ func TestCmdWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 		writeFile(t, filepath.Join(root, f.Dest), header(f.Source, f.Body, f.Style)+f.Body)
 	}
 
-	if code := CmdWorkflow(root, "maintain-domain"); code != 0 {
+	if code := CmdWorkflow(root, "docs-maintain-domain"); code != 0 {
 		t.Fatalf("CmdWorkflow: want exit 0 resolving under a custom paths.docs, got %d", code)
 	}
 }
@@ -140,7 +140,7 @@ func TestCmdWorkflow_RenderNotRunFires(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
 
-	if code := CmdWorkflow(root, "maintain-domain"); code != 1 {
+	if code := CmdWorkflow(root, "docs-maintain-domain"); code != 1 {
 		t.Fatalf("CmdWorkflow: want exit 1 when render hasn't run, got %d", code)
 	}
 }

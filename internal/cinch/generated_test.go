@@ -52,7 +52,7 @@ func TestCheckGenerated_ByteFlipFires(t *testing.T) {
 	root := t.TempDir()
 	renderToScratch(t, root)
 
-	target := filepath.Join(root, ".docs", "workflows", "maintain-domain.md")
+	target := filepath.Join(root, ".docs", "workflows", "docs-maintain-domain.md")
 	data, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatalf("read %s: %v", target, err)
@@ -67,7 +67,7 @@ func TestCheckGenerated_ByteFlipFires(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("want 1 finding, got %d: %+v", len(got), got)
 	}
-	if got[0].File != ".docs/workflows/maintain-domain.md" {
+	if got[0].File != ".docs/workflows/docs-maintain-domain.md" {
 		t.Fatalf("unexpected finding: %+v", got[0])
 	}
 }
@@ -76,7 +76,7 @@ func TestCheckGenerated_DeletedFileFires(t *testing.T) {
 	root := t.TempDir()
 	renderToScratch(t, root)
 
-	target := filepath.Join(root, ".docs", "workflows", "fix-bug.md")
+	target := filepath.Join(root, ".docs", "workflows", "dev-fix-bug.md")
 	if err := os.Remove(target); err != nil {
 		t.Fatalf("remove %s: %v", target, err)
 	}
@@ -87,7 +87,7 @@ func TestCheckGenerated_DeletedFileFires(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("want 1 finding, got %d: %+v", len(got), got)
 	}
-	if got[0].File != ".docs/workflows/fix-bug.md" {
+	if got[0].File != ".docs/workflows/dev-fix-bug.md" {
 		t.Fatalf("unexpected finding: %+v", got[0])
 	}
 }

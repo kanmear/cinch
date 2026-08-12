@@ -2,7 +2,7 @@
 
 Audit `{{paths.docs}}/` documentation for philosophy violations, bloat, and staleness.
 
-Read `{{paths.docs}}/workflows/doc-philosophy.md` — every check below enforces these principles.
+Read `{{paths.docs}}/workflows/docs-philosophy.md` — every check below enforces these principles.
 
 ## Usage
 
@@ -15,7 +15,7 @@ Scan all `{{paths.docs}}/` docs and fix violations.
 - Read `cinch_manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
 ### 2. Prune first — the admission test applied retroactively
-Apply the admission test (doc-philosophy, The Admission Test) to every existing doc, not just new content:
+Apply the admission test (docs-philosophy, The Admission Test) to every existing doc, not just new content:
 - Any content an agent could recover by reading the source is **removed — not trimmed, not refreshed**.
   Deletion is the fix, and the corpus must only shrink here.
 - What survives: business rules in `{{paths.docs}}/` (the non-derivable residue, IDed and guarded by the

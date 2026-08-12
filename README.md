@@ -113,7 +113,7 @@ agent to write is guaranteed to be one `cinch check` actually scans:
   Absent key, no behavior change.
 
 `cinch render` writes into `paths.docs`'s `workflows/` subdirectory (default
-`.docs/workflows/`): `doc-philosophy.md` (copied verbatim — no variables, no
+`.docs/workflows/`): `docs-philosophy.md` (copied verbatim — no variables, no
 renderer needed) and one file per template under
 `internal/cinch/docs/templates/` (value-substituted against
 `cinch_manifest`). And it writes a thin shim per supported git hook event
@@ -245,12 +245,13 @@ fixtures end-to-end.
   computed on demand from `workflows/` on disk.
 - `internal/cinch/docs.go` — `cinch docs`, computed on demand from
   `paths.docs` on disk.
-- `internal/cinch/docs/philosophy.md` — copied verbatim into every consumer.
+- `internal/cinch/docs/docs-philosophy.md` — copied verbatim into every consumer.
 - `internal/cinch/docs/templates/*.md` — the nine workflow templates cinch
-  ships (`audit-docs`, `audit-domain`, `execute-plan`, `fix-bug`,
-  `maintain-domain`, `plan-feature`, `sync-docs`, `task-primitive`, plus
-  `doc-philosophy` copied verbatim); each renders to
-  `<paths.docs>/workflows/<name>.md`.
+  ships, grouped by a shared filename prefix: the feature/bug dev lifecycle
+  (`dev-plan-feature`, `dev-fix-bug`, `dev-execute-plan`, `dev-task-primitive`)
+  and the docs-corpus toolkit (`docs-audit-quality`, `docs-audit-coverage`,
+  `docs-maintain-domain`, `docs-sync`, plus `docs-philosophy` copied
+  verbatim); each renders to `<paths.docs>/workflows/<name>.md`.
 - `.docs/PRINCIPLES.md` — the spec the rebuild must satisfy: the six
   principles (deterministic over semantic, the direction rule, the
   derivability and holdability gates, rule→test markers, bind values not
