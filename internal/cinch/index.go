@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// docList walks docsRoot right now and returns every doc's path and title,
+// indexList walks docsRoot right now and returns every doc's path and title,
 // one line each — the on-demand replacement for a persisted doc map.
 // Nothing is written, so nothing can drift from disk; a re-run always
 // reflects the corpus as it currently stands.
@@ -18,7 +18,7 @@ import (
 // is skipped rather than erroring — this is a convenience listing, not a
 // validated build step the way `cinch render` is. Returns an error when
 // there is nothing to show.
-func docList(docsRoot string) (string, error) {
+func indexList(docsRoot string) (string, error) {
 	type entry struct {
 		rel   string
 		title string
@@ -66,16 +66,16 @@ func docList(docsRoot string) (string, error) {
 	return b.String(), nil
 }
 
-// CmdDocs implements `cinch docs`: prints the computed doc list.
-func CmdDocs(root string) int {
+// CmdIndex implements `cinch index`: prints the computed doc list.
+func CmdIndex(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
 		return 1
 	}
-	list, err := docList(docsRoot)
+	list, err := indexList(docsRoot)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: docs: "+err.Error())
+		fmt.Fprintln(os.Stderr, "cinch: index: "+err.Error())
 		return 1
 	}
 	fmt.Print(list)

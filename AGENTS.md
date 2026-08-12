@@ -5,10 +5,10 @@ a repository — the rules, workflows, and conventions code must conform to, rea
 by humans and executed by agents. **Status: 0.1.0 — init, self-enforcement,
 manifest-driven extension. Five checks (links, rules, coupling, generated,
 commit), `render` (philosophy, workflows, hook shims), `init`, `hook`,
-`workflows`/`workflow`/`docs`. See README.md.**
+`workflows`/`workflow`/`index`. See README.md.**
 
 Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one.
-Docs: run `cinch docs` to see every doc's path and title.
+Docs: run `cinch index` to see every doc's path and title.
 
 ## What this repo is
 
@@ -29,8 +29,8 @@ Docs: run `cinch docs` to see every doc's path and title.
   `{{key}}` substitution, hook shims, and the `cinch_manifest` parser.
   `title.go` — shared H1 title/trigger extraction. `hook.go` — the
   `cinch hook` dispatcher. `init.go` — `cinch init`. `workflow.go` —
-  `cinch workflows` / `cinch workflow NAME`, computed on demand. `docs.go` —
-  `cinch docs`, computed on demand. `docs/philosophy.md`,
+  `cinch workflows` / `cinch workflow NAME`, computed on demand. `index.go` —
+  `cinch index`, computed on demand. `docs/philosophy.md`,
   `docs/templates/*.md` (nine workflows) — the content `render` ships,
   embedded via `go:embed`. `tests/` — CLI-level tests against the built
   binary. `Makefile` — `build` / `test`.

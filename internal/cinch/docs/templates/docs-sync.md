@@ -1,7 +1,7 @@
 # Documentation Sync
 
 Update `{{paths.docs}}/` documentation to reflect recent code changes.
-- **Note:** `cinch docs` reflects the doc structure live — nothing to regenerate or stage when a
+- **Note:** `cinch index` reflects the doc structure live — nothing to regenerate or stage when a
   doc is added, removed, renamed, or retitled. AGENTS.md itself only changes when a top-level
   reading-guide entry point changes.
 
@@ -103,12 +103,12 @@ Detect these by looking for:
 | New directory / major file move | relevant `architecture.md` |
 | Project-wide convention or architectural decision | root `conventions.md` / relevant `architecture.md` |
 | Service-specific pattern | `[service]/conventions.md` |
-| Frontend quirk | the frontend layer's conventions doc (find it via `cinch docs`) § Quirks and Gotchas |
-| Backend quirk | the backend layer's troubleshooting doc (find it via `cinch docs`) § Quirks |
+| Frontend quirk | the frontend layer's conventions doc (find it via `cinch index`) § Quirks and Gotchas |
+| Backend quirk | the backend layer's troubleshooting doc (find it via `cinch index`) § Quirks |
 | Cross-cutting quirk | root docs only if a real quirks heading exists; otherwise the closest service troubleshooting § Quirks |
 | Common / recurring issue | `[service]/troubleshooting.md` § Common Issues (infra → `deployment.md`) |
 
-**For Regular Updates:** run `cinch docs`, read only the affected docs, update ONLY the
+**For Regular Updates:** run `cinch index`, read only the affected docs, update ONLY the
 affected sections. Focus on facts: endpoint specs, config values, file locations, architectural
 decisions.
 
@@ -128,12 +128,12 @@ Create a new file when:
 - A new entity is introduced (e.g., Thing model → `models/<entity>.md`)
 - A component/module has complex, non-obvious behavior that agents will need repeatedly
 
-Place new docs alongside existing similar docs — run `cinch docs` for this project's
+Place new docs alongside existing similar docs — run `cinch index` for this project's
 current layout and naming conventions before creating a new file.
 
 **Update AGENTS.md only when** a top-level reading-guide entry point changes (a new high-level doc
 category / new top-level concern) — not for every new file. Individual files are covered by
-`cinch docs`, not by AGENTS.md.
+`cinch index`, not by AGENTS.md.
 
 ### 5. Update docs strategically
 
