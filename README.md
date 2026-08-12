@@ -48,6 +48,19 @@ The point is to make "the docs are accurate" a property a script verifies on
 every commit, the way a linter verifies formatting — not a hope that has to
 survive contact with a deadline.
 
+## Install
+
+```
+make install    # go install . — puts `cinch` on your PATH via GOBIN
+```
+
+The generated git hook shims `exec cinch hook <event>` — a bare PATH lookup,
+deliberately, so a shim never hardcodes one machine's path. The consequence is
+that the binary has to be *installed*, not just built: `make build` produces
+`./bin/cinch` for local iteration, but a repo whose hooks are activated needs
+`make install`, or every commit fails with `cinch: not found` (exit 127)
+before a single check runs.
+
 ## Status: 0.1.0 — init, self-enforcement, manifest-driven extension
 
 `cinch init` scaffolds a new consumer end to end: a manifest, the docs
@@ -83,12 +96,18 @@ agent to write is guaranteed to be one `cinch check` actually scans:
   `rule-reword: <ID>` in a commit message, wired through `cinch check
   [MSGFILE]` (matches git's own `commit-msg` hook contract).
 - **generated** (error) — the render output on disk doesn't match what
-  `cinch render` would produce right now: a missing file, altered bytes, or
-  an orphaned generated file (one no longer produced by the current render).
-  A re-render diff proves tampering — this is the check that makes that
-  claim true, and it's what makes hook shims tamper-evident: you cannot edit
-  a generated `pre-commit` hook to skip cinch without `cinch check` failing.
-  A no-op, not a pass, when render hasn't run yet.
+  `cinch render` would produce right now: a missing file, altered bytes, an
+  orphaned generated file (one no longer produced by the current render), or
+  a doc that makes `cinch render` fail outright (an authored doc with no
+  `# Title`, say) — that last one is a finding naming the offending file, not
+  a silent skip, since a render that would fail is a defect this check can
+  decide rather than an absence. A re-render diff proves tampering — this is
+  the check that makes that claim true, and it's what makes hook shims
+  tamper-evident: you cannot edit a generated `pre-commit` hook to skip cinch
+  without `cinch check` failing, and deleting the docs directory to get out of
+  the way doesn't help — verification is gated on *every* expected output
+  being absent, not on one directory existing. A no-op, not a pass, when
+  render genuinely hasn't run yet.
 - **commit** (error) — when `MSGFILE` is given and the manifest's
   `commit.pattern` key is set, the commit's subject line must match it.
   Absent key, no behavior change.
