@@ -2,13 +2,14 @@ package cinch
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func TestListWorkflowNames_ExcludesIndexSortsAlphabetically(t *testing.T) {
+func TestListWorkflowNames_SortsAlphabetically(t *testing.T) {
 	root := t.TempDir()
 	m := &Manifest{Vars: map[string]string{"paths.docs": ".docs"}}
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -19,11 +20,6 @@ func TestListWorkflowNames_ExcludesIndexSortsAlphabetically(t *testing.T) {
 	names, err := listWorkflowNames(filepath.Join(root, ".docs"))
 	if err != nil {
 		t.Fatalf("listWorkflowNames: %v", err)
-	}
-	for _, n := range names {
-		if n == "index" {
-			t.Fatalf("listWorkflowNames: index.md leaked into the name list: %v", names)
-		}
 	}
 	if !sortedStrings(names) {
 		t.Fatalf("listWorkflowNames: want sorted, got %v", names)
@@ -58,7 +54,7 @@ func TestCmdWorkflows_PrintsTriggerTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
 	}
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -71,6 +67,35 @@ func TestCmdWorkflows_PrintsTriggerTable(t *testing.T) {
 	}
 }
 
+// TestWorkflowsTable_ListsEveryWorkflow is the on-demand equivalent of the
+// old generated-index coverage check: every rendered workflow must appear
+// as a row in the computed table.
+func TestWorkflowsTable_ListsEveryWorkflow(t *testing.T) {
+	root := t.TempDir()
+	m := &Manifest{Vars: map[string]string{"paths.docs": ".docs"}}
+	files, err := renderAll(m)
+	if err != nil {
+		t.Fatalf("renderAll: %v", err)
+	}
+	for _, f := range files {
+		writeFile(t, filepath.Join(root, f.Dest), f.Body)
+	}
+
+	table, err := workflowsTable(filepath.Join(root, ".docs"))
+	if err != nil {
+		t.Fatalf("workflowsTable: %v", err)
+	}
+	for _, f := range files {
+		if !strings.HasPrefix(f.Dest, ".docs/"+workflowsSubdir+"/") {
+			continue
+		}
+		name := filepath.Base(f.Dest)
+		if !strings.Contains(table, name) {
+			t.Fatalf("workflowsTable: missing entry for %s:\n%s", name, table)
+		}
+	}
+}
+
 func TestCmdWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = mydocs\n")
@@ -78,7 +103,7 @@ func TestCmdWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
 	}
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -98,7 +123,7 @@ func TestCmdWorkflow_UnknownNameFires(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
 	}
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -107,7 +132,7 @@ func TestCmdWorkflow_UnknownNameFires(t *testing.T) {
 	}
 
 	if code := CmdWorkflow(root, "bogus-name"); code != 1 {
-		t.Fatalf("CmdWorkflow: want exit 1 for an unknown name, got %d", code)
+		t.Fatalf("CmdWorkflow: want exit 1 when render hasn't run, got %d", code)
 	}
 }
 

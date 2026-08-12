@@ -14,8 +14,8 @@ import (
 const workflowsSubdir = "workflows"
 
 // listWorkflowNames returns every rendered workflow's name — its filename
-// under docsRoot's workflows subdirectory, without the .md extension,
-// excluding the generated index.md — sorted.
+// under docsRoot's workflows subdirectory, without the .md extension —
+// sorted.
 func listWorkflowNames(docsRoot string) ([]string, error) {
 	dir := filepath.Join(docsRoot, workflowsSubdir)
 	entries, err := os.ReadDir(dir)
@@ -27,31 +27,50 @@ func listWorkflowNames(docsRoot string) ([]string, error) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
 			continue
 		}
-		name := strings.TrimSuffix(e.Name(), ".md")
-		if name == "index" {
-			continue
-		}
-		names = append(names, name)
+		names = append(names, strings.TrimSuffix(e.Name(), ".md"))
 	}
 	sort.Strings(names)
 	return names, nil
 }
 
-// CmdWorkflows implements `cinch workflows`: prints the generated workflow
-// trigger table. Exit 1 if render hasn't run yet — there is nothing to
-// print, and that must not read as "this project has zero workflows."
+// workflowsTable computes the workflow trigger table from whatever is on
+// disk right now — nothing persisted, so nothing to go stale. Returns an
+// error when there is nothing to show (render hasn't run).
+func workflowsTable(docsRoot string) (string, error) {
+	names, err := listWorkflowNames(docsRoot)
+	if err != nil || len(names) == 0 {
+		return "", fmt.Errorf("cinch render has not run — nothing to show")
+	}
+
+	var b strings.Builder
+	b.WriteString("| Workflow | Trigger |\n")
+	b.WriteString("|---|---|\n")
+	for _, name := range names {
+		file := name + ".md"
+		data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, file))
+		if err != nil {
+			return "", err
+		}
+		_, trigger := titleAndTrigger(string(data))
+		fmt.Fprintf(&b, "| [%s](%s) | %s |\n", file, file, trigger)
+	}
+	return b.String(), nil
+}
+
+// CmdWorkflows implements `cinch workflows`: prints the computed workflow
+// trigger table.
 func CmdWorkflows(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
 		return 1
 	}
-	data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, "index.md"))
+	table, err := workflowsTable(docsRoot)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: workflows: cinch render has not run — nothing to show")
+		fmt.Fprintln(os.Stderr, "cinch: workflows: "+err.Error())
 		return 1
 	}
-	fmt.Print(string(data))
+	fmt.Print(table)
 	return 0
 }
 

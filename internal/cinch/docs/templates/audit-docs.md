@@ -11,7 +11,7 @@ Scan all `{{paths.docs}}/` docs and fix violations.
 ## Instructions
 
 ### 1. Load context
-- Read `{{paths.docs}}/index.md` (the generated doc map) for the full doc index
+- Run `cinch docs` for the full doc index
 - Read `cinch_manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
 ### 2. Prune first — the admission test applied retroactively
@@ -20,8 +20,7 @@ Apply the admission test (doc-philosophy, The Admission Test) to every existing 
   Deletion is the fix, and the corpus must only shrink here.
 - What survives: business rules in `{{paths.docs}}/` (the non-derivable residue, IDed and guarded by the
   rule-ID closure and the change-coupling warning) and generated workflows (cinch-owned).
-- After pruning, re-run `cinch check` and regenerate the index — deletion must leave the corpus
-  green, not just smaller.
+- After pruning, re-run `cinch check` — deletion must leave the corpus green, not just smaller.
 
 ### 3. Audit each doc file
 Read every `.md` file under `{{paths.docs}}/`. For each, check:
@@ -38,7 +37,7 @@ Read every `.md` file under `{{paths.docs}}/`. For each, check:
   this drifts silently whenever the manifest changes
 
 **Bloated link sections** (principle 4)
-- "Related Documentation" sections that list every doc (that's what the generated `{{paths.docs}}/index.md` is for)
+- "Related Documentation" sections that list every doc (that's what `cinch docs` is for)
 - Check: are links scoped to directly related docs only (3-7 links)?
 
 **Code duplication** (principle 2)

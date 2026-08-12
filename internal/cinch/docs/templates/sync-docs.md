@@ -1,8 +1,8 @@
 # Documentation Sync
 
 Update `{{paths.docs}}/` documentation to reflect recent code changes.
-- **Note:** if the doc structure changed (a doc added, removed, renamed, or retitled), regenerate
-  the doc map and stage `{{paths.docs}}/index.md`. AGENTS.md itself only changes when a top-level
+- **Note:** `cinch docs` reflects the doc structure live — nothing to regenerate or stage when a
+  doc is added, removed, renamed, or retitled. AGENTS.md itself only changes when a top-level
   reading-guide entry point changes.
 
 Read [Doc Philosophy](doc-philosophy.md) before proceeding — it defines what to document and what to skip.
@@ -103,12 +103,12 @@ Detect these by looking for:
 | New directory / major file move | relevant `architecture.md` |
 | Project-wide convention or architectural decision | root `conventions.md` / relevant `architecture.md` |
 | Service-specific pattern | `[service]/conventions.md` |
-| Frontend quirk | the frontend layer's conventions doc (find it in `{{paths.docs}}/index.md`) § Quirks and Gotchas |
-| Backend quirk | the backend layer's troubleshooting doc (find it in `{{paths.docs}}/index.md`) § Quirks |
+| Frontend quirk | the frontend layer's conventions doc (find it via `cinch docs`) § Quirks and Gotchas |
+| Backend quirk | the backend layer's troubleshooting doc (find it via `cinch docs`) § Quirks |
 | Cross-cutting quirk | root docs only if a real quirks heading exists; otherwise the closest service troubleshooting § Quirks |
 | Common / recurring issue | `[service]/troubleshooting.md` § Common Issues (infra → `deployment.md`) |
 
-**For Regular Updates:** consult `{{paths.docs}}/index.md`, read only the affected docs, update ONLY the
+**For Regular Updates:** run `cinch docs`, read only the affected docs, update ONLY the
 affected sections. Focus on facts: endpoint specs, config values, file locations, architectural
 decisions.
 
@@ -128,16 +128,12 @@ Create a new file when:
 - A new entity is introduced (e.g., Thing model → `models/<entity>.md`)
 - A component/module has complex, non-obvious behavior that agents will need repeatedly
 
-Place new docs alongside existing similar docs — check `{{paths.docs}}/index.md` for this project's
+Place new docs alongside existing similar docs — run `cinch docs` for this project's
 current layout and naming conventions before creating a new file.
 
-**After adding, removing, renaming, or retitling any doc:** regenerate and stage `{{paths.docs}}/index.md`.
-The doc map is generated from each file's H1 — never hand-edit it, and never maintain a parallel
-tree elsewhere.
-
 **Update AGENTS.md only when** a top-level reading-guide entry point changes (a new high-level doc
-category / new top-level concern) — not for every new file. Individual files are covered by the
-generated index, not by AGENTS.md.
+category / new top-level concern) — not for every new file. Individual files are covered by
+`cinch docs`, not by AGENTS.md.
 
 ### 5. Update docs strategically
 

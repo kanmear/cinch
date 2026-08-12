@@ -14,7 +14,7 @@ func renderToScratch(t *testing.T, root string) {
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
 	}
-	files, err := renderAll(m, root)
+	files, err := renderAll(m)
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
@@ -102,12 +102,6 @@ func TestCheckGenerated_OrphanFires(t *testing.T) {
 	orphan := filepath.Join(root, ".docs", "workflows", "stale-workflow.md")
 	writeFile(t, orphan, headerPrefix+" from docs/templates/stale-workflow.md — do not edit; body-sha: deadbeef -->\n\n# Stale\n\nNo longer produced.\n")
 
-	// Re-render so the doc map catches up with the orphan's presence on
-	// disk (buildDocMap's on-disk union sees it as content, same as any
-	// other file it doesn't know is orphaned) — isolating the orphan
-	// finding from an incidental "doc map is stale" finding.
-	renderToScratch(t, root)
-
 	result := checkGenerated(root)
 
 	got := findingsForCheck(result.Findings, "generated")
@@ -124,37 +118,11 @@ func TestCheckGenerated_HandAuthoredOrphanIsIgnored(t *testing.T) {
 	renderToScratch(t, root)
 
 	writeFile(t, filepath.Join(root, ".docs", "workflows", "notes.md"), "# Not Generated\n\nA hand-authored file dropped in the workflows dir.\n")
-	renderToScratch(t, root) // catch the doc map up with notes.md's presence
 
 	result := checkGenerated(root)
 
 	if len(result.Findings) != 0 {
 		t.Fatalf("want 0 findings for a non-generated file, got %+v", result.Findings)
-	}
-}
-
-// TestCheckGenerated_UnrenderableDocFires is the mutation fixture for a
-// render failure reported as a finding rather than a no-op: one authored doc
-// with no H1 used to take the whole check offline at exit 0, so `cinch
-// render` failed loudly while `cinch check` — the thing the hook runs — said
-// nothing.
-func TestCheckGenerated_UnrenderableDocFires(t *testing.T) {
-	root := t.TempDir()
-	renderToScratch(t, root)
-
-	writeFile(t, filepath.Join(root, ".docs", "notes.md"), "no title here\n")
-
-	result := checkGenerated(root)
-
-	if result.NoOp != "" {
-		t.Fatalf("a failing render is a finding, not a no-op: %s", result.NoOp)
-	}
-	got := findingsForCheck(result.Findings, "generated")
-	if len(got) != 1 {
-		t.Fatalf("want 1 finding, got %d: %+v", len(got), got)
-	}
-	if got[0].File != ".docs/notes.md" {
-		t.Fatalf("finding should name the untitled doc, got: %+v", got[0])
 	}
 }
 
