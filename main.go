@@ -5,6 +5,7 @@ import (
 	"os"
 
 	impl "cinch/internal/cinch"
+	"cinch/internal/output"
 )
 
 const usage = `cinch — referential integrity checker for the operational
@@ -52,54 +53,54 @@ func main() {
 	switch os.Args[1] {
 	case "init":
 		if len(os.Args) > 2 {
-			os.Exit(impl.UsageErr("init: takes no arguments"))
+			os.Exit(output.UsageErr("init: takes no arguments"))
 		}
 		os.Exit(impl.CmdInit("."))
 	case "check":
 		args := os.Args[2:]
 		if len(args) > 1 {
-			os.Exit(impl.UsageErr("check: too many arguments"))
+			os.Exit(output.UsageErr("check: too many arguments"))
 		}
 		msgFile := ""
 		if len(args) == 1 {
 			msgFile = args[0]
 			if _, err := os.Stat(msgFile); err != nil {
-				os.Exit(impl.UsageErr("check: cannot read message file: " + msgFile))
+				os.Exit(output.UsageErr("check: cannot read message file: " + msgFile))
 			}
 		}
 		os.Exit(impl.CmdCheck(msgFile))
 	case "ignores":
 		if len(os.Args) > 2 {
-			os.Exit(impl.UsageErr("ignores: takes no arguments"))
+			os.Exit(output.UsageErr("ignores: takes no arguments"))
 		}
 		docs, err := impl.ResolveDocsRoot(".")
 		if err != nil {
-			os.Exit(impl.Fail("ignores", err))
+			os.Exit(output.Fail("ignores", err))
 		}
 		os.Exit(impl.CmdIgnores(docs))
 	case "render":
 		if len(os.Args) > 2 {
-			os.Exit(impl.UsageErr("render: takes no arguments"))
+			os.Exit(output.UsageErr("render: takes no arguments"))
 		}
 		os.Exit(impl.CmdRender("."))
 	case "hook":
 		if len(os.Args) < 3 {
-			os.Exit(impl.UsageErr("hook: requires an event argument"))
+			os.Exit(output.UsageErr("hook: requires an event argument"))
 		}
 		os.Exit(impl.CmdHook(".", os.Args[2], os.Args[3:]))
 	case "workflows":
 		if len(os.Args) > 2 {
-			os.Exit(impl.UsageErr("workflows: takes no arguments"))
+			os.Exit(output.UsageErr("workflows: takes no arguments"))
 		}
 		os.Exit(impl.CmdWorkflows("."))
 	case "workflow":
 		if len(os.Args) != 3 {
-			os.Exit(impl.UsageErr("workflow: requires exactly one NAME argument"))
+			os.Exit(output.UsageErr("workflow: requires exactly one NAME argument"))
 		}
 		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
 	case "index":
 		if len(os.Args) > 2 {
-			os.Exit(impl.UsageErr("index: takes no arguments"))
+			os.Exit(output.UsageErr("index: takes no arguments"))
 		}
 		os.Exit(impl.CmdIndex("."))
 	default:

@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"cinch/internal/output"
 )
 
 //go:embed docs/docs-philosophy.md
@@ -198,18 +200,18 @@ func buildHookShims(hooksDir string) []renderFile {
 func CmdRender(root string) int {
 	m, err := loadManifest(root)
 	if err != nil {
-		return Fail("render", err)
+		return output.Fail("render", err)
 	}
 
 	files, err := renderAll(m)
 	if err != nil {
-		return Fail("render", err)
+		return output.Fail("render", err)
 	}
 
 	for _, f := range files {
 		dst := filepath.Join(root, f.Dest)
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return Fail("render", err)
+			return output.Fail("render", err)
 		}
 		content := header(f.Source, f.Body, f.Style) + f.Body
 		mode := f.Mode
@@ -217,9 +219,9 @@ func CmdRender(root string) int {
 			mode = 0o644
 		}
 		if err := os.WriteFile(dst, []byte(content), mode); err != nil {
-			return Fail("render", err)
+			return output.Fail("render", err)
 		}
-		Step("rendered %s", f.Dest)
+		output.Step("rendered %s", f.Dest)
 	}
 	return 0
 }

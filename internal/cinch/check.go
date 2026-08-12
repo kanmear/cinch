@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+
+	"cinch/internal/output"
 )
 
 const pathsDocsKey = "paths.docs"
@@ -55,7 +57,7 @@ type Finding struct {
 func CmdCheck(msgFile string) int {
 	docsRoot, err := ResolveDocsRoot(".")
 	if err != nil {
-		return Fail("check", err)
+		return output.Fail("check", err)
 	}
 
 	var findings []Finding
@@ -65,16 +67,16 @@ func CmdCheck(msgFile string) int {
 	coupling := checkCoupling(docsRoot, ".", msgFile)
 	findings = append(findings, coupling.Findings...)
 	if coupling.NoOp != "" {
-		Skip("check", "coupling", coupling.NoOp)
+		output.Skip("check", "coupling", coupling.NoOp)
 	}
 	for _, s := range coupling.Suppressed {
-		Skip("check", "coupling", s)
+		output.Skip("check", "coupling", s)
 	}
 
 	generated := checkGenerated(".")
 	findings = append(findings, generated.Findings...)
 	if generated.NoOp != "" {
-		Skip("check", "generated", generated.NoOp)
+		output.Skip("check", "generated", generated.NoOp)
 	}
 
 	findings = append(findings, checkCommit(".", msgFile)...)
