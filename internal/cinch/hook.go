@@ -18,24 +18,21 @@ func CmdHook(root, event string, args []string) int {
 	case "commit-msg":
 		return cmdHookCommitMsg(root, args)
 	default:
-		fmt.Fprintf(os.Stderr, "cinch: hook: unknown event %q\n", event)
-		return 2
+		return UsageErr(fmt.Sprintf("hook: unknown event %q", event))
 	}
 }
 
 func cmdHookPreCommit(root string) int {
 	staged, err := gitOutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: hook: git diff --cached failed: "+err.Error())
-		return 1
+		return Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
 	ok := CmdCheck("") == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: hook: "+err.Error())
-		return 1
+		return Fail("hook", err)
 	}
 	if m != nil && !dispatchHooks(root, m, "pre-commit", staged) {
 		ok = false
@@ -49,8 +46,7 @@ func cmdHookPreCommit(root string) int {
 
 func cmdHookCommitMsg(root string, args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "cinch: hook: commit-msg requires a message-file argument")
-		return 2
+		return UsageErr("hook: commit-msg requires a message-file argument")
 	}
 	msgFile := args[0]
 
@@ -58,8 +54,7 @@ func cmdHookCommitMsg(root string, args []string) int {
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: hook: "+err.Error())
-		return 1
+		return Fail("hook", err)
 	}
 	// `when` is ignored for commit-msg — a commit message has no changed
 	// paths to scope against — so every registered entry always runs.
@@ -90,11 +85,11 @@ func dispatchHooks(root string, m *Manifest, event string, staged []string) bool
 		}
 		when := m.List("hooks." + event + "." + name + ".when")
 		if !hookWhenMatches(staged, when) {
-			fmt.Fprintf(os.Stderr, "cinch: hook: %s: skipped %s (no staged path under %v)\n", event, name, when)
+			Skip("hook", event, fmt.Sprintf("%s: no staged path under %v", name, when))
 			continue
 		}
 		if err := runHookCommand(root, command); err != nil {
-			fmt.Fprintf(os.Stderr, "cinch: hook: %s: %s failed: %v\n", event, name, err)
+			Failf("hook", "%s: %s failed: %v", event, name, err)
 			ok = false
 		}
 	}

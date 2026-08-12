@@ -1,7 +1,6 @@
 package cinch
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,30 +35,29 @@ func CmdInit(root string) int {
 	manifestFile := filepath.Join(root, manifestPath)
 	if _, err := os.Stat(manifestFile); os.IsNotExist(err) {
 		if err := os.WriteFile(manifestFile, []byte(starterManifest), 0o644); err != nil {
-			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-			return 1
+			return Fail("init", err)
 		}
-		fmt.Printf("wrote %s\n", manifestPath)
+		Step("wrote %s", manifestPath)
+	} else {
+		Step("%s already exists — left as-is", manifestPath)
 	}
 
 	m, err := loadManifest(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-		return 1
+		return Fail("init", err)
 	}
 
 	plansDir := filepath.Join(root, docsPathValue(m), "plans")
 	if err := os.MkdirAll(plansDir, 0o755); err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-		return 1
+		return Fail("init", err)
 	}
 	gitkeep := filepath.Join(plansDir, ".gitkeep")
 	if _, err := os.Stat(gitkeep); os.IsNotExist(err) {
 		if err := os.WriteFile(gitkeep, nil, 0o644); err != nil {
-			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-			return 1
+			return Fail("init", err)
 		}
 	}
+	Step("ensured %s", plansDir)
 
 	if code := CmdRender(root); code != 0 {
 		return code
@@ -70,25 +68,21 @@ func CmdInit(root string) int {
 		cmd := exec.Command("git", "config", "core.hooksPath", hooksDir)
 		cmd.Dir = root
 		if out, err := cmd.CombinedOutput(); err != nil {
-			fmt.Fprintf(os.Stderr, "cinch: git config core.hooksPath failed: %v\n%s", err, out)
-			return 1
+			return Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
-		fmt.Printf("activated hooks: core.hooksPath = %s\n", hooksDir)
+		Step("activated hooks: core.hooksPath = %s", hooksDir)
 	} else {
-		fmt.Fprintln(os.Stderr, "cinch: not a git repository — hook shims generated but not activated")
+		Skip("init", "hooks", "not a git repository — hook shims generated but not activated")
 	}
 
 	agentsFile := filepath.Join(root, "AGENTS.md")
 	if _, err := os.Stat(agentsFile); os.IsNotExist(err) {
 		if err := os.WriteFile(agentsFile, []byte(starterAgentsMD), 0o644); err != nil {
-			fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-			return 1
+			return Fail("init", err)
 		}
-		fmt.Println("wrote AGENTS.md")
+		Step("wrote AGENTS.md")
 	} else {
-		fmt.Println("AGENTS.md already exists — add these lines if they're missing:")
-		fmt.Println("  " + agentsWorkflowsLine)
-		fmt.Println("  " + agentsIndexLine)
+		Step("AGENTS.md already exists — add these lines if missing: %q, %q", agentsWorkflowsLine, agentsIndexLine)
 	}
 
 	return 0

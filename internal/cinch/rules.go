@@ -235,10 +235,18 @@ func checkRules(docsDir, repoRoot string) []Finding {
 // the ignore inventory is cheap to read periodically.
 func CmdIgnores(docsDir string) int {
 	items := scanRuleDocs(docsDir)
+	var ignored []ruleItem
 	for _, item := range items {
-		if !item.HasIgnore {
-			continue
+		if item.HasIgnore {
+			ignored = append(ignored, item)
 		}
+	}
+	if len(ignored) == 0 {
+		fmt.Println("0 cinch:ignore declarations found")
+		return 0
+	}
+	fmt.Printf("%d cinch:ignore declarations:\n\n", len(ignored))
+	for _, item := range ignored {
 		reason := item.IgnoreReason
 		if reason == "" {
 			reason = "(no reason — malformed, see cinch check)"
