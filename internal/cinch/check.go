@@ -61,25 +61,29 @@ func CmdCheck(msgFile string) int {
 	}
 
 	var findings []Finding
-	findings = append(findings, checkLinks(docsRoot)...)
-	findings = append(findings, checkRules(docsRoot, ".")...)
+
+	linksFindings := checkLinks(docsRoot)
+	findings = append(findings, linksFindings...)
+	output.CheckStatus("links", len(linksFindings), "")
+
+	rulesFindings := checkRules(docsRoot, ".")
+	findings = append(findings, rulesFindings...)
+	output.CheckStatus("rules", len(rulesFindings), "")
 
 	coupling := checkCoupling(docsRoot, ".", msgFile)
 	findings = append(findings, coupling.Findings...)
-	if coupling.NoOp != "" {
-		output.Skip("check", "coupling", coupling.NoOp)
-	}
+	output.CheckStatus("coupling", len(coupling.Findings), coupling.NoOp)
 	for _, s := range coupling.Suppressed {
 		output.Skip("check", "coupling", s)
 	}
 
 	generated := checkGenerated(".")
 	findings = append(findings, generated.Findings...)
-	if generated.NoOp != "" {
-		output.Skip("check", "generated", generated.NoOp)
-	}
+	output.CheckStatus("generated", len(generated.Findings), generated.NoOp)
 
-	findings = append(findings, checkCommit(".", msgFile)...)
+	commit := checkCommit(".", msgFile)
+	findings = append(findings, commit.Findings...)
+	output.CheckStatus("commit", len(commit.Findings), commit.NoOp)
 
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
@@ -93,7 +97,7 @@ func CmdCheck(msgFile string) int {
 	})
 
 	for _, f := range findings {
-		fmt.Printf("%s %s %s:%d: %s\n", f.Check, f.Level, f.File, f.Line, f.Message)
+		fmt.Printf("%s %s %s:%d: %s\n", f.Check, output.Level(f.Level), f.File, f.Line, f.Message)
 	}
 
 	if len(findings) > 0 {
