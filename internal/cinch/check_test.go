@@ -19,7 +19,7 @@ func TestResolveDocsRoot_DefaultsWithNoManifest(t *testing.T) {
 
 func TestResolveDocsRoot_DefaultsWithManifestButNoKey(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "commands.check = make check\n")
+	writeManifest(t, dir, "commands:\n  check: make check\n")
 
 	got, err := ResolveDocsRoot(dir)
 	if err != nil {
@@ -33,7 +33,7 @@ func TestResolveDocsRoot_DefaultsWithManifestButNoKey(t *testing.T) {
 
 func TestResolveDocsRoot_RelativeKeyJoinsRoot(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "paths.docs = mydocs\n")
+	writeManifest(t, dir, "paths:\n  docs: mydocs\n")
 
 	got, err := ResolveDocsRoot(dir)
 	if err != nil {
@@ -48,7 +48,7 @@ func TestResolveDocsRoot_RelativeKeyJoinsRoot(t *testing.T) {
 func TestResolveDocsRoot_AbsoluteKeyUsedAsIs(t *testing.T) {
 	dir := t.TempDir()
 	abs := filepath.Join(t.TempDir(), "elsewhere", "docs")
-	writeManifest(t, dir, "paths.docs = "+abs+"\n")
+	writeManifest(t, dir, "paths:\n  docs: "+abs+"\n")
 
 	got, err := ResolveDocsRoot(dir)
 	if err != nil {
@@ -61,7 +61,7 @@ func TestResolveDocsRoot_AbsoluteKeyUsedAsIs(t *testing.T) {
 
 func TestResolveDocsRoot_MalformedManifestFires(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "not a key value line\n")
+	writeManifest(t, dir, "foo: [unterminated\n")
 
 	if _, err := ResolveDocsRoot(dir); err == nil {
 		t.Fatalf("ResolveDocsRoot with malformed manifest: want error, got nil")

@@ -8,7 +8,7 @@ import (
 
 func manifestFor(t *testing.T, root, content string) *Manifest {
 	t.Helper()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), content)
+	writeFile(t, filepath.Join(root, "cinch.yml"), content)
 	m, err := loadManifest(root)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
@@ -20,8 +20,7 @@ func TestDispatchHooks_WhenPrefixMatchesRuns(t *testing.T) {
 	root := t.TempDir()
 	marker := filepath.Join(root, "ran")
 	m := manifestFor(t, root,
-		"hooks.pre-commit.demo.run  = touch "+marker+"\n"+
-			"hooks.pre-commit.demo.when = frontend/\n")
+		"hooks:\n  pre-commit:\n    demo:\n      run: touch "+marker+"\n      when: [frontend/]\n")
 
 	ok := dispatchHooks(root, m, "pre-commit", []string{"frontend/src/app.ts"})
 
@@ -37,8 +36,7 @@ func TestDispatchHooks_WhenPrefixNoMatchSkips(t *testing.T) {
 	root := t.TempDir()
 	marker := filepath.Join(root, "ran")
 	m := manifestFor(t, root,
-		"hooks.pre-commit.demo.run  = touch "+marker+"\n"+
-			"hooks.pre-commit.demo.when = frontend/\n")
+		"hooks:\n  pre-commit:\n    demo:\n      run: touch "+marker+"\n      when: [frontend/]\n")
 
 	ok := dispatchHooks(root, m, "pre-commit", []string{"backend/main.go"})
 
@@ -53,7 +51,7 @@ func TestDispatchHooks_WhenPrefixNoMatchSkips(t *testing.T) {
 func TestDispatchHooks_EmptyWhenAlwaysRuns(t *testing.T) {
 	root := t.TempDir()
 	marker := filepath.Join(root, "ran")
-	m := manifestFor(t, root, "hooks.pre-commit.demo.run = touch "+marker+"\n")
+	m := manifestFor(t, root, "hooks:\n  pre-commit:\n    demo:\n      run: touch "+marker+"\n")
 
 	ok := dispatchHooks(root, m, "pre-commit", []string{"anything/at/all.txt"})
 
@@ -69,8 +67,7 @@ func TestDispatchHooks_CommitMsgIgnoresWhen(t *testing.T) {
 	root := t.TempDir()
 	marker := filepath.Join(root, "ran")
 	m := manifestFor(t, root,
-		"hooks.commit-msg.demo.run  = touch "+marker+"\n"+
-			"hooks.commit-msg.demo.when = frontend/\n")
+		"hooks:\n  commit-msg:\n    demo:\n      run: touch "+marker+"\n      when: [frontend/]\n")
 
 	// staged == nil is the commit-msg sentinel: `when` never filters.
 	ok := dispatchHooks(root, m, "commit-msg", nil)
@@ -85,7 +82,7 @@ func TestDispatchHooks_CommitMsgIgnoresWhen(t *testing.T) {
 
 func TestDispatchHooks_ExitCodePropagates(t *testing.T) {
 	root := t.TempDir()
-	m := manifestFor(t, root, "hooks.pre-commit.demo.run = false\n")
+	m := manifestFor(t, root, "hooks:\n  pre-commit:\n    demo:\n      run: \"false\"\n")
 
 	ok := dispatchHooks(root, m, "pre-commit", []string{"x.txt"})
 
@@ -98,8 +95,7 @@ func TestDispatchHooks_MultiFailureAccumulates(t *testing.T) {
 	root := t.TempDir()
 	marker := filepath.Join(root, "second-ran")
 	m := manifestFor(t, root,
-		"hooks.pre-commit.first.run  = false\n"+
-			"hooks.pre-commit.second.run = touch "+marker+"\n")
+		"hooks:\n  pre-commit:\n    first:\n      run: \"false\"\n    second:\n      run: touch "+marker+"\n")
 
 	ok := dispatchHooks(root, m, "pre-commit", []string{"x.txt"})
 
@@ -115,8 +111,7 @@ func TestDispatchHooks_DeclarationOrder(t *testing.T) {
 	root := t.TempDir()
 	order := filepath.Join(root, "order")
 	m := manifestFor(t, root,
-		"hooks.pre-commit.zzz.run = sh -c 'echo zzz >> "+order+"'\n"+
-			"hooks.pre-commit.aaa.run = sh -c 'echo aaa >> "+order+"'\n")
+		"hooks:\n  pre-commit:\n    zzz:\n      run: sh -c 'echo zzz >> "+order+"'\n    aaa:\n      run: sh -c 'echo aaa >> "+order+"'\n")
 
 	if ok := dispatchHooks(root, m, "pre-commit", nil); !ok {
 		t.Fatalf("dispatchHooks: want true, got false")

@@ -16,9 +16,9 @@ func writeManifest(t *testing.T, dir, content string) {
 	}
 }
 
-func TestLoadManifest_ParsesKeyValue(t *testing.T) {
+func TestLoadManifest_ParsesNestedMapping(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "# comment\nfoo.bar = baz\ncommands.check = make check\n\n")
+	writeManifest(t, dir, "# comment\nfoo:\n  bar: baz\ncommands:\n  check: make check\n")
 
 	m, err := loadManifest(dir)
 	if err != nil {
@@ -31,23 +31,32 @@ func TestLoadManifest_ParsesKeyValue(t *testing.T) {
 		t.Fatalf("commands.check: want %q, got %q", "make check", m.Vars["commands.check"])
 	}
 	if len(m.Vars) != 2 {
-		t.Fatalf("want 2 vars (comment/blank lines skipped), got %v", m.Vars)
+		t.Fatalf("want 2 vars (comment lines skipped), got %v", m.Vars)
 	}
 }
 
 func TestLoadManifest_MissingFileFires(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := loadManifest(dir); err == nil {
-		t.Fatalf("loadManifest with no cinch_manifest: want error, got nil")
+		t.Fatalf("loadManifest with no cinch.yml: want error, got nil")
 	}
 }
 
-func TestLoadManifest_MalformedLineFires(t *testing.T) {
+func TestLoadManifest_MalformedYAMLFires(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "not a key value line\n")
+	writeManifest(t, dir, "foo: [unterminated\n")
 
 	if _, err := loadManifest(dir); err == nil {
-		t.Fatalf("loadManifest with malformed line: want error, got nil")
+		t.Fatalf("loadManifest with malformed YAML: want error, got nil")
+	}
+}
+
+func TestLoadManifest_NonMappingRootFires(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "just a scalar\n")
+
+	if _, err := loadManifest(dir); err == nil {
+		t.Fatalf("loadManifest with non-mapping root: want error, got nil")
 	}
 }
 
@@ -55,25 +64,25 @@ func TestLoadManifestOptional_MissingFileIsNotAnError(t *testing.T) {
 	dir := t.TempDir()
 	m, err := loadManifestOptional(dir)
 	if err != nil {
-		t.Fatalf("loadManifestOptional with no cinch_manifest: want nil error, got %v", err)
+		t.Fatalf("loadManifestOptional with no cinch.yml: want nil error, got %v", err)
 	}
 	if m != nil {
-		t.Fatalf("loadManifestOptional with no cinch_manifest: want nil manifest, got %v", m)
+		t.Fatalf("loadManifestOptional with no cinch.yml: want nil manifest, got %v", m)
 	}
 }
 
-func TestLoadManifestOptional_MalformedLineFires(t *testing.T) {
+func TestLoadManifestOptional_MalformedYAMLFires(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "not a key value line\n")
+	writeManifest(t, dir, "foo: [unterminated\n")
 
 	if _, err := loadManifestOptional(dir); err == nil {
-		t.Fatalf("loadManifestOptional with malformed line: want error, got nil")
+		t.Fatalf("loadManifestOptional with malformed YAML: want error, got nil")
 	}
 }
 
-func TestLoadManifestOptional_ParsesKeyValue(t *testing.T) {
+func TestLoadManifestOptional_ParsesNestedMapping(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "paths.docs = mydocs\n")
+	writeManifest(t, dir, "paths:\n  docs: mydocs\n")
 
 	m, err := loadManifestOptional(dir)
 	if err != nil {
@@ -84,9 +93,27 @@ func TestLoadManifestOptional_ParsesKeyValue(t *testing.T) {
 	}
 }
 
+func TestLoadManifest_DuplicateKeyLastWinsFirstSeenOrder(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "hooks:\n  pre-commit:\n    a:\n      run: first\n    b:\n      run: only\n    a:\n      run: second\n")
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+	if m.Vars["hooks.pre-commit.a.run"] != "second" {
+		t.Fatalf("hooks.pre-commit.a.run: want last value %q, got %q", "second", m.Vars["hooks.pre-commit.a.run"])
+	}
+	got := m.Names("hooks.pre-commit")
+	want := []string{"a", "b"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("Names: want first-seen order %v, got %v", want, got)
+	}
+}
+
 func TestLoadManifest_ReadsFromRepoRootNotDocsDir(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = mydocs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: mydocs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -104,7 +131,7 @@ func TestLoadManifest_ReadsFromRepoRootNotDocsDir(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(nested, "mydocs"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(nested, "mydocs", "manifest"), []byte("paths.docs = mydocs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(nested, "mydocs", "manifest"), []byte("paths:\n  docs: mydocs\n"), 0o644); err != nil {
 		t.Fatalf("write nested manifest: %v", err)
 	}
 	if _, err := loadManifest(nested); err == nil {
@@ -114,7 +141,28 @@ func TestLoadManifest_ReadsFromRepoRootNotDocsDir(t *testing.T) {
 
 func TestManifestList_SplitsTrimsAndDropsEmpties(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "hooks.pre-commit.error-codes.when = frontend/src/lib/api/ , backend/errors/ ,, \n")
+	writeManifest(t, dir, "hooks:\n  pre-commit:\n    error-codes:\n      when: \"frontend/src/lib/api/ , backend/errors/ ,, \"\n")
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest: %v", err)
+	}
+
+	got := m.List("hooks.pre-commit.error-codes.when")
+	want := []string{"frontend/src/lib/api/", "backend/errors/"}
+	if len(got) != len(want) {
+		t.Fatalf("List: want %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("List: want %v, got %v", want, got)
+		}
+	}
+}
+
+func TestManifestList_YAMLSequenceJoinsAndSplits(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "hooks:\n  pre-commit:\n    error-codes:\n      when: [frontend/src/lib/api/, backend/errors/]\n")
 
 	m, err := loadManifest(dir)
 	if err != nil {
@@ -135,7 +183,7 @@ func TestManifestList_SplitsTrimsAndDropsEmpties(t *testing.T) {
 
 func TestManifestList_MissingKeyReturnsNil(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "paths.docs = .docs\n")
+	writeManifest(t, dir, "paths:\n  docs: .docs\n")
 
 	m, err := loadManifest(dir)
 	if err != nil {
@@ -150,10 +198,14 @@ func TestManifestList_MissingKeyReturnsNil(t *testing.T) {
 func TestManifestNames_DeclarationOrderAndDistinct(t *testing.T) {
 	dir := t.TempDir()
 	writeManifest(t, dir,
-		"hooks.pre-commit.error-codes.run  = scripts/check_error_codes.sh\n"+
-			"hooks.pre-commit.error-codes.when = frontend/src/lib/api/, backend/errors/\n"+
-			"hooks.pre-commit.frontend.run     = make check-frontend\n"+
-			"hooks.pre-commit.frontend.when    = frontend/\n")
+		"hooks:\n"+
+			"  pre-commit:\n"+
+			"    error-codes:\n"+
+			"      run: scripts/check_error_codes.sh\n"+
+			"      when: [frontend/src/lib/api/, backend/errors/]\n"+
+			"    frontend:\n"+
+			"      run: make check-frontend\n"+
+			"      when: [frontend/]\n")
 
 	m, err := loadManifest(dir)
 	if err != nil {
@@ -174,7 +226,7 @@ func TestManifestNames_DeclarationOrderAndDistinct(t *testing.T) {
 
 func TestManifestNames_NoMatchReturnsNil(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, dir, "paths.docs = .docs\n")
+	writeManifest(t, dir, "paths:\n  docs: .docs\n")
 
 	m, err := loadManifest(dir)
 	if err != nil {

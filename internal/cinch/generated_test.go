@@ -9,7 +9,7 @@ import (
 
 func renderToScratch(t *testing.T, root string) {
 	t.Helper()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 	m, err := loadManifest(root)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
@@ -169,7 +169,7 @@ func TestCheckGenerated_DeletedWorkflowsDirStillVerifiesShims(t *testing.T) {
 
 func TestCheckGenerated_UnrenderedRepoAnnouncesNoOp(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 
 	result := checkGenerated(root)
 

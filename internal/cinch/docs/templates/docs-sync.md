@@ -65,7 +65,7 @@ Read the changed source files and classify each change:
 **Regular Documentation Updates** (most changes):
 - New API endpoints or modified endpoint contracts → `api/[domain].md`
 - New/changed data models → `models/[entity].md`
-- Environment variables, ports, commands → `cinch_manifest`
+- Environment variables, ports, commands → `manifest.yml`
 - File structure changes → relevant `architecture.md`
 - Architectural decisions → `conventions.md`
 
@@ -99,7 +99,7 @@ Detect these by looking for:
 | ----------- | ------------- |
 | New/changed API endpoint | `api/[domain].md` |
 | New/changed data model | `models/[entity].md` |
-| Env var / Make-npm command / port | `cinch_manifest` |
+| Env var / Make-npm command / port | `manifest.yml` |
 | New directory / major file move | relevant `architecture.md` |
 | Project-wide convention or architectural decision | root `conventions.md` / relevant `architecture.md` |
 | Service-specific pattern | `[service]/conventions.md` |

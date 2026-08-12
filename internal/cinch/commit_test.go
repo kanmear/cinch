@@ -5,9 +5,13 @@ import (
 	"testing"
 )
 
+const testCommitPatternManifest = `commit:
+  pattern: '^\[[a-z-]+\] .+'
+`
+
 func TestCheckCommit_MatchingPatternIsClean(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), `commit.pattern = ^\[[a-z-]+\] .+`+"\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), testCommitPatternManifest)
 	msgFile := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
 	writeFile(t, msgFile, "[docs] fix a typo\n")
 
@@ -18,7 +22,7 @@ func TestCheckCommit_MatchingPatternIsClean(t *testing.T) {
 
 func TestCheckCommit_NonMatchingPatternFires(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), `commit.pattern = ^\[[a-z-]+\] .+`+"\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), testCommitPatternManifest)
 	msgFile := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
 	writeFile(t, msgFile, "fix a typo\n")
 
@@ -33,7 +37,7 @@ func TestCheckCommit_NonMatchingPatternFires(t *testing.T) {
 
 func TestCheckCommit_AbsentKeyIsNoBehaviorChange(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 	msgFile := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
 	writeFile(t, msgFile, "anything goes here\n")
 
@@ -44,7 +48,7 @@ func TestCheckCommit_AbsentKeyIsNoBehaviorChange(t *testing.T) {
 
 func TestCheckCommit_NoMsgFileIsNoOp(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), `commit.pattern = ^\[[a-z-]+\] .+`+"\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), testCommitPatternManifest)
 
 	if got := checkCommit(root, ""); len(got) != 0 {
 		t.Fatalf("want 0 findings with no msgFile, got %+v", got)
@@ -53,7 +57,7 @@ func TestCheckCommit_NoMsgFileIsNoOp(t *testing.T) {
 
 func TestCheckCommit_OnlySubjectLineMatched(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), `commit.pattern = ^\[[a-z-]+\] .+`+"\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), testCommitPatternManifest)
 	msgFile := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
 	writeFile(t, msgFile, "[docs] fix a typo\n\nBody line not matching the pattern at all.\n")
 

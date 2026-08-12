@@ -71,11 +71,11 @@ another that enforces a commit message convention. Git hooks are generated
 and, once activated, run `cinch check` on every commit — a project can also
 hook its own scripts into `pre-commit`/`commit-msg` through the manifest,
 scoped to the paths that should trigger them. This repo self-hosts: its own
-`cinch_manifest`, rendered docs, and `.githooks/` are the proof.
+`cinch.yml`, rendered docs, and `.githooks/` are the proof.
 
 `cinch check` runs five checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
-elsewhere with `paths.docs` in `cinch_manifest` (relative to the project
+elsewhere with `paths.docs` in `cinch.yml` (relative to the project
 root, or an absolute path). `cinch render` substitutes the same value into
 templates as `{{paths.docs}}` — one root, so a rule doc a workflow tells an
 agent to write is guaranteed to be one `cinch check` actually scans:
@@ -116,7 +116,7 @@ agent to write is guaranteed to be one `cinch check` actually scans:
 `.docs/workflows/`): `docs-philosophy.md` (copied verbatim — no variables, no
 renderer needed) and one file per template under
 `internal/cinch/docs/templates/` (value-substituted against
-`cinch_manifest`). And it writes a thin shim per supported git hook event
+`cinch.yml`). And it writes a thin shim per supported git hook event
 under `paths.hooks` (default `.githooks/`): `exec cinch hook <event> "$@"` —
 the dispatch table lives in the manifest and is read at runtime, so editing
 it takes effect immediately with no re-render. Every generated output is
@@ -166,17 +166,23 @@ propagated — not your script's correctness. What a registered script does is
 opaque to cinch; a green `cinch check` means dispatch worked, not that the
 script itself is bug-free.
 
-```
-# cinch_manifest
-paths.docs  = .docs        # docs corpus root
-paths.hooks = .githooks    # where generated hook shims land
+```yaml
+# cinch.yml
+paths:
+  docs: .docs           # docs corpus root
+  hooks: .githooks       # where generated hook shims land
 
-hooks.pre-commit.error-codes.run  = scripts/check_error_codes.sh
-hooks.pre-commit.error-codes.when = frontend/src/lib/api/, backend/errors/
-hooks.pre-commit.frontend.run     = make check-frontend
-hooks.pre-commit.frontend.when    = frontend/
+hooks:
+  pre-commit:
+    error-codes:
+      run: scripts/check_error_codes.sh
+      when: [frontend/src/lib/api/, backend/errors/]
+    frontend:
+      run: make check-frontend
+      when: [frontend/]
 
-commit.pattern = ^\[[a-z-]+\] .+
+commit:
+  pattern: '^\[[a-z-]+\] .+'
 ```
 
 ### Commands instead of per-harness skills or a persisted index
@@ -204,23 +210,27 @@ system — can run these commands directly. The trade-off: harnesses with
 native slash-command UX (typing `/domain`) lose that explicit affordance in
 exchange for zero duplication and agent-neutrality.
 
-`cinch_manifest` binds the values templates and hooks reference — a flat
-`dotted.key = value` text format, no schema, with declaration order preserved
-(hook entries run in the order they're written). `paths.docs` is the one
-variable any shipped template uses, and defaults to `.docs` when unset. The
-manifest itself always lives at the repo root, independent of `paths.docs` —
-its own location can't depend on a value it defines, so it's pinned outside
-the directory `paths.docs` controls.
+`cinch.yml` binds the values templates and hooks reference — plain YAML, but
+still no schema: nesting is notation for writing dotted keys hierarchically
+(`paths: {docs: x}` and `paths.docs = x` bind the same thing), not a shape
+cinch validates. Declaration order is preserved (hook entries run in the
+order they're written). `paths.docs` is the one variable any shipped
+template uses, and defaults to `.docs` when unset. The manifest itself
+always lives at the repo root, independent of `paths.docs` — its own
+location can't depend on a value it defines, so it's pinned outside the
+directory `paths.docs` controls.
 
 ### A richer project manifest
 
-`cinch_manifest` only binds what cinch itself reads: `paths.*`, `hooks.*`,
+`cinch.yml` only binds what cinch itself reads: `paths.*`, `hooks.*`,
 `commit.pattern`. Workflow-template *prose*, though, can reference arbitrary
 project-specific values cinch never touches — commands, ports, service
 layout, test taxonomy — and a project with enough of those is better served
-by its own separate, schema-free file than by overloading `cinch_manifest`.
-There's no cinch convention name or format for this (by design — principle
-5, cinch binds values, not shape), but a common shape looks like:
+by its own separate, schema-free file than by overloading `cinch.yml`.
+There's no cinch convention format for this (by design — principle 5, cinch
+binds values, not shape), but the convention name is `manifest.yml` —
+deliberately distinct from `cinch.yml` so the two are never confused: one is
+cinch's own config, the other a project's. A common shape looks like:
 
 ```yaml
 # manifest.yml — project-owned, cinch never reads this file
@@ -239,7 +249,7 @@ taxonomy:
 ```
 
 Note this manifest is outside cinch's `{{key}}` substitution entirely — it's
-not `cinch_manifest`, so cinch's renderer never sees or resolves against it.
+not `cinch.yml`, so cinch's renderer never sees or resolves against it.
 A shipped template can only reference `{{paths.docs}}` (an undefined `{{key}}`
 is a render error, not a blank), so any reference to this richer manifest has
 to live in project-owned prose the *reader* — human or agent — resolves by
@@ -272,7 +282,7 @@ fixtures end-to-end.
   iterates it, so adding a template needs no code change.
 - `internal/cinch/title.go` — H1 title/trigger extraction, shared by
   `workflow.go` and `index.go`.
-- `internal/cinch/manifest.go` — the `cinch_manifest` parser and its
+- `internal/cinch/manifest.go` — the `cinch.yml` parser and its
   accessors (`List`, `Names`, declaration order).
 - `internal/cinch/hook.go` — `cinch hook`'s dispatcher: staged-set
   computation, `when` prefix matching, command execution.

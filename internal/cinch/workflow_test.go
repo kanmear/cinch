@@ -40,7 +40,7 @@ func sortedStrings(s []string) bool {
 
 func TestCmdWorkflows_RenderNotRunFires(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 
 	if code := CmdWorkflows(root); code != 1 {
 		t.Fatalf("CmdWorkflows: want exit 1 when render hasn't run, got %d", code)
@@ -49,7 +49,7 @@ func TestCmdWorkflows_RenderNotRunFires(t *testing.T) {
 
 func TestCmdWorkflows_PrintsTriggerTable(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 	m, err := loadManifest(root)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
@@ -98,7 +98,7 @@ func TestWorkflowsTable_ListsEveryWorkflow(t *testing.T) {
 
 func TestCmdWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = mydocs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: mydocs\n")
 	m, err := loadManifest(root)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
@@ -118,7 +118,7 @@ func TestCmdWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 
 func TestCmdWorkflow_UnknownNameFires(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 	m, err := loadManifest(root)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
@@ -138,7 +138,7 @@ func TestCmdWorkflow_UnknownNameFires(t *testing.T) {
 
 func TestCmdWorkflow_RenderNotRunFires(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 
 	if code := CmdWorkflow(root, "docs-maintain-domain"); code != 1 {
 		t.Fatalf("CmdWorkflow: want exit 1 when render hasn't run, got %d", code)

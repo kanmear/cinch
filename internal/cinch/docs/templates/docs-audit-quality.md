@@ -12,7 +12,7 @@ Scan all `{{paths.docs}}/` docs and fix violations.
 
 ### 1. Load context
 - Run `cinch index` for the full doc index
-- Read `cinch_manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
+- Read `manifest.yml` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
 ### 2. Prune first — the admission test applied retroactively
 Apply the admission test (docs-philosophy, The Admission Test) to every existing doc, not just new content:
@@ -30,9 +30,9 @@ Read every `.md` file under `{{paths.docs}}/`. For each, check:
 - Check: does the described thing exist in the codebase?
 
 **Duplication** (principle 3)
-- Info that duplicates another doc or cinch_manifest
+- Info that duplicates another doc or manifest.yml
 - Check: is the same fact stated in two places? Has it diverged?
-- Specifically watch for a value resolved from `cinch_manifest` (e.g. `taxonomy.test_tiers`,
+- Specifically watch for a value resolved from `manifest.yml` (e.g. `taxonomy.test_tiers`,
   `development.commands`) restated as prose or a table in a workflow doc instead of referenced —
   this drifts silently whenever the manifest changes
 

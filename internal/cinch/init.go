@@ -8,11 +8,15 @@ import (
 )
 
 // starterManifest is written by `cinch init` when no manifest exists yet.
-const starterManifest = `paths.docs  = .docs
-paths.hooks = .githooks
+const starterManifest = `paths:
+  docs: .docs
+  hooks: .githooks
 
-# hooks.pre-commit.example.run  = make check
-# hooks.pre-commit.example.when = src/
+# hooks:
+#   pre-commit:
+#     example:
+#       run: make check
+#       when: [src/]
 `
 
 // agentsWorkflowsLine and agentsIndexLine are the two lines a consumer's
