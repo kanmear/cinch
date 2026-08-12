@@ -55,16 +55,16 @@ func TestSubstitute_NoVariablesIsUnchanged(t *testing.T) {
 }
 
 func TestHeader_IdenticalInputsProduceIdenticalHeader(t *testing.T) {
-	a := header("docs/templates/maintain-domain.md", "same body", styleMarkdown)
-	b := header("docs/templates/maintain-domain.md", "same body", styleMarkdown)
+	a := header("docs/templates/docs-maintain-domain.md", "same body", styleMarkdown)
+	b := header("docs/templates/docs-maintain-domain.md", "same body", styleMarkdown)
 	if a != b {
 		t.Fatalf("header: want identical output for identical input, got %q vs %q", a, b)
 	}
 }
 
 func TestHeader_DifferentBodyProducesDifferentHash(t *testing.T) {
-	a := header("docs/templates/maintain-domain.md", "body one", styleMarkdown)
-	b := header("docs/templates/maintain-domain.md", "body two", styleMarkdown)
+	a := header("docs/templates/docs-maintain-domain.md", "body one", styleMarkdown)
+	b := header("docs/templates/docs-maintain-domain.md", "body two", styleMarkdown)
 	if a == b {
 		t.Fatalf("header: want different hash for different body, got identical %q", a)
 	}
@@ -76,7 +76,7 @@ func TestRenderAll_PhilosophyIsCopiedVerbatim(t *testing.T) {
 		t.Fatalf("renderAll: %v", err)
 	}
 	for _, f := range files {
-		if f.Dest == ".docs/workflows/doc-philosophy.md" {
+		if f.Dest == ".docs/workflows/docs-philosophy.md" {
 			if f.Body != philosophySrc {
 				t.Fatalf("philosophy body was not copied verbatim")
 			}
@@ -86,7 +86,7 @@ func TestRenderAll_PhilosophyIsCopiedVerbatim(t *testing.T) {
 			return
 		}
 	}
-	t.Fatalf("renderAll: doc-philosophy.md not produced")
+	t.Fatalf("renderAll: docs-philosophy.md not produced")
 }
 
 func TestRenderAll_EmptyManifestDefaultsPathsDocs(t *testing.T) {
@@ -95,14 +95,14 @@ func TestRenderAll_EmptyManifestDefaultsPathsDocs(t *testing.T) {
 		t.Fatalf("renderAll with empty manifest: want success (paths.docs defaults to %q), got %v", defaultDocsPath, err)
 	}
 	for _, f := range files {
-		if f.Dest == ".docs/workflows/maintain-domain.md" {
+		if f.Dest == ".docs/workflows/docs-maintain-domain.md" {
 			if !strings.Contains(f.Body, defaultDocsPath) {
-				t.Fatalf("maintain-domain.md: want default %q substituted, got:\n%s", defaultDocsPath, f.Body)
+				t.Fatalf("docs-maintain-domain.md: want default %q substituted, got:\n%s", defaultDocsPath, f.Body)
 			}
 			return
 		}
 	}
-	t.Fatalf("renderAll: maintain-domain.md not produced")
+	t.Fatalf("renderAll: docs-maintain-domain.md not produced")
 }
 
 func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndShims(t *testing.T) {
@@ -114,7 +114,7 @@ func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndShims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
-	want := len(entries) + 3 // + doc-philosophy.md + 2 hook shims
+	want := len(entries) + 3 // + docs-philosophy.md + 2 hook shims
 	if len(files) != want {
 		t.Fatalf("renderAll: want %d files (one per template + philosophy + hook shims), got %d", want, len(files))
 	}

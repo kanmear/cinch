@@ -413,7 +413,7 @@ For docs root `D` and hooks dir `H`:
 | Output | Source | Notes |
 |---|---|---|
 | `D/workflows/<template>.md` | every embedded `docs/templates/*.md` | one-per-template; substitution applied; iterates the embed (adding a template needs no code change) |
-| `D/workflows/doc-philosophy.md` | embedded `docs/philosophy.md` | copied **verbatim** — has no variables, needs no renderer |
+| `D/workflows/docs-philosophy.md` | embedded `docs/docs-philosophy.md` | copied **verbatim** — has no variables, needs no renderer |
 | `H/pre-commit`, `H/commit-msg` | derived | hook shims, mode `0o755`, `exec cinch hook <event> "$@"` |
 
 Files are sorted by destination for stability. Workflow and doc navigation
@@ -580,21 +580,26 @@ only-quirks-as-examples.
 
 ### The eight workflow templates (`docs/templates/`)
 
+Grouped by a shared filename prefix: `dev-*` is the feature/bug dev lifecycle
+(plan → execute, or fix), `docs-*` is the docs-corpus audit/maintenance
+toolkit.
+
 | File | H1 | Trigger | Role |
 |---|---|---|---|
-| `fix-bug.md` | Bug Fix Workflow | produce a structured bug fix plan | Five phases (reproduce → root cause → domain-rule check → regression plan → fix tasks) + a **fast path**; three ⛔ checkpoints; TDD-mandatory regression test; fix plan lives in `plans/fix/<bug-slug>.md` then is **deleted** at completion |
-| `execute-plan.md` | Plan Execution Workflow | execute tasks in an already-decomposed plan file | Per-task loop over `T<N>`; SESSION STOP boundaries; **bind-brackets-not-parens** commit conventions; Session Handoff template; compaction awareness |
-| `plan-feature.md` | Feature Planning Workflow | produce a structured, atomic feature plan | Phase 1 domain rules (with interaction table), Phase 2 test plan, Phase 3 decomposes via the task primitive; persists `plans/<slug>.md` as `complete` |
-| `maintain-domain.md` | Domain Rule Maintenance | add/edit/reorganize domain rules | Where rule IDs get minted (next-free `**PREFIX-0NN**`, never renumber), where `// cinch:rule <ID>` markers and `<!-- cinch:ignore: <reason> -->` declarations are placed; the doc that teaches the marker protocol |
-| `audit-docs.md` | Documentation Audit | audit docs for philosophy violations, bloat, staleness | Retroactive admission test — **prune first** (deletion is the fix), then per-file audit against principles; stale refs are cinch's links/rules checks, the residue is judgment |
-| `audit-domain.md` | Rule Coverage Audit | audit test coverage against domain rules | The **semantic half** that sits behind the decidable tripwire: derive the test→rule mapping from test *assertions* (not names), then diff against the marker closure; report TENSION/MISSING with verbatim evidence |
-| `sync-docs.md` | Documentation Sync | update docs to reflect recent code changes | Routes changes by kind (regular / quirk / common issue) through a routing table that says "find it via `cinch docs`"; never touches domain rules (that's maintain-domain) |
-| `task-primitive.md` | Task Decomposition Primitive | shared machinery for atomic, verifiable tasks | Single home for atomicity, context manifests, verification tiers (Tier 1 fail / Tier 2 pass / Tier 3 regression), the task template, pre-flight gate, completion ritual, plan-lifecycle (feature persists / fix deletes), and the compaction anchor |
+| `dev-fix-bug.md` | Bug Fix Workflow | produce a structured bug fix plan | Five phases (reproduce → root cause → domain-rule check → regression plan → fix tasks) + a **fast path**; three ⛔ checkpoints; TDD-mandatory regression test; fix plan lives in `plans/fix/<bug-slug>.md` then is **deleted** at completion |
+| `dev-execute-plan.md` | Plan Execution Workflow | execute tasks in an already-decomposed plan file | Per-task loop over `T<N>`; SESSION STOP boundaries; **bind-brackets-not-parens** commit conventions; Session Handoff template; compaction awareness |
+| `dev-plan-feature.md` | Feature Planning Workflow | produce a structured, atomic feature plan | Phase 1 domain rules (with interaction table), Phase 2 test plan, Phase 3 decomposes via the task primitive; persists `plans/<slug>.md` as `complete` |
+| `dev-task-primitive.md` | Task Decomposition Primitive | shared machinery for atomic, verifiable tasks | Single home for atomicity, context manifests, verification tiers (Tier 1 fail / Tier 2 pass / Tier 3 regression), the task template, pre-flight gate, completion ritual, plan-lifecycle (feature persists / fix deletes), and the compaction anchor |
+| `docs-maintain-domain.md` | Domain Rule Maintenance | add/edit/reorganize domain rules | Where rule IDs get minted (next-free `**PREFIX-0NN**`, never renumber), where `// cinch:rule <ID>` markers and `<!-- cinch:ignore: <reason> -->` declarations are placed; the doc that teaches the marker protocol |
+| `docs-audit-quality.md` | Documentation Audit | audit docs for philosophy violations, bloat, staleness | Retroactive admission test — **prune first** (deletion is the fix), then per-file audit against principles; stale refs are cinch's links/rules checks, the residue is judgment |
+| `docs-audit-coverage.md` | Rule Coverage Audit | audit test coverage against domain rules | The **semantic half** that sits behind the decidable tripwire: derive the test→rule mapping from test *assertions* (not names), then diff against the marker closure; report TENSION/MISSING with verbatim evidence |
+| `docs-sync.md` | Documentation Sync | update docs to reflect recent code changes | Routes changes by kind (regular / quirk / common issue) through a routing table that says "find it via `cinch docs`"; never touches domain rules (that's docs-maintain-domain) |
 
-Two structural features worth naming: the workflows **compose** — plan-feature
-and fix-bug use the primitive (task-primitive) and route execution through
-execute-plan, keeping shared machinery in one file — and they **indirect
-through `cinch docs`** instead of hardcoding consumer paths, which is what
+Two structural features worth naming: the workflows **compose** —
+`dev-plan-feature` and `dev-fix-bug` use the primitive (`dev-task-primitive`)
+and route execution through `dev-execute-plan`, keeping shared machinery in
+one file — and they **indirect through `cinch docs`** instead of hardcoding
+consumer paths, which is what
 let the templates be genericized away from the original
 `backend/`/`frontend/`/`api/`/`models/` assumption (the
 `TestTemplates_NoStackSpecificPaths` guard keeps that from regressing).
@@ -684,7 +689,7 @@ unaffected.
 
 | Principle | Embodiment |
 |---|---|
-| 1. Deterministic checkers over model audits | Every check is a pure-ish, script-decidable procedure over files/git; the "semantic residue" (the audit-domain workflow's TENSION/MISSING judgment, a consumer's registered scripts) is explicitly *demoted* to sit behind a decidable tripwire; each check carries a mutation fixture. |
+| 1. Deterministic checkers over model audits | Every check is a pure-ish, script-decidable procedure over files/git; the "semantic residue" (the docs-audit-coverage workflow's TENSION/MISSING judgment, a consumer's registered scripts) is explicitly *demoted* to sit behind a decidable tripwire; each check carries a mutation fixture. |
 | 2. The direction rule | `links` = structural, `rules` = lateral, `coupling` = lateral, `generated` = a verification of the tool's own *build* output (never authored → nothing to go stale by hand). |
 | 3. Derivability gate on docs; holdability gate on the system | Workflow and doc navigation are computed on demand, not even persisted — the strongest form of "can't go stale" is to never write it; the corpus philosophy deletes anything derivable from source; the suite stays enumerable (one person can hold it — the README/plan describe the line). |
 | 4. Rule → test markers, in the test file | `// cinch:rule <ID>` above the enforcing test; closure computed by `checkRules`, never a registry; deletion is self-correcting. |

@@ -26,7 +26,7 @@ func TestDocList_ListsAuthoredDocsAndRenderedWorkflows(t *testing.T) {
 	if !strings.Contains(list, "notes.md — Hand-authored Notes") {
 		t.Fatalf("docList: missing hand-authored doc entry:\n%s", list)
 	}
-	if !strings.Contains(list, "workflows/maintain-domain.md") {
+	if !strings.Contains(list, "workflows/docs-maintain-domain.md") {
 		t.Fatalf("docList: missing rendered workflow entry:\n%s", list)
 	}
 }

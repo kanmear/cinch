@@ -5,7 +5,7 @@ Update `{{paths.docs}}/` documentation to reflect recent code changes.
   doc is added, removed, renamed, or retitled. AGENTS.md itself only changes when a top-level
   reading-guide entry point changes.
 
-Read [Doc Philosophy](doc-philosophy.md) before proceeding — it defines what to document and what to skip.
+Read [Doc Philosophy](docs-philosophy.md) before proceeding — it defines what to document and what to skip.
 
 ## Usage
 
@@ -119,7 +119,7 @@ Keep it brief; reference the source file for full implementation.
 enough detail to diagnose and fix.
 
 **Out of scope:** `{{paths.docs}}/` docs are not updated by this workflow. Domain rule changes are
-managed separately via `{{paths.docs}}/workflows/maintain-domain.md`.
+managed separately via `{{paths.docs}}/workflows/docs-maintain-domain.md`.
 
 **When to Create a New Doc File:**
 
@@ -137,7 +137,7 @@ category / new top-level concern) — not for every new file. Individual files a
 
 ### 5. Update docs strategically
 
-Apply [Doc Philosophy](doc-philosophy.md): surgical edits, preserve style,
+Apply [Doc Philosophy](docs-philosophy.md): surgical edits, preserve style,
 cross-reference instead of duplicating, be specific, no fluff. Prefer "See `path`" over inlining
 code the codebase already demonstrates.
 

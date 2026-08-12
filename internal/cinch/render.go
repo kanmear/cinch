@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-//go:embed docs/philosophy.md
+//go:embed docs/docs-philosophy.md
 var philosophySrc string
 
 //go:embed docs/templates
@@ -100,7 +100,7 @@ type renderFile struct {
 }
 
 // renderAll produces every Stage 2+ output in memory: philosophy copied
-// verbatim (it has no variables — see docs/philosophy.md), every
+// verbatim (it has no variables — see docs/docs-philosophy.md), every
 // docs/templates/*.md file substituted against the manifest, and hook shims.
 // Workflow and doc navigation are computed on demand (`cinch workflows`,
 // `cinch docs`) rather than persisted here — see workflow.go and docs.go.
@@ -145,7 +145,7 @@ func renderAll(m *Manifest) ([]renderFile, error) {
 		return nil, fmt.Errorf("%s", strings.Join(errLines, "\n"))
 	}
 
-	files = append(files, renderFile{Dest: workflowsDir + "/doc-philosophy.md", Source: "docs/philosophy.md", Body: philosophySrc})
+	files = append(files, renderFile{Dest: workflowsDir + "/docs-philosophy.md", Source: "docs/docs-philosophy.md", Body: philosophySrc})
 
 	sort.Slice(files, func(i, j int) bool { return files[i].Dest < files[j].Dest })
 
