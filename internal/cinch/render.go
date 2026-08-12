@@ -91,6 +91,17 @@ func hasGeneratedHeader(data string) bool {
 	return false
 }
 
+// renderFault is a renderAll error that knows which repo file is at fault, so
+// checkGenerated can report it as a finding against that file rather than
+// against the render as a whole. Error() keeps the "<file>: <msg>" form the
+// plain fmt.Errorf it replaced produced, so CmdRender's stderr is unchanged.
+type renderFault struct {
+	File string // repo-relative
+	Msg  string
+}
+
+func (e *renderFault) Error() string { return e.File + ": " + e.Msg }
+
 // renderFile is one output cinch render produces.
 type renderFile struct {
 	Dest   string // repo-relative path to write
@@ -232,7 +243,10 @@ func buildDocMap(files []renderFile, docsRoot, root string) (renderFile, error) 
 		seen[rel] = true
 		title, _ := titleAndTrigger(body)
 		if title == "" {
-			return fmt.Errorf("%s: every doc needs a `# Title` line", filepath.Join(docsRoot, rel))
+			return &renderFault{
+				File: filepath.Join(docsRoot, rel),
+				Msg:  "every doc needs a `# Title` line",
+			}
 		}
 		entries = append(entries, entry{rel: rel, title: title})
 		return nil

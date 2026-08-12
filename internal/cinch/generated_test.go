@@ -3,6 +3,7 @@ package cinch
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -129,6 +130,72 @@ func TestCheckGenerated_HandAuthoredOrphanIsIgnored(t *testing.T) {
 
 	if len(result.Findings) != 0 {
 		t.Fatalf("want 0 findings for a non-generated file, got %+v", result.Findings)
+	}
+}
+
+// TestCheckGenerated_UnrenderableDocFires is the mutation fixture for a
+// render failure reported as a finding rather than a no-op: one authored doc
+// with no H1 used to take the whole check offline at exit 0, so `cinch
+// render` failed loudly while `cinch check` — the thing the hook runs — said
+// nothing.
+func TestCheckGenerated_UnrenderableDocFires(t *testing.T) {
+	root := t.TempDir()
+	renderToScratch(t, root)
+
+	writeFile(t, filepath.Join(root, ".docs", "notes.md"), "no title here\n")
+
+	result := checkGenerated(root)
+
+	if result.NoOp != "" {
+		t.Fatalf("a failing render is a finding, not a no-op: %s", result.NoOp)
+	}
+	got := findingsForCheck(result.Findings, "generated")
+	if len(got) != 1 {
+		t.Fatalf("want 1 finding, got %d: %+v", len(got), got)
+	}
+	if got[0].File != ".docs/notes.md" {
+		t.Fatalf("finding should name the untitled doc, got: %+v", got[0])
+	}
+}
+
+// TestCheckGenerated_DeletedWorkflowsDirStillVerifiesShims is the mutation
+// fixture for the missing-directory gate: verification used to be skipped
+// entirely when the workflows dir was absent, which also skipped the outputs
+// that live outside the docs root. Deleting one directory was therefore
+// enough to edit a generated hook shim without `cinch check` failing — the
+// exact claim the README makes about tamper-evidence.
+func TestCheckGenerated_DeletedWorkflowsDirStillVerifiesShims(t *testing.T) {
+	root := t.TempDir()
+	renderToScratch(t, root)
+
+	if err := os.RemoveAll(filepath.Join(root, ".docs", "workflows")); err != nil {
+		t.Fatalf("remove workflows dir: %v", err)
+	}
+	shim := filepath.Join(root, ".githooks", "pre-commit")
+	writeFile(t, shim, "#!/bin/sh\nexit 0\n")
+
+	result := checkGenerated(root)
+
+	if result.NoOp != "" {
+		t.Fatalf("a rendered tree missing its workflows dir is not 'render has not run': %s", result.NoOp)
+	}
+	got := findingsForCheck(result.Findings, "generated")
+
+	tampered := false
+	missingWorkflow := false
+	for _, f := range got {
+		if f.File == ".githooks/pre-commit" {
+			tampered = true
+		}
+		if strings.HasPrefix(f.File, ".docs/workflows/") {
+			missingWorkflow = true
+		}
+	}
+	if !tampered {
+		t.Fatalf("want a finding for the tampered hook shim, got: %+v", got)
+	}
+	if !missingWorkflow {
+		t.Fatalf("want findings for the deleted workflow files, got: %+v", got)
 	}
 }
 

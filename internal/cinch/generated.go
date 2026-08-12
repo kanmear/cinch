@@ -1,6 +1,7 @@
 package cinch
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,15 +26,38 @@ func checkGenerated(root string) generatedResult {
 		return generatedResult{NoOp: "generated: cinch render has not run — nothing to verify"}
 	}
 
-	docsRoot := docsPathValue(m)
-	workflowsDir := filepath.Join(root, docsRoot, "workflows")
-	if info, err := os.Stat(workflowsDir); err != nil || !info.IsDir() {
-		return generatedResult{NoOp: "generated: cinch render has not run — nothing to verify"}
-	}
-
+	// A render that would fail is a defect this check can decide, not an
+	// absence: reporting it as a no-op means `cinch render` fails loudly
+	// while `cinch check` — the thing wired into the hook — goes quiet, so
+	// one untitled doc silently disables verification of every generated
+	// file in the repo.
 	files, err := renderAll(m, root)
 	if err != nil {
-		return generatedResult{NoOp: "generated: " + err.Error() + " — cannot verify, cinch render would also fail"}
+		file, msg := manifestPath, err.Error()
+		var fault *renderFault
+		if errors.As(err, &fault) {
+			file, msg = fault.File, fault.Msg
+		}
+		return generatedResult{Findings: []Finding{{
+			Check: "generated", Level: "error", File: file, Line: 1,
+			Message: msg + " — cinch render fails here, so no generated output can be verified",
+		}}}
+	}
+
+	// "render has not run" is the absence of every expected output, not the
+	// absence of one directory. Gating on the workflows dir alone skipped
+	// verification of the outputs that live outside the docs root — the hook
+	// shims — so deleting that directory disabled the check that makes them
+	// tamper-evident. Absence of everything stays a no-op, never a pass.
+	rendered := false
+	for _, f := range files {
+		if _, err := os.Stat(filepath.Join(root, f.Dest)); err == nil {
+			rendered = true
+			break
+		}
+	}
+	if !rendered {
+		return generatedResult{NoOp: "generated: cinch render has not run — nothing to verify"}
 	}
 
 	expected := map[string]bool{}
