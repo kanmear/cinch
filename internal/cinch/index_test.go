@@ -71,7 +71,7 @@ func TestIndexList_EmptyCorpusFires(t *testing.T) {
 
 func TestCmdIndex_RenderNotRunFires(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 
 	if code := CmdIndex(root); code != 1 {
 		t.Fatalf("CmdIndex: want exit 1 when there's nothing to show, got %d", code)
@@ -80,7 +80,7 @@ func TestCmdIndex_RenderNotRunFires(t *testing.T) {
 
 func TestCmdIndex_PrintsDocList(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "cinch_manifest"), "paths.docs = .docs\n")
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs\n")
 	writeFile(t, filepath.Join(root, ".docs", "notes.md"), "# Notes\n\nContent.\n")
 
 	if code := CmdIndex(root); code != 0 {

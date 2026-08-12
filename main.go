@@ -25,12 +25,12 @@ usage:
   cinch render            render docs/philosophy.md and docs/templates/*.md into
                           paths.docs's workflows/ subdirectory (default
                           .docs/workflows/), substituting values from
-                          cinch_manifest, plus git hook shims under
+                          cinch.yml, plus git hook shims under
                           paths.hooks (default .githooks/). Idempotent — a
                           re-render diff proves tampering.
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
                           (pre-commit, commit-msg). Runs cinch check, then
-                          any hooks.EVENT.* entries from cinch_manifest whose
+                          any hooks.EVENT.* entries from cinch.yml whose
                           'when' path prefixes match the staged set.
   cinch workflows         compute and print the workflow trigger table.
   cinch workflow NAME     print one rendered workflow's full content.

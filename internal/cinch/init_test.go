@@ -14,21 +14,21 @@ func TestCmdInit_WritesStarterManifestWhenAbsent(t *testing.T) {
 		t.Fatalf("CmdInit: want exit 0, got %d", code)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "cinch_manifest")); err != nil {
-		t.Fatalf("want cinch_manifest written: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "cinch.yml")); err != nil {
+		t.Fatalf("want cinch.yml written: %v", err)
 	}
 }
 
 func TestCmdInit_KeepsExistingManifest(t *testing.T) {
 	root := gitInitRepo(t)
-	custom := "paths.docs = mydocs\n"
-	writeFile(t, filepath.Join(root, "cinch_manifest"), custom)
+	custom := "paths:\n  docs: mydocs\n"
+	writeFile(t, filepath.Join(root, "cinch.yml"), custom)
 
 	if code := CmdInit(root); code != 0 {
 		t.Fatalf("CmdInit: want exit 0, got %d", code)
 	}
 
-	got, err := os.ReadFile(filepath.Join(root, "cinch_manifest"))
+	got, err := os.ReadFile(filepath.Join(root, "cinch.yml"))
 	if err != nil {
 		t.Fatalf("read manifest: %v", err)
 	}

@@ -1,4 +1,0 @@
-paths.docs  = .docs
-paths.hooks = .githooks
-
-hooks.pre-commit.build.run = make test

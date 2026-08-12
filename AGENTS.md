@@ -19,14 +19,14 @@ Docs: run `cinch index` to see every doc's path and title.
 - `.docs/plans/cinch-0.1.0.md` — the plan that took cinch from Stage 2 to
   0.1.0: init, the `generated` check, and manifest-driven extension.
 - `README.md` — the orientation artifact: status, layout map, pointers.
-- `cinch_manifest` — this repo's own manifest (`paths.docs = .docs`, plus a
+- `cinch.yml` — this repo's own manifest (`paths.docs = .docs`, plus a
   `hooks.pre-commit.build.run` entry) — cinch self-hosts.
 - `main.go` — CLI dispatch, the only `package main` file. Everything else
   lives in `internal/cinch` (compiler-enforced private to this module):
   `check.go`, `links.go`, `rules.go`, `coupling.go`, `generated.go`,
   `commit.go` — the five checks, each paired with a `_test.go` carrying its
   mutation fixtures. `render.go`, `manifest.go` — the `render` command:
-  `{{key}}` substitution, hook shims, and the `cinch_manifest` parser.
+  `{{key}}` substitution, hook shims, and the `cinch.yml` parser.
   `title.go` — shared H1 title/trigger extraction. `hook.go` — the
   `cinch hook` dispatcher. `init.go` — `cinch init`. `workflow.go` —
   `cinch workflows` / `cinch workflow NAME`, computed on demand. `index.go` —

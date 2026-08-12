@@ -32,7 +32,7 @@ Most bugs are a single wrong line in one layer. The full five-phase workflow (th
 1. **Reproduce** (still mandatory — you can't fix what you can't see). Narrow the layer per §1.3.
 2. **Trace to root cause** — get the `file:line` and confirm the rule it violates (§2.1–2.2, §3.1).
 3. **⛔ Single combined checkpoint.** Present reproduction + root cause (`file:line`) + the existing rule + the one-line regression test you'll write. Ask: *"Confirm this is the bug and the fix — proceed?"* Wait for confirmation.
-4. **Regression test → fix.** Write the regression test (must fail), apply the fix (must pass), then run the layer's tier `cmd` from `cinch_manifest` `development.commands` (mapped via `taxonomy.test_tiers`). TDD stays non-negotiable.
+4. **Regression test → fix.** Write the regression test (must fail), apply the fix (must pass), then run the layer's tier `cmd` from `manifest.yml` `development.commands` (mapped via `taxonomy.test_tiers`). TDD stays non-negotiable.
 5. **No persisted plan file.** The single checkpoint + the regression test are the record.
 6. Post-fix: troubleshooting update only if diagnosis was non-obvious (rare on this path).
 7. **Commit.** One commit for the fix, the regression test, and any troubleshooting note together, following the Commit Conventions in `{{paths.docs}}/workflows/dev-execute-plan.md` — no plan file or Session Handoff needed here, but the commit format still applies.
@@ -59,7 +59,7 @@ Record what the user reported:
 ### 1.2 Reproduce the bug
 
 Attempt to reproduce the bug. Choose the appropriate method using commands from
-`cinch_manifest` `development.commands` (and `taxonomy.test_tiers` for layer → cmd mapping):
+`manifest.yml` `development.commands` (and `taxonomy.test_tiers` for layer → cmd mapping):
 
 | Method | When to use |
 | -------- | ------------- |

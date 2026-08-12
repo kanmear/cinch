@@ -90,8 +90,8 @@ func TestCheck_CustomDocsRootFromManifest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write a.md: %v", err)
 	}
-	manifest := "paths.docs = mydocs\n"
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
+	manifest := "paths:\n  docs: mydocs\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -140,8 +140,8 @@ func TestCheck_AbsoluteDocsRootFromManifest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write a.md: %v", err)
 	}
-	manifest := "paths.docs = " + docs + "\n"
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
+	manifest := "paths:\n  docs: " + docs + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -216,8 +216,8 @@ func TestCheckMsgFileArg(t *testing.T) {
 
 func TestRender_EndToEndAndIdempotent(t *testing.T) {
 	dir := t.TempDir()
-	manifest := "paths.docs = mydocs\n"
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
+	manifest := "paths:\n  docs: mydocs\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -289,7 +289,7 @@ func TestRender_MissingManifestFires(t *testing.T) {
 	if !ok || ee.ExitCode() != 1 {
 		t.Fatalf("render with no manifest: want exit 1, got %v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), "cinch_manifest") {
+	if !strings.Contains(string(out), "cinch.yml") {
 		t.Fatalf("render with no manifest: error doesn't name the file:\n%s", out)
 	}
 }
@@ -341,10 +341,14 @@ func TestHook_PreCommitDispatchesByWhen(t *testing.T) {
 		t.Fatalf("git init: %v\n%s", err, out)
 	}
 
-	manifest := "paths.docs = .docs\n" +
-		"hooks.pre-commit.demo.run  = false\n" +
-		"hooks.pre-commit.demo.when = src/\n"
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte(manifest), 0o644); err != nil {
+	manifest := "paths:\n" +
+		"  docs: .docs\n" +
+		"hooks:\n" +
+		"  pre-commit:\n" +
+		"    demo:\n" +
+		"      run: \"false\"\n" +
+		"      when: [src/]\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -472,7 +476,7 @@ func TestInit_TwiceIsByteIdentical(t *testing.T) {
 
 func TestWorkflows_PrintsTriggerTable(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 	renderCmd := exec.Command(binPath(t), "render")
@@ -494,7 +498,7 @@ func TestWorkflows_PrintsTriggerTable(t *testing.T) {
 
 func TestWorkflows_RenderNotRunFires(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -509,7 +513,7 @@ func TestWorkflows_RenderNotRunFires(t *testing.T) {
 
 func TestIndex_PrintsDocList(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 	renderCmd := exec.Command(binPath(t), "render")
@@ -531,7 +535,7 @@ func TestIndex_PrintsDocList(t *testing.T) {
 
 func TestIndex_RenderNotRunFires(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
@@ -550,7 +554,7 @@ func TestIndex_RenderNotRunFires(t *testing.T) {
 // a command instead of a hardcoded path.
 func TestWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = mydocs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: mydocs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 	renderCmd := exec.Command(binPath(t), "render")
@@ -576,7 +580,7 @@ func TestWorkflow_CustomDocsRootFromManifest(t *testing.T) {
 
 func TestWorkflow_UnknownNameFires(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 	renderCmd := exec.Command(binPath(t), "render")
