@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"cinch/internal/output"
 )
 
 // CmdHook implements `cinch hook <event> [args]`, the dispatcher the
@@ -18,21 +20,21 @@ func CmdHook(root, event string, args []string) int {
 	case "commit-msg":
 		return cmdHookCommitMsg(root, args)
 	default:
-		return UsageErr(fmt.Sprintf("hook: unknown event %q", event))
+		return output.UsageErr(fmt.Sprintf("hook: unknown event %q", event))
 	}
 }
 
 func cmdHookPreCommit(root string) int {
 	staged, err := gitOutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
 	if err != nil {
-		return Failf("hook", "git diff --cached failed: %s", err.Error())
+		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
 	ok := CmdCheck("") == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
-		return Fail("hook", err)
+		return output.Fail("hook", err)
 	}
 	if m != nil && !dispatchHooks(root, m, "pre-commit", staged) {
 		ok = false
@@ -46,7 +48,7 @@ func cmdHookPreCommit(root string) int {
 
 func cmdHookCommitMsg(root string, args []string) int {
 	if len(args) < 1 {
-		return UsageErr("hook: commit-msg requires a message-file argument")
+		return output.UsageErr("hook: commit-msg requires a message-file argument")
 	}
 	msgFile := args[0]
 
@@ -54,7 +56,7 @@ func cmdHookCommitMsg(root string, args []string) int {
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
-		return Fail("hook", err)
+		return output.Fail("hook", err)
 	}
 	// `when` is ignored for commit-msg — a commit message has no changed
 	// paths to scope against — so every registered entry always runs.
@@ -85,11 +87,11 @@ func dispatchHooks(root string, m *Manifest, event string, staged []string) bool
 		}
 		when := m.List("hooks." + event + "." + name + ".when")
 		if !hookWhenMatches(staged, when) {
-			Skip("hook", event, fmt.Sprintf("%s: no staged path under %v", name, when))
+			output.Skip("hook", event, fmt.Sprintf("%s: no staged path under %v", name, when))
 			continue
 		}
 		if err := runHookCommand(root, command); err != nil {
-			Failf("hook", "%s: %s failed: %v", event, name, err)
+			output.Failf("hook", "%s: %s failed: %v", event, name, err)
 			ok = false
 		}
 	}

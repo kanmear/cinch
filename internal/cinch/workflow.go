@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"cinch/internal/output"
 )
 
 // workflowsSubdir is the render output's workflows directory name, shared
@@ -63,11 +65,11 @@ func workflowsTable(docsRoot string) (string, error) {
 func CmdWorkflows(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
-		return Fail("workflows", err)
+		return output.Fail("workflows", err)
 	}
 	table, err := workflowsTable(docsRoot)
 	if err != nil {
-		return Fail("workflows", err)
+		return output.Fail("workflows", err)
 	}
 	fmt.Print(table)
 	return 0
@@ -79,18 +81,18 @@ func CmdWorkflows(root string) int {
 func CmdWorkflow(root, name string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
-		return Fail("workflow", err)
+		return output.Fail("workflow", err)
 	}
 	names, err := listWorkflowNames(docsRoot)
 	if err != nil {
-		return Failf("workflow", "cinch render has not run — nothing to show")
+		return output.Failf("workflow", "cinch render has not run — nothing to show")
 	}
 	if !slices.Contains(names, name) {
-		return Failf("workflow", "%q is not a known workflow — run `cinch workflows` to see what's available", name)
+		return output.Failf("workflow", "%q is not a known workflow — run `cinch workflows` to see what's available", name)
 	}
 	data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, name+".md"))
 	if err != nil {
-		return Fail("workflow", err)
+		return output.Fail("workflow", err)
 	}
 	fmt.Print(string(data))
 	return 0

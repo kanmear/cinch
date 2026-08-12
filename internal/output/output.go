@@ -1,11 +1,11 @@
-package cinch
+package output
 
 import (
 	"fmt"
 	"os"
 )
 
-// This file is cinch's one chokepoint for diagnostic and progress output.
+// This package is cinch's one chokepoint for diagnostic and progress output.
 // Every command routes its stderr/stdout messages through these helpers so
 // the shape of a message — prefix, scoping, one line per event — is the
 // same everywhere, instead of each command hand-building its own "cinch: "

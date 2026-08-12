@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"cinch/internal/output"
 )
 
 // indexList walks docsRoot right now and returns every doc's path and title,
@@ -71,11 +73,11 @@ func indexList(docsRoot string) (string, error) {
 func CmdIndex(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
-		return Fail("index", err)
+		return output.Fail("index", err)
 	}
 	list, err := indexList(docsRoot)
 	if err != nil {
-		return Fail("index", err)
+		return output.Fail("index", err)
 	}
 	fmt.Print(list)
 	return 0
