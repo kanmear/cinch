@@ -212,6 +212,42 @@ manifest itself always lives at the repo root, independent of `paths.docs` —
 its own location can't depend on a value it defines, so it's pinned outside
 the directory `paths.docs` controls.
 
+### A richer project manifest
+
+`cinch_manifest` only binds what cinch itself reads: `paths.*`, `hooks.*`,
+`commit.pattern`. Workflow-template *prose*, though, can reference arbitrary
+project-specific values cinch never touches — commands, ports, service
+layout, test taxonomy — and a project with enough of those is better served
+by its own separate, schema-free file than by overloading `cinch_manifest`.
+There's no cinch convention name or format for this (by design — principle
+5, cinch binds values, not shape), but a common shape looks like:
+
+```yaml
+# manifest.yml — project-owned, cinch never reads this file
+project:
+  name: my-app
+services:
+  backend:  { path: backend,  port: 8080 }
+  frontend: { path: frontend, port: 5173 }
+development:
+  commands:
+    test-backend:  make test-backend
+    test-frontend: make test-frontend
+taxonomy:
+  test_tiers:
+    - { id: unit, cmd: test-backend }
+```
+
+Note this manifest is outside cinch's `{{key}}` substitution entirely — it's
+not `cinch_manifest`, so cinch's renderer never sees or resolves against it.
+A shipped template can only reference `{{paths.docs}}` (an undefined `{{key}}`
+is a render error, not a blank), so any reference to this richer manifest has
+to live in project-owned prose the *reader* — human or agent — resolves by
+hand: a project's own doc saying "run the command named `test-backend` under
+`development.commands` in `manifest.yml`," for instance. This keeps the
+richer manifest entirely a project concern: no new render output, no schema
+for cinch to version or validate.
+
 Exit codes: `0` clean, `1` findings (`check`) or a render/dispatch failure,
 `2` usage error.
 
