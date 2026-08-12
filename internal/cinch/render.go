@@ -103,7 +103,7 @@ type renderFile struct {
 // verbatim (it has no variables — see docs/docs-philosophy.md), every
 // docs/templates/*.md file substituted against the manifest, and hook shims.
 // Workflow and doc navigation are computed on demand (`cinch workflows`,
-// `cinch docs`) rather than persisted here — see workflow.go and docs.go.
+// `cinch index`) rather than persisted here — see workflow.go and index.go.
 func renderAll(m *Manifest) ([]renderFile, error) {
 	entries, err := fs.ReadDir(templatesFS, templatesDir)
 	if err != nil {

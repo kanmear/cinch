@@ -507,7 +507,7 @@ func TestWorkflows_RenderNotRunFires(t *testing.T) {
 	}
 }
 
-func TestDocs_PrintsDocList(t *testing.T) {
+func TestIndex_PrintsDocList(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
@@ -518,29 +518,29 @@ func TestDocs_PrintsDocList(t *testing.T) {
 		t.Fatalf("render: %v\n%s", err, out)
 	}
 
-	cmd := exec.Command(binPath(t), "docs")
+	cmd := exec.Command(binPath(t), "index")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("docs: want exit 0, got %v\n%s", err, out)
+		t.Fatalf("index: want exit 0, got %v\n%s", err, out)
 	}
 	if !strings.Contains(string(out), "workflows/docs-maintain-domain.md") {
-		t.Fatalf("docs: missing expected content:\n%s", out)
+		t.Fatalf("index: missing expected content:\n%s", out)
 	}
 }
 
-func TestDocs_RenderNotRunFires(t *testing.T) {
+func TestIndex_RenderNotRunFires(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "cinch_manifest"), []byte("paths.docs = .docs\n"), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
-	cmd := exec.Command(binPath(t), "docs")
+	cmd := exec.Command(binPath(t), "index")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	ee, ok := err.(*exec.ExitError)
 	if !ok || ee.ExitCode() != 1 {
-		t.Fatalf("docs with no render: want exit 1, got %v\n%s", err, out)
+		t.Fatalf("index with no render: want exit 1, got %v\n%s", err, out)
 	}
 }
 

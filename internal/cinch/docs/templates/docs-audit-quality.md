@@ -11,7 +11,7 @@ Scan all `{{paths.docs}}/` docs and fix violations.
 ## Instructions
 
 ### 1. Load context
-- Run `cinch docs` for the full doc index
+- Run `cinch index` for the full doc index
 - Read `cinch_manifest` for the source-of-truth on env vars, ports, commands, taxonomy, paths
 
 ### 2. Prune first — the admission test applied retroactively
@@ -37,7 +37,7 @@ Read every `.md` file under `{{paths.docs}}/`. For each, check:
   this drifts silently whenever the manifest changes
 
 **Bloated link sections** (principle 4)
-- "Related Documentation" sections that list every doc (that's what `cinch docs` is for)
+- "Related Documentation" sections that list every doc (that's what `cinch index` is for)
 - Check: are links scoped to directly related docs only (3-7 links)?
 
 **Code duplication** (principle 2)

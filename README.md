@@ -130,7 +130,7 @@ re-render diff proves tampering.
 Workflow and doc navigation are *not* part of the render output — nothing is
 persisted, so nothing can drift or need re-rendering. `cinch workflows`
 computes and prints the workflow trigger table from whatever is under
-`workflows/` right now; `cinch docs` computes and prints every doc's path
+`workflows/` right now; `cinch index` computes and prints every doc's path
 and title from whatever is under `paths.docs` right now (excluding
 `plans/`). Both read the current tree at call time.
 
@@ -192,13 +192,13 @@ already exist:
 
 ```
 Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one.
-Docs: run `cinch docs` to see every doc's path and title.
+Docs: run `cinch index` to see every doc's path and title.
 ```
 
 Both are commands, not paths, so neither can go stale under a customized
 `paths.docs`. `cinch workflows` computes and prints the workflow trigger
 table; `cinch workflow NAME` prints one workflow's full rendered content;
-`cinch docs` computes and prints the whole doc corpus's path + title list.
+`cinch index` computes and prints the whole doc corpus's path + title list.
 Any agent that reads `AGENTS.md` — not just one harness's proprietary skill
 system — can run these commands directly. The trade-off: harnesses with
 native slash-command UX (typing `/domain`) lose that explicit affordance in
@@ -257,7 +257,7 @@ fixtures end-to-end.
 ## Layout
 
 - `main.go` — CLI dispatch (`init`, `check`, `render`, `hook`, `workflows`,
-  `workflow`, `docs`, `ignores`); the only `package main` file — everything
+  `workflow`, `index`, `ignores`); the only `package main` file — everything
   else lives in `internal/cinch`, a private package the Go compiler forbids
   other modules from importing.
 - `internal/cinch/check.go` — the `Finding` model and `CmdCheck` orchestrator.
@@ -271,7 +271,7 @@ fixtures end-to-end.
   `go:embed` (single static binary, no runtime template resolution) and
   iterates it, so adding a template needs no code change.
 - `internal/cinch/title.go` — H1 title/trigger extraction, shared by
-  `workflow.go` and `docs.go`.
+  `workflow.go` and `index.go`.
 - `internal/cinch/manifest.go` — the `cinch_manifest` parser and its
   accessors (`List`, `Names`, declaration order).
 - `internal/cinch/hook.go` — `cinch hook`'s dispatcher: staged-set
@@ -279,7 +279,7 @@ fixtures end-to-end.
 - `internal/cinch/init.go` — `cinch init`.
 - `internal/cinch/workflow.go` — `cinch workflows` / `cinch workflow NAME`,
   computed on demand from `workflows/` on disk.
-- `internal/cinch/docs.go` — `cinch docs`, computed on demand from
+- `internal/cinch/index.go` — `cinch index`, computed on demand from
   `paths.docs` on disk.
 - `internal/cinch/docs/docs-philosophy.md` — copied verbatim into every consumer.
 - `internal/cinch/docs/templates/*.md` — the nine workflow templates cinch

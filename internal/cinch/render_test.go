@@ -137,7 +137,7 @@ var stackSpecificPathRe = regexp.MustCompile(`\{\{paths\.docs\}\}/(backend|front
 // TestTemplates_NoStackSpecificPaths guards against a shipped template
 // re-hardcoding one consumer's directory layout (deltadocs' backend/,
 // frontend/, api/, models/) as if every consumer had the same structure.
-// Workflow prose must route through `cinch docs` instead.
+// Workflow prose must route through `cinch index` instead.
 func TestTemplates_NoStackSpecificPaths(t *testing.T) {
 	entries, err := fs.ReadDir(templatesFS, templatesDir)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestTemplates_NoStackSpecificPaths(t *testing.T) {
 			t.Fatalf("reading %s: %v", src, err)
 		}
 		if m := stackSpecificPathRe.FindString(string(raw)); m != "" {
-			t.Fatalf("%s: stack-specific path %q — route through `cinch docs` instead", src, m)
+			t.Fatalf("%s: stack-specific path %q — route through `cinch index` instead", src, m)
 		}
 	}
 }

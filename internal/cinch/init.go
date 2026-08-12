@@ -15,13 +15,13 @@ paths.hooks = .githooks
 # hooks.pre-commit.example.when = src/
 `
 
-// agentsWorkflowsLine and agentsDocsLine are the two lines a consumer's
+// agentsWorkflowsLine and agentsIndexLine are the two lines a consumer's
 // AGENTS.md needs: commands, not paths, so neither can go stale under a
 // customized paths.docs.
 const agentsWorkflowsLine = "Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one."
-const agentsDocsLine = "Docs: run `cinch docs` to see every doc's path and title."
+const agentsIndexLine = "Docs: run `cinch index` to see every doc's path and title."
 
-const starterAgentsMD = "# AGENTS.md\n\n" + agentsWorkflowsLine + "\n" + agentsDocsLine + "\n"
+const starterAgentsMD = "# AGENTS.md\n\n" + agentsWorkflowsLine + "\n" + agentsIndexLine + "\n"
 
 // CmdInit scaffolds a new cinch consumer: a manifest (if one doesn't already
 // exist), the docs directory structure, a full render, and activated git
@@ -84,7 +84,7 @@ func CmdInit(root string) int {
 	} else {
 		fmt.Println("AGENTS.md already exists — add these lines if they're missing:")
 		fmt.Println("  " + agentsWorkflowsLine)
-		fmt.Println("  " + agentsDocsLine)
+		fmt.Println("  " + agentsIndexLine)
 	}
 
 	return 0
