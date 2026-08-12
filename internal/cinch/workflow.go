@@ -43,6 +43,7 @@ func workflowsTable(docsRoot string) (string, error) {
 	}
 
 	var b strings.Builder
+	fmt.Fprintf(&b, "%d workflows:\n\n", len(names))
 	b.WriteString("| Workflow | Trigger |\n")
 	b.WriteString("|---|---|\n")
 	for _, name := range names {
@@ -62,13 +63,11 @@ func workflowsTable(docsRoot string) (string, error) {
 func CmdWorkflows(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-		return 1
+		return Fail("workflows", err)
 	}
 	table, err := workflowsTable(docsRoot)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: workflows: "+err.Error())
-		return 1
+		return Fail("workflows", err)
 	}
 	fmt.Print(table)
 	return 0
@@ -80,22 +79,18 @@ func CmdWorkflows(root string) int {
 func CmdWorkflow(root, name string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-		return 1
+		return Fail("workflow", err)
 	}
 	names, err := listWorkflowNames(docsRoot)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: workflow: cinch render has not run — nothing to show")
-		return 1
+		return Failf("workflow", "cinch render has not run — nothing to show")
 	}
 	if !slices.Contains(names, name) {
-		fmt.Fprintf(os.Stderr, "cinch: workflow: %q is not a known workflow — run `cinch workflows` to see what's available\n", name)
-		return 1
+		return Failf("workflow", "%q is not a known workflow — run `cinch workflows` to see what's available", name)
 	}
 	data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, name+".md"))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-		return 1
+		return Fail("workflow", err)
 	}
 	fmt.Print(string(data))
 	return 0

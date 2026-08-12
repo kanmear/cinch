@@ -2,7 +2,6 @@ package cinch
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 )
@@ -56,8 +55,7 @@ type Finding struct {
 func CmdCheck(msgFile string) int {
 	docsRoot, err := ResolveDocsRoot(".")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
-		return 1
+		return Fail("check", err)
 	}
 
 	var findings []Finding
@@ -67,16 +65,16 @@ func CmdCheck(msgFile string) int {
 	coupling := checkCoupling(docsRoot, ".", msgFile)
 	findings = append(findings, coupling.Findings...)
 	if coupling.NoOp != "" {
-		fmt.Fprintln(os.Stderr, coupling.NoOp)
+		Skip("check", "coupling", coupling.NoOp)
 	}
 	for _, s := range coupling.Suppressed {
-		fmt.Fprintln(os.Stderr, "coupling: "+s)
+		Skip("check", "coupling", s)
 	}
 
 	generated := checkGenerated(".")
 	findings = append(findings, generated.Findings...)
 	if generated.NoOp != "" {
-		fmt.Fprintln(os.Stderr, generated.NoOp)
+		Skip("check", "generated", generated.NoOp)
 	}
 
 	findings = append(findings, checkCommit(".", msgFile)...)

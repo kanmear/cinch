@@ -22,7 +22,7 @@ type generatedResult struct {
 func checkGenerated(root string) generatedResult {
 	m, err := loadManifestOptional(root)
 	if err != nil || m == nil {
-		return generatedResult{NoOp: "generated: cinch render has not run — nothing to verify"}
+		return generatedResult{NoOp: "cinch render has not run — nothing to verify"}
 	}
 
 	// A render that would fail is a defect this check can decide, not an
@@ -51,7 +51,7 @@ func checkGenerated(root string) generatedResult {
 		}
 	}
 	if !rendered {
-		return generatedResult{NoOp: "generated: cinch render has not run — nothing to verify"}
+		return generatedResult{NoOp: "cinch render has not run — nothing to verify"}
 	}
 
 	expected := map[string]bool{}
