@@ -30,31 +30,31 @@ type couplingResult struct {
 // so it is invisible post-commit (nothing changed, nothing to compare).
 func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 	if !isGitRepo(repoRoot) {
-		return couplingResult{NoOp: "not a git repository — check did not run"}
+		return couplingResult{NoOp: "not a git repository"}
 	}
 	if !hasHead(repoRoot) {
-		return couplingResult{NoOp: "no commits yet — check did not run"}
+		return couplingResult{NoOp: "no commits yet"}
 	}
 
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
-		return couplingResult{NoOp: "could not resolve repo root — check did not run"}
+		return couplingResult{NoOp: "could not resolve repo root"}
 	}
 	absDocs, err := filepath.Abs(docsDir)
 	if err != nil {
-		return couplingResult{NoOp: "could not resolve paths.docs — check did not run"}
+		return couplingResult{NoOp: "could not resolve paths.docs"}
 	}
 	if rel, err := filepath.Rel(absRoot, absDocs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return couplingResult{NoOp: "paths.docs is outside the repository — check did not run"}
+		return couplingResult{NoOp: "paths.docs is outside the repository"}
 	}
 	docsDir, repoRoot = absDocs, absRoot
 
 	changed, err := gitChangedFiles(repoRoot)
 	if err != nil {
-		return couplingResult{NoOp: "git diff failed — check did not run"}
+		return couplingResult{NoOp: "git diff failed"}
 	}
 	if len(changed) == 0 {
-		return couplingResult{NoOp: "working tree matches HEAD — nothing to compare, check did not run"}
+		return couplingResult{NoOp: "working tree matches HEAD, nothing to compare"}
 	}
 	changedSet := map[string]bool{}
 	for _, f := range changed {

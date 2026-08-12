@@ -116,7 +116,7 @@ func unknownCommand(name string) int {
 		msg += fmt.Sprintf(" (did you mean %q?)", guess)
 	}
 	msg += " — run 'cinch' for usage."
-	fmt.Fprintln(os.Stderr, msg)
+	fmt.Fprintln(os.Stderr, output.ColorizeError(msg))
 	return 1
 }
 
