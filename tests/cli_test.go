@@ -39,6 +39,45 @@ func TestUnknownCommandFails(t *testing.T) {
 	}
 }
 
+func TestVersion_PrintsAndExitsZero(t *testing.T) {
+	out, err := exec.Command(binPath(t), "version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("version: want exit 0, got %v\n%s", err, out)
+	}
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	if len(lines) != 1 || strings.TrimSpace(lines[0]) == "" {
+		t.Fatalf("version: want exactly one non-empty line, got:\n%s", out)
+	}
+}
+
+func TestVersion_TooManyArgsIsUsageError(t *testing.T) {
+	out, err := exec.Command(binPath(t), "version", "extra").CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("version with an argument: want exit 2, got %v\n%s", err, out)
+	}
+}
+
+// TestVersion_DefaultsToDevel builds a binary with no -ldflags (bypassing
+// the Makefile's VERSION injection) to confirm the fallback default — the
+// pre-built ../bin/cinch (via `make test`) always carries a stamped version,
+// so it can't exercise this path.
+func TestVersion_DefaultsToDevel(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "cinch-devel")
+	build := exec.Command("go", "build", "-o", bin, ".")
+	build.Dir = ".."
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build without ldflags: %v\n%s", err, out)
+	}
+	out, err := exec.Command(bin, "version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("version: want exit 0, got %v\n%s", err, out)
+	}
+	if got := strings.TrimSpace(string(out)); got != "devel" {
+		t.Fatalf("version with no ldflags: want %q, got %q", "devel", got)
+	}
+}
+
 func TestCheckNoDocsDir(t *testing.T) {
 	dir := t.TempDir()
 	cmd := exec.Command(binPath(t), "check")
