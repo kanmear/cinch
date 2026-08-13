@@ -126,6 +126,48 @@ func TestDispatchHooks_DeclarationOrder(t *testing.T) {
 	}
 }
 
+func TestDispatchHooks_CommitMsgPassesMessagePathAsArg(t *testing.T) {
+	root := t.TempDir()
+	out := filepath.Join(root, "out")
+	msgFile := filepath.Join(root, "COMMIT_EDITMSG")
+	writeFile(t, msgFile, "merge: feature/x\n")
+	m := manifestFor(t, root,
+		"hooks:\n  commit-msg:\n    dump:\n      run: printf %s > "+out+"\n")
+
+	ok := dispatchHooks(root, m, "commit-msg", nil, msgFile)
+
+	if !ok {
+		t.Fatalf("dispatchHooks: want true, got false")
+	}
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read out: %v", err)
+	}
+	if string(got) != msgFile {
+		t.Fatalf("want $1 to equal the message-file path %q, got %q", msgFile, got)
+	}
+}
+
+func TestDispatchHooks_PreCommitPassesNoArgs(t *testing.T) {
+	root := t.TempDir()
+	out := filepath.Join(root, "out")
+	m := manifestFor(t, root,
+		"hooks:\n  pre-commit:\n    dump:\n      run: printf %s > "+out+"\n")
+
+	ok := dispatchHooks(root, m, "pre-commit", []string{"x.txt"})
+
+	if !ok {
+		t.Fatalf("dispatchHooks: want true, got false")
+	}
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read out: %v", err)
+	}
+	if string(got) != "" {
+		t.Fatalf("want no $1 forwarded to pre-commit entries, got %q", got)
+	}
+}
+
 func TestHookWhenMatches(t *testing.T) {
 	tests := []struct {
 		name   string

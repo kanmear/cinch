@@ -158,7 +158,9 @@ matched against the staged set. Every registered entry runs regardless of an
 earlier one's failure (failures accumulate, not fail-fast), and a skipped
 entry says so on stderr, so a hook run that did nothing is never silent.
 `when` is ignored for `commit-msg` — a commit message has no changed paths to
-scope against.
+scope against. A `hooks.commit-msg.*` entry's command receives the commit
+message file path as `$1`, the same argument git itself hands the
+`commit-msg` hook — `pre-commit` entries get no positional args.
 
 **Extension boundary:** cinch guarantees *dispatch* — did the `when` prefixes
 match the staged set, did the registered command run, was its exit code
