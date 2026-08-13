@@ -11,8 +11,7 @@ Identify which domain rules lack test coverage, classified by testability.
 ### 1. Get the closure from the harness checkers
 
 The rule set is **script output, not something to re-read by hand**. Run `cinch check` —
-its rule-marker check walks every file in `{{paths.docs}}/` except `overview.md` and reports,
-per rule:
+its rule-marker check walks every markdown file under `{{paths.docs}}/` and reports, per rule:
 
 - **unmarked** — no `// cinch:rule <ID>` marker anywhere in the tree: the rule is either untested
   (a coverage gap) or declared N/A (step 2)
