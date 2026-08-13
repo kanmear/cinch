@@ -8,10 +8,17 @@ import (
 	"cinch/internal/output"
 )
 
+// Version is the cinch release this binary was built from — "devel" unless
+// set at build time via -ldflags "-X main.Version=x.y.z" (make build/install
+// do this). No runtime VCS lookup: cinch is typically installed to GOBIN and
+// run outside its own repo, where a git-describe would find nothing.
+var Version = "devel"
+
 const usage = `cinch — referential integrity checker for the operational
 documentation that governs a repository (rules, workflows, conventions)
 
 usage:
+  cinch version           print the cinch version and exit.
   cinch init              scaffold a new consumer: manifest (if absent),
                           paths.docs/plans, a full render, activated git
                           hooks (in a git repo), and AGENTS.md (if absent).
@@ -42,7 +49,7 @@ exit codes: 0 clean, 1 findings, 2 usage error.
 
 // commands is every subcommand cinch recognizes, in usage order — shared
 // between the dispatch switch below and the unknown-command suggestion.
-var commands = []string{"init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
+var commands = []string{"version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -51,6 +58,12 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "version":
+		if len(os.Args) > 2 {
+			os.Exit(output.UsageErr("version: takes no arguments"))
+		}
+		fmt.Println(Version)
+		os.Exit(0)
 	case "init":
 		if len(os.Args) > 2 {
 			os.Exit(output.UsageErr("init: takes no arguments"))

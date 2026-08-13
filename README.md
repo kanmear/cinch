@@ -54,6 +54,9 @@ survive contact with a deadline.
 make install    # go install . — puts `cinch` on your PATH via GOBIN
 ```
 
+`cinch version` prints the installed binary's version (`devel` for a `go
+build`/`go install` that skipped `make`'s `-ldflags`).
+
 The generated git hook shims `exec cinch hook <event>` — a bare PATH lookup,
 deliberately, so a shim never hardcodes one machine's path. The consequence is
 that the binary has to be *installed*, not just built: `make build` produces
@@ -135,10 +138,12 @@ and title from whatever is under `paths.docs` right now (excluding
 `plans/`). Both read the current tree at call time.
 
 **Version-skew note:** upgrading the cinch binary can redden every
-consumer's `generated` check until `cinch render` is re-run — there's no
-version pin or warn to soften this. The green state is reachable and the
-fix is exact (`cinch render`), which is what matters; a fuzzy warn was
-considered and rejected.
+consumer's `generated` check until `cinch render` is re-run — `cinch
+version` prints the installed binary's version so this is at least
+checkable by hand against however a project chooses to record the version
+it expects (there's no manifest-enforced pin; a fuzzy warn was considered
+and rejected). The green state is reachable and the fix is exact (`cinch
+render`), which is what matters.
 
 ### `cinch init` and self-enforcement
 
