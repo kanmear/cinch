@@ -168,6 +168,72 @@ func TestDispatchHooks_PreCommitPassesNoArgs(t *testing.T) {
 	}
 }
 
+func TestHookPostCommit_DispatchesByCommittedWhen(t *testing.T) {
+	dir := gitInitRepo(t)
+	marker := filepath.Join(dir, "ran")
+	writeFile(t, filepath.Join(dir, "cinch.yml"),
+		"hooks:\n  post-commit:\n    dump:\n      run: touch "+marker+"\n      when: [src/]\n")
+	gitCommitAll(t, dir, "seed")
+
+	writeFile(t, filepath.Join(dir, "src", "a.txt"), "x")
+	gitCommitAll(t, dir, "touch src")
+
+	if rc := CmdHook(dir, "post-commit", nil); rc != 0 {
+		t.Fatalf("CmdHook post-commit: want 0, got %d", rc)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("want the entry to have run for a commit touching src/: %v", err)
+	}
+
+	if err := os.Remove(marker); err != nil {
+		t.Fatalf("remove marker: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "docs", "b.txt"), "y")
+	gitCommitAll(t, dir, "touch docs")
+
+	if rc := CmdHook(dir, "post-commit", nil); rc != 0 {
+		t.Fatalf("CmdHook post-commit: want 0 (a skip is not a failure), got %d", rc)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatalf("want the entry to have been skipped for a commit touching only docs/")
+	}
+}
+
+func TestHookPostCommit_AmendStillScopes(t *testing.T) {
+	dir := gitInitRepo(t)
+	marker := filepath.Join(dir, "ran")
+	writeFile(t, filepath.Join(dir, "cinch.yml"),
+		"hooks:\n  post-commit:\n    dump:\n      run: touch "+marker+"\n      when: [src/]\n")
+	gitCommitAll(t, dir, "seed")
+
+	writeFile(t, filepath.Join(dir, "src", "a.txt"), "x")
+	gitCommitAll(t, dir, "touch src")
+	runGit(t, dir, "commit", "--amend", "-q", "-m", "touch src (amended)")
+
+	if rc := CmdHook(dir, "post-commit", nil); rc != 0 {
+		t.Fatalf("CmdHook post-commit: want 0, got %d", rc)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("want the amended commit's committed set (HEAD^ HEAD, parent unchanged by the amend) to still include src/: %v", err)
+	}
+}
+
+func TestHookPostCommit_RootCommitFallsBackToTree(t *testing.T) {
+	dir := gitInitRepo(t)
+	marker := filepath.Join(dir, "ran")
+	writeFile(t, filepath.Join(dir, "cinch.yml"),
+		"hooks:\n  post-commit:\n    dump:\n      run: touch "+marker+"\n      when: [src/]\n")
+	writeFile(t, filepath.Join(dir, "src", "a.txt"), "x")
+	gitCommitAll(t, dir, "root commit")
+
+	if rc := CmdHook(dir, "post-commit", nil); rc != 0 {
+		t.Fatalf("CmdHook post-commit: want 0, got %d", rc)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("want a root commit (no HEAD^) to fall back to its full tree as the committed set: %v", err)
+	}
+}
+
 func TestHookWhenMatches(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -160,7 +160,7 @@ const defaultHooksPath = ".githooks"
 
 // hookEvents are the git hooks CmdHook dispatches — the only shims render
 // generates.
-var hookEvents = []string{"pre-commit", "commit-msg"}
+var hookEvents = []string{"pre-commit", "commit-msg", "post-commit"}
 
 // hooksPathValue returns m's paths.hooks value, or the default when unset
 // or m is nil.

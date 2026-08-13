@@ -19,6 +19,8 @@ func CmdHook(root, event string, args []string) int {
 		return cmdHookPreCommit(root)
 	case "commit-msg":
 		return cmdHookCommitMsg(root, args)
+	case "post-commit":
+		return cmdHookPostCommit(root)
 	default:
 		return output.UsageErr(fmt.Sprintf("hook: unknown event %q", event))
 	}
@@ -68,6 +70,45 @@ func cmdHookCommitMsg(root string, args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// cmdHookPostCommit dispatches hooks.post-commit.* entries, scoped by `when`
+// against the just-made commit's changed set — the natural post-commit
+// analogue to pre-commit's staged set. No CmdCheck: the pre-commit checks
+// already ran on this content before it was committed, and re-running
+// generated/links here is noise (git also runs post-commit for commits
+// pre-commit never gated, e.g. `git commit --amend`).
+func cmdHookPostCommit(root string) int {
+	committed, err := committedFiles(root)
+	if err != nil {
+		return output.Failf("hook", "git diff HEAD failed: %s", err.Error())
+	}
+
+	m, err := loadManifestOptional(root)
+	if err != nil {
+		return output.Fail("hook", err)
+	}
+	ok := true
+	if m != nil && !dispatchHooks(root, m, "post-commit", committed) {
+		ok = false
+	}
+
+	if !ok {
+		return 1
+	}
+	return 0
+}
+
+// committedFiles returns HEAD's changed paths: HEAD^ HEAD for a commit with
+// a parent (covers a regular commit and a --amend re-fire, whose parent is
+// the pre-amend commit), falling back to the full tree of a root commit
+// (which has no HEAD^ to diff against).
+func committedFiles(root string) ([]string, error) {
+	files, err := gitOutputLines(root, "diff", "--name-only", "HEAD^", "HEAD")
+	if err == nil {
+		return files, nil
+	}
+	return gitOutputLines(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
 }
 
 // dispatchHooks runs every hooks.<event>.<name> entry in m, in declaration
