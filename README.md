@@ -150,23 +150,33 @@ Idempotent: running it twice produces a byte-identical tree. Outside a git
 repo, the shims are still generated but init says on stderr that they
 weren't activated.
 
-Once activated, `.githooks/pre-commit` and `.githooks/commit-msg` both
-`exec cinch hook <event> "$@"`, which runs `cinch check` and then any
+Once activated, `.githooks/pre-commit`, `.githooks/commit-msg`, and
+`.githooks/post-commit` all `exec cinch hook <event> "$@"`, which runs any
 `hooks.<event>.<name>` entries a project has registered in its manifest,
-scoped by `when` — a comma-separated list of path prefixes (not globs)
-matched against the staged set. Every registered entry runs regardless of an
-earlier one's failure (failures accumulate, not fail-fast), and a skipped
-entry says so on stderr, so a hook run that did nothing is never silent.
-`when` is ignored for `commit-msg` — a commit message has no changed paths to
-scope against. A `hooks.commit-msg.*` entry's command receives the commit
-message file path as `$1`, the same argument git itself hands the
-`commit-msg` hook — `pre-commit` entries get no positional args.
+scoped by `when` — a comma-separated list of path prefixes (not globs).
+`pre-commit` and `post-commit` match `when` against the staged and committed
+set respectively (`post-commit`'s committed set is `git diff --name-only
+HEAD^ HEAD`, falling back to the commit's full tree for a root commit with no
+parent); `pre-commit` and `commit-msg` also run `cinch check` first,
+`post-commit` does not — the checks already ran before the commit existed,
+and git fires `post-commit` for commits `pre-commit` never gated (e.g. `git
+commit --amend`). Every registered entry runs regardless of an earlier one's
+failure (failures accumulate, not fail-fast), and a skipped entry says so on
+stderr, so a hook run that did nothing is never silent. `when` is ignored for
+`commit-msg` — a commit message has no changed paths to scope against. A
+`hooks.commit-msg.*` entry's command receives the commit message file path
+as `$1`, the same argument git itself hands the `commit-msg` hook —
+`pre-commit`/`post-commit` entries get no positional args.
 
 **Extension boundary:** cinch guarantees *dispatch* — did the `when` prefixes
-match the staged set, did the registered command run, was its exit code
-propagated — not your script's correctness. What a registered script does is
-opaque to cinch; a green `cinch check` means dispatch worked, not that the
-script itself is bug-free.
+match the staged/committed set, did the registered command run, was its exit
+code propagated — not your script's correctness. What a registered script
+does is opaque to cinch; a green `cinch check` means dispatch worked, not
+that the script itself is bug-free. This includes reentrancy: a
+`post-commit` script that amends its own triggering commit re-fires
+`post-commit` (the amend is itself a commit), so a script that mutates and
+amends owns its own loop guard — cinch runs the dispatch table once per
+event, it does not deduplicate a script re-triggering itself.
 
 ```yaml
 # cinch.yml

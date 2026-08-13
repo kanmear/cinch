@@ -114,7 +114,7 @@ func TestRenderAll_RendersEveryTemplatePlusPhilosophyAndShims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderAll: %v", err)
 	}
-	want := len(entries) + 3 // + docs-philosophy.md + 2 hook shims
+	want := len(entries) + 4 // + docs-philosophy.md + 3 hook shims
 	if len(files) != want {
 		t.Fatalf("renderAll: want %d files (one per template + philosophy + hook shims), got %d", want, len(files))
 	}
