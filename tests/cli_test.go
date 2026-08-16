@@ -195,6 +195,69 @@ func TestCheck_NonLocalDocsRootFromManifestFires(t *testing.T) {
 	}
 }
 
+func TestCheck_RequireCinchMatchIsClean(t *testing.T) {
+	dir := t.TempDir()
+	version := versionOf(t)
+	manifest := "require:\n  cinch: " + version + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "check")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("check with matching require.cinch: want exit 0, got %v\n%s", err, out)
+	}
+}
+
+func TestCheck_RequireCinchMismatchFires(t *testing.T) {
+	dir := t.TempDir()
+	manifest := "require:\n  cinch: 9.9.9\n"
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "check")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 1 {
+		t.Fatalf("check with mismatched require.cinch: want exit 1, got %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "core error") || !strings.Contains(string(out), "9.9.9") {
+		t.Fatalf("check with mismatched require.cinch: finding not named:\n%s", out)
+	}
+}
+
+func TestCheck_RequireCinchAbsentIsNoOp(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "check")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("check with no require.cinch key: want exit 0, got %v\n%s", err, out)
+	}
+	if strings.Contains(string(out), "core error") {
+		t.Fatalf("check with no require.cinch key: unexpected core finding:\n%s", out)
+	}
+}
+
+// versionOf runs `cinch version` against the built binary, so the match
+// fixture stays correct regardless of the Makefile's VERSION setting.
+func versionOf(t *testing.T) string {
+	t.Helper()
+	out, err := exec.Command(binPath(t), "version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("version: %v\n%s", err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
 func TestIgnores_ListsDeclarationsWithReasons(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, ".docs")

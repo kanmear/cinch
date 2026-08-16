@@ -56,6 +56,8 @@ exit codes: 0 clean, 1 findings, 2 usage error.
 var commands = []string{"version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index", "context"}
 
 func main() {
+	impl.Version = Version
+
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stdout, usage)
 		os.Exit(2)

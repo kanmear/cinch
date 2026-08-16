@@ -39,7 +39,7 @@ func ResolveDocsRoot(root string) (string, error) {
 
 // Finding is one thing a check found wrong with the tree.
 type Finding struct {
-	Check   string // "links" | "rules" | "coupling" | "generated"
+	Check   string // "links" | "rules" | "coupling" | "generated" | "commit" | "core"
 	Level   string // "error" | "block"
 	File    string // repo-relative
 	Line    int    // 1-based
@@ -81,6 +81,10 @@ func CmdCheck(msgFile string) int {
 	commit := checkCommit(".", msgFile)
 	findings = append(findings, commit.Findings...)
 	output.CheckStatus("commit", len(commit.Findings), commit.NoOp)
+
+	pin := checkPin(".", Version)
+	findings = append(findings, pin.Findings...)
+	output.CheckStatus("core", len(pin.Findings), pin.NoOp)
 
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
