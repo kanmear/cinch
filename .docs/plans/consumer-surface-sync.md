@@ -1,6 +1,10 @@
 # cinch — resync `project_deltadocs` to cinch's current surface
 
-Status: **proposed** — not started.
+Status: **partially shipped** — Step 1 (re-render, `project_deltadocs`
+`3d37adb`) landed as a side effect of unblocking an unrelated commit there
+(the pre-commit hook refused to let anything land while `generated` was
+red). Steps 2 and 3 (the `cinch context` `AGENTS.md` pointer,
+`plans.statuses`) are still open.
 
 ## Context
 
@@ -24,7 +28,7 @@ Verified against `~/code/project_deltadocs` on 2026-08-16.
    the consumer's `.agent/workflows/` no longer byte-matches a fresh render.
    Its `generated` check reports 7 findings. Its in-memory re-render succeeds
    against its own manifest values, so the fix is exactly `cinch render` —
-   no content decisions to make.
+   no content decisions to make. **Done** (`3d37adb`).
 
 2. **`AGENTS.md` has no `cinch context` pointer.** It carries the
    `cinch workflows` line (`AGENTS.md:46`) and the `cinch index` line
@@ -51,11 +55,11 @@ Verified against `~/code/project_deltadocs` on 2026-08-16.
 
 ## Steps
 
-1. `cinch render` in `project_deltadocs`; confirm `cinch check` returns to
-   clean. Commit the 7 changed workflows on their own, with a message naming
-   the cinch commit that caused the change (`8bafaea`) — a re-render commit
-   that also carries hand edits is the one shape that makes the `generated`
-   check useless as evidence.
+1. **Done** (`3d37adb`). `cinch render` in `project_deltadocs`; confirmed
+   `cinch check` returned to clean. Committed the 7 changed workflows on
+   their own, message naming the cinch commit that caused the change
+   (`8bafaea`) — a re-render commit that also carries hand edits is the one
+   shape that makes the `generated` check useless as evidence.
 2. Add the `cinch context` line to `.agent/`'s `AGENTS.md`, next to the
    existing workflows and index pointers. Copy the wording from
    `agentsContextLine` (`internal/cinch/init.go`) rather than paraphrasing,
