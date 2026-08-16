@@ -16,20 +16,25 @@ scattered subsections.
 This gap is real but narrow — it's an *ordering and cross-reference* problem,
 not a missing-content problem. Every fact the checklist needs already exists
 in README; nothing here should introduce new cinch behavior or new
-documented conventions beyond what `manifest-seams-skeleton.md` and the
-existing richer-manifest section already cover.
+documented conventions beyond what the existing richer-manifest section and
+the scaffolded `manifest.example.yml` already cover.
 
 ## Step 1 — write the checklist
 
 Add a new README section (recommend placing it directly after `## Install`,
 before the `## Status: 0.1.0` history section, since a fresh reader wants
 "how do I adopt this" before "here's what shipped when") — or a standalone
-`docs/onboarding.md` if the README is judged too long already (it currently
-runs 339+ lines; check current length before deciding placement). Content,
-each step pointing at the existing section that already documents it rather
-than re-explaining:
+`docs/onboarding.md` if the README is judged too long already (check its
+current length before deciding placement). Content, each step pointing at the
+existing section that already documents it rather than re-explaining:
 
-1. `make install` (→ ## Install).
+1. `make install` — and say **why it must be `install`, not `build`**: the
+   generated hooks `exec cinch` via a bare PATH lookup, so a repo with
+   activated hooks and only `./bin/cinch` fails every commit with exit 127
+   before a single check runs (→ ## Install, which already states this).
+   This is precisely the kind of unstated prerequisite Step 2 exists to
+   catch, and it is already known — put it in the checklist up front rather
+   than letting the dogfood run rediscover it.
 2. `cinch init` in the target repo — what it creates, idempotency (→ `cinch
    init` subsection).
 3. Set `paths.docs` in `cinch.yml` if the default `.docs` doesn't fit (point
@@ -43,9 +48,12 @@ than re-explaining:
    (pre-commit/commit-msg/post-commit) — point at the hooks section; note
    this is where all project-specific automation logic belongs, never in
    cinch-core.
-6. (Optional) Adopt the richer `manifest.yml` convention for taxonomy/
-   commands/seams (→ "A richer project manifest" + `manifest-seams-skeleton.md`
-   once it lands).
+6. (Optional) Adopt the richer `manifest.yml` convention for taxonomy and
+   commands. `cinch init` already scaffolds a commented `manifest.example.yml`
+   at the repo root (`8a7c375`, `internal/cinch/init.go`) — the checklist
+   points at that file plus README's "A richer project manifest" section,
+   rather than re-explaining the shape. Note the `seams` sub-pattern was
+   documented and then dropped in the same commit; don't reintroduce it.
 7. `cinch check` clean — the exit criterion. Note what each of the 5 checks
    verifies at this point (mostly: links resolve, rule markers exist,
    generated output matches, commit pattern if configured).
@@ -76,7 +84,9 @@ let a reader discover it via a confusing partial-scaffold).
 
 ### Relationship to other plans
 
-References `manifest-seams-skeleton.md` (Step 1, item 6) — land that first if
-convenient, but this checklist degrades gracefully to "see the richer-manifest
-section" if it hasn't landed yet. Independent of
-`template-stack-agnosticism.md` and `auditor-guard-consolidation.md`.
+Independent. The richer-manifest prerequisite this plan originally waited on
+has shipped (`manifest.example.yml` via `cinch init`, `8a7c375`), so item 6
+has a concrete target now. Worth sequencing *after*
+`template-stack-agnosticism.md` if both are in flight: a dogfood run through
+templates still carrying `backend`/`frontend` examples will surface that as a
+checklist problem when it isn't one.
