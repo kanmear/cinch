@@ -5,8 +5,9 @@ a repository — the rules, workflows, and conventions code must conform to, rea
 by humans and executed by agents. **Status: 0.1.0 — init, self-enforcement,
 manifest-driven extension. Five checks (links, rules, coupling, generated,
 commit), `render` (philosophy, workflows, hook shims), `init`, `hook`,
-`workflows`/`workflow`/`index`. See README.md.**
+`workflows`/`workflow`/`index`/`context`. See README.md.**
 
+Orientation: run `cinch context` first — branch, plans, workflows, staged.
 Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one.
 Docs: run `cinch index` to see every doc's path and title.
 
@@ -28,7 +29,8 @@ Docs: run `cinch index` to see every doc's path and title.
   `title.go` — shared H1 title/trigger extraction. `hook.go` — the
   `cinch hook` dispatcher. `init.go` — `cinch init`. `workflow.go` —
   `cinch workflows` / `cinch workflow NAME`, computed on demand. `index.go` —
-  `cinch index`, computed on demand. `docs/philosophy.md`,
+  `cinch index`, computed on demand. `context.go` — `cinch context`, the
+  session-start report; reports state, never a verdict. `docs/philosophy.md`,
   `docs/templates/*.md` (nine workflows) — the content `render` ships,
   embedded via `go:embed`. `tests/` — CLI-level tests against the built
   binary. `Makefile` — `build` / `test`.
@@ -53,4 +55,6 @@ Recovering old material from git is normal; committing it back is not.
 
 ## Session start
 
-Read `.docs/PRINCIPLES.md` before any rebuild work.
+Run `cinch context` — branch, plans in flight and their status, the workflow
+trigger table, staged paths. Then read `.docs/PRINCIPLES.md` before any
+rebuild work.

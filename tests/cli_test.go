@@ -571,6 +571,57 @@ func TestIndex_PrintsDocList(t *testing.T) {
 	}
 }
 
+func TestContext_PrintsReport(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+	planPath := filepath.Join(dir, ".docs", "plans", "thing.md")
+	if err := os.MkdirAll(filepath.Dir(planPath), 0o755); err != nil {
+		t.Fatalf("mkdir plans: %v", err)
+	}
+	if err := os.WriteFile(planPath, []byte("# A Thing\n\nStatus: **proposed**.\n"), 0o644); err != nil {
+		t.Fatalf("write plan: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "context")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("context: want exit 0, got %v\n%s", err, out)
+	}
+	for _, want := range []string{"1 plan under", "A Thing", "Status: **proposed**.", "| Workflow | Trigger |"} {
+		if !strings.Contains(string(out), want) {
+			t.Fatalf("context: missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// Unlike index and workflows, context does not fail when render hasn't run —
+// it is the first thing a session runs, so a missing input is a stated skip
+// and the remaining sections still print.
+func TestContext_RenderNotRunStillExitsZero(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t), "context")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("context with no render: want exit 0, got %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "skip:") {
+		t.Fatalf("context with no render: want a stated skip, got:\n%s", out)
+	}
+}
+
 func TestIndex_RenderNotRunFires(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
