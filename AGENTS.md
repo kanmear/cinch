@@ -45,6 +45,13 @@ markers in the test file; bind values in one place, shape by absence; no proxy
 metrics — every check has a demonstrable failing state, every warn a reachable
 green state, no accepted baselines.
 
+**A workflow's checkable postconditions go into `cinch.yml` in the same
+commit that adopts or writes the workflow.** Most of what a workflow says is
+judgment and stays judgment; the part a script can decide belongs in the
+manifest, as a `hooks.<event>` entry or a key like `commit.pattern` — the
+rule→test marker pattern, one level up. See README § Workflow postconditions
+belong in the manifest.
+
 **Handoffs go to plan files, never `.docs/`.** .docs/ holds
 spec only; session state is point-in-time and belongs in a plan file — git is
 the archive.

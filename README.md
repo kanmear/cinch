@@ -225,6 +225,34 @@ commit:
   pattern: '^\[[a-z-]+\] .+'
 ```
 
+### Workflow postconditions belong in the manifest
+
+A workflow is prose until something can decide whether it was followed.
+`cinch workflow <name>` prints markdown; whether the agent that read it
+actually ran the tests, or actually used the commit convention, is not
+knowable from the workflow's own sentences.
+
+The discipline, which needs no cinch feature beyond what's above:
+
+> When a workflow is adopted or written, its checkable postconditions get
+> written into `cinch.yml` in the same commit.
+
+"Checkable" is load-bearing. Most of what a workflow says is judgment and
+stays judgment; the subset worth encoding is the subset a script can decide —
+"tests must pass before this lands" becomes a `hooks.pre-commit` entry scoped
+by `when`, "commits follow this convention" becomes `commit.pattern`. This is
+the rule→test marker pattern one level up: a rule doc claims something and a
+marker ties it to a test; a workflow claims something and a manifest entry
+ties it to a command. Structural rather than semantic in both cases — a real
+limit, and still better than prose alone.
+
+This repo self-hosts the discipline. `dev-execute-plan.md` § Commit
+Conventions declares a commit-message convention, and `commit.pattern` in
+this repo's own `cinch.yml` is the half of it a script can decide; before
+that key was set, the `commit` check reported "opt-in, not configured" on
+every commit, which is to say the workflow's one decidable demand went
+unenforced in the repo that ships the workflow.
+
 ### Commands instead of per-harness skills or a persisted index
 
 Don't hand-maintain a `SKILL.md`/slash-command wrapper per workflow per agent
