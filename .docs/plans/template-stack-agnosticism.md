@@ -35,6 +35,47 @@ with a different shape (single service, three services, a library with no
 frontend at all) gets worked examples that don't map onto their repo, which
 undercuts the "drop cinch into any repo" story this tool is going for.
 
+## A second leak class: docs the templates assume exist
+
+*Added 2026-08-16.* The same root cause — templates encoding one consumer's
+repo shape — produces a second, distinct failure the stack vocabulary above
+doesn't cover: templates that reference **docs under the docs root that cinch
+neither creates nor checks**. `cinch init` makes only `plans/` and
+`workflows/`, so every fresh consumer's rendered workflows point at files
+that don't exist:
+
+- `{{paths.docs}}/conventions.md` — 3 references.
+- `{{paths.docs}}/overview.md` — 4 references.
+
+Live in cinch's own tree right now: `.docs/` holds only `PRINCIPLES.md`,
+`plans/` and `workflows/`, so both are dangling here. The `links` check
+cannot see them — they are inline code spans, not relative markdown links,
+which is exactly the blind spot that let them persist.
+
+The references are not equally harmful, and only one is sharp:
+
+1. **`dev-execute-plan.md:66` — "Load `{{paths.docs}}/conventions.md` § Git
+   before proposing the first commit message of the session,
+   unconditionally."** A hard instruction to load a missing file. This one
+   should point at the manifest instead of a doc: `commit.pattern` is now the
+   enforced home of a project's commit convention (see README § Workflow
+   postconditions), so the line can name a mechanism every consumer has
+   rather than a doc most won't.
+2. `dev-fix-bug.md:77,100` — "prefer … and `{{paths.docs}}/conventions.md`".
+   Soft; degrades fine when absent. Use the idiom `docs-sync.md:106` already
+   establishes elsewhere: "find it via `cinch index`".
+3. `docs-sync.md:70,104` and the `overview.md` references — a routing table
+   saying *where to put* things. Prescriptive rather than assumptive; leave
+   as-is unless Step 1's rewrite touches the surrounding prose anyway.
+
+Deliberately **not** proposed: creating `.docs/conventions.md` in this repo.
+That fixes cinch's instance, leaves the class untouched for every other
+consumer, and adds a doc whose only reader is a template line item 1 changes.
+Also not proposed: a check for unresolved inline `{{paths.docs}}/…`
+references. It would fire in every consumer on day one for docs they
+legitimately haven't written, and the fix here is to stop asserting the docs
+exist, not to demand that they do.
+
 ## Decision needed — how to genericize
 
 - **A — Replace with domain-neutral placeholders.** Swap `backend`/`frontend`
@@ -70,6 +111,12 @@ concreteness) — only the vocabulary changes. `dev-fix-bug.md`'s
 "single layer" vs "full workflow (spans layers)" distinction should survive
 in generic form (e.g. "spans components" instead of "backend↔frontend").
 
+Same pass, per the second leak class above: repoint
+`dev-execute-plan.md:66` at `commit.pattern` rather than
+`{{paths.docs}}/conventions.md`, and soften `dev-fix-bug.md:77,100` to
+"find it via `cinch index`". One pass over these files, not two — each pass
+forces a re-render commit in every consumer.
+
 ## Step 2 — widen the regression guard
 
 `TestTemplates_NoStackSpecificPaths` currently only matches paths nested
@@ -95,9 +142,13 @@ bug gets caught at the same layer instead of requiring another audit.
   their `generated` check).
 - Hand-read the rewritten templates in a scratch non-backend/frontend repo
   context to confirm the worked examples still teach the intended shape.
+- `cinch init` a scratch repo, then grep the rendered workflows for
+  `{{paths.docs}}`-rooted doc references that don't resolve on disk: only the
+  prescriptive routing-table entries (leak class 2, item 3) should remain.
 
 ### Critical files
 
+- `internal/cinch/docs/templates/dev-execute-plan.md` (leak class 2, item 1)
 - `internal/cinch/docs/templates/dev-fix-bug.md`
 - `internal/cinch/docs/templates/dev-plan-feature.md`
 - `internal/cinch/docs/templates/dev-task-primitive.md`
