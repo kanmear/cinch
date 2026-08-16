@@ -41,7 +41,7 @@ A task is atomic when:
 
 - It implements **one concern** with one rollback boundary.
 - It is **independently verifiable** when complete.
-- Its declared layers come from `manifest.taxonomy.layers` (`backend-model, backend-handler, frontend-state, frontend-ui`).
+- Its declared layers come from `manifest.taxonomy.layers` — whatever your project declares there, e.g. `<service-a>-model, <service-a>-handler, <service-b>-state, <service-b>-ui`.
 - Its working context fits one focused pass.
 
 Prefer one layer per task. Split work when each layer can reach a meaningful passing state on its
@@ -141,7 +141,7 @@ run in parallel; within a single pass, work in dependency order.
 ### T<N>: <title>
 **Status:** [ ]
 **Depends on:** T<M> | —
-**Layers:** <one or more values from backend-model, backend-handler, frontend-state, frontend-ui>
+**Layers:** <one or more values from manifest.taxonomy.layers>
 **Atomicity rationale:** <why this is one independently verifiable concern; for multiple layers,
 why they cannot pass independently>
 

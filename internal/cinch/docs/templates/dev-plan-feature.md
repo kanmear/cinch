@@ -27,8 +27,8 @@ files in `{{paths.docs}}/` minus `overview.md` — list that directory
 to see the current domains; each `<domain>.md` is one domain. (There is deliberately no domain list
 in the manifest to copy out of sync — the filesystem is the source.)
 
-Read only the relevant files. If uncertain which domains apply, read `{{paths.docs}}/overview.md`
-first for orientation.
+Read only the relevant files. If uncertain which domains apply, run `cinch index` and read the
+project's orientation doc, if it has one, before going further.
 
 ### 1.2 List applicable rules
 
@@ -137,15 +137,15 @@ Make targets here).
 ## Test Plan
 [ ] integration: <description> — validates [domain.md #N]
       Assert: <what proves the rule holds>
-      File: backend/tests/<layer>/<domain>_test.go
+      File: <the integration tier's test root>/<layer>/<domain>_test.<ext>
       TDD: mandatory
 [ ] unit: <description> — validates [domain.md #N]
       Assert: <what proves the rule holds>
-      File: frontend/tests/<area>/<component>.test.ts
+      File: <the unit tier's test root>/<area>/<component>.test.<ext>
       TDD: optional
-[ ] e2e: <description> — full-stack smoke (opt-in, non-atomic)
+[ ] e2e: <description> — end-to-end smoke (opt-in, non-atomic)
       Assert: <what proves the flow works end-to-end>
-      File: frontend/e2e/<domain>/<feature>.spec.ts   (auto-discovered by the e2e tier cmd)
+      File: <the e2e tier's test root>/<domain>/<feature>.spec.<ext>   (auto-discovered by the e2e tier cmd)
 [m] manual: <description> — manual only (visual/UX)
 ```
 

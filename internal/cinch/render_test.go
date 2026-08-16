@@ -134,10 +134,26 @@ func TestRenderAll_EveryTemplateFullySubstitutes(t *testing.T) {
 
 var stackSpecificPathRe = regexp.MustCompile(`\{\{paths\.docs\}\}/(backend|frontend|api|models)`)
 
-// TestTemplates_NoStackSpecificPaths guards against a shipped template
-// re-hardcoding one consumer's directory layout (deltadocs' backend/,
-// frontend/, api/, models/) as if every consumer had the same structure.
-// Workflow prose must route through `cinch index` instead.
+// stackSpecificWordRe matches one consumer's service vocabulary anywhere in a
+// template body, not only in a path under the docs root. The original guard
+// checked paths alone, which is why `backend/tests/`, `make dev-frontend`,
+// `backend-model` layer names and "backend↔frontend" prose all survived it —
+// nineteen occurrences across five templates, found by audit rather than by
+// the test that existed to find them.
+var stackSpecificWordRe = regexp.MustCompile(`(?i)\b(backend|frontend)\b`)
+
+// TestTemplates_NoStackSpecificPaths guards the general property, not the one
+// incident that prompted it: a shipped template must not encode any single
+// consumer's repo shape — not its directory layout (deltadocs' backend/,
+// frontend/, api/, models/), and not its service vocabulary in prose, layer
+// names, worked example paths, or command names.
+//
+// The templates teach an agent the *shape* of a good answer; a consumer whose
+// repo is one service, or three, or a library with no UI at all, must not be
+// handed worked examples that don't map onto it. Use a neutral placeholder
+// (`<service-a>`, `<the unit tier's test root>`) or route through `cinch
+// index` / `manifest.taxonomy` so the project's own vocabulary supplies the
+// names.
 func TestTemplates_NoStackSpecificPaths(t *testing.T) {
 	entries, err := fs.ReadDir(templatesFS, templatesDir)
 	if err != nil {
@@ -151,6 +167,9 @@ func TestTemplates_NoStackSpecificPaths(t *testing.T) {
 		}
 		if m := stackSpecificPathRe.FindString(string(raw)); m != "" {
 			t.Fatalf("%s: stack-specific path %q — route through `cinch index` instead", src, m)
+		}
+		if m := stackSpecificWordRe.FindString(string(raw)); m != "" {
+			t.Fatalf("%s: stack-specific vocabulary %q — use a neutral placeholder, or let the project's manifest.taxonomy supply the name", src, m)
 		}
 	}
 }
