@@ -48,7 +48,8 @@ undercuts the "drop cinch into any repo" story this tool is going for.
   `cinch.yml`. More correct per-consumer, but grows the manifest schema for a
   feature only the templates need — the kind of schema growth other plans in
   this repo have been wary of ("shape is the real variance" — see this
-  plan's own recommendation below and the reasoning in `cinch-0.1.0.md`).
+  plan's own recommendation below, and the same reasoning in the 0.1.0 plan,
+  deleted in `0ed1ebd`).
 
 Recommend **A**. The worked examples are illustrative, not load-bearing config
 — they exist to show an agent *the shape* of a good answer, not to encode
@@ -107,6 +108,9 @@ bug gets caught at the same layer instead of requiring another audit.
 
 ### Relationship to other plans
 
-Independent. Complements `manifest-seams-skeleton.md` (that plan documents
-the *optional* richer manifest pattern; this one fixes the *default*
-templates that ship regardless of whether a consumer adopts that pattern).
+Independent. Complements the richer-manifest convention, which has since
+shipped as a scaffolded `manifest.example.yml` (`8a7c375`): that is the
+*optional* pattern a consumer opts into, whereas this plan fixes the
+*default* templates every consumer gets regardless. Worth landing before
+`onboarding-checklist.md`'s dogfood run, so that run isn't distracted by
+template examples it can't map onto a scratch repo.

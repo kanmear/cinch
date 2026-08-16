@@ -34,7 +34,8 @@ to `harness_version` themselves.
 absence-based manifest key that `check` compares against the binary, turning the
 version-skew noise into a *decidable red state* — aligned with principles 1/6
 (a real failing state, never a proxy). This is the reasoning that previously
-rejected a *fuzzy warn* (flag 3 in `cinch-0.1.0.md`); the difference is this is
+rejected a *fuzzy warn* (flag 3 in the 0.1.0 plan, deleted in `0ed1ebd`); the
+difference is this is
 a *hard* check with an exact close action ("run `cinch render`"), not a warn
 whose green state is mushy.
 

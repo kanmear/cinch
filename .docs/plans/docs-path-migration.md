@@ -2,9 +2,27 @@
 
 Status: **proposed** — not started.
 
+*Refreshed 2026-08-16 against the current tree.* This plan was written before
+two renames, one format change, and the `internal/output` extraction, and the
+surface it describes shifted underneath it: `cinch_manifest` became
+`cinch.yml` (`c2ec0b7`), which also moved the manifest from flat
+`key = value` lines to nested YAML; `cinch docs` became `cinch index`
+(`4281887`), so the proposed subcommand is renamed to
+`cinch move-docs NEW-PATH`; and diagnostics moved into `internal/output`
+(`befd5e1`, `a66c3dd`). Names, paths, and the code sketches have all been
+re-derived — the parser extraction turned out smaller than sketched, the
+manifest-rewrite and shell-read sketches turned out materially different
+under YAML, and one new decision surfaced (the append case, Step 2). The
+design and status are otherwise unchanged: still **proposed, not started**.
+
+One correctness note carried forward: `paths.docs` being repo-relative is no
+longer an assumption this plan can make on its own — it is enforced at
+manifest load (see `absolute-docs-path.md`), which removes the
+`move-docs`-time check the Step 2 sketch performs at line 276.
+
 ## Context
 
-`paths.docs` (default `.docs`) is read fresh from `cinch_manifest` on every
+`paths.docs` (default `.docs`) is read fresh from `cinch.yml` on every
 command invocation — no cache, no lockfile, no persisted index. In principle
 that means changing it should be safe. In practice it isn't, because cinch
 never moves or deletes files (`render.go` only ever does `MkdirAll` +
@@ -30,14 +48,16 @@ and a prevention mechanism — plus one follow-up fix in `project_deltadocs`
 for the one piece of its own tooling that's genuinely load-bearing (not just
 prose) against the old path.
 
-**Explicitly out of scope:** `project_deltadocs`'s `.claude/hooks/
-auditor-bash-guard.py` and `.pi/extensions/auditor.ts`, which hardcode
-`.agent/manifest.yml`. Left untouched for now, by request.
+**Explicitly out of scope:** `project_deltadocs`'s `.pi/extensions/auditor.ts`,
+which hardcodes `.agent/manifest.yml`. Left untouched for now, by request.
+(The companion `.claude/hooks/auditor-bash-guard.py` named here originally is
+**gone** — removed alongside the seams pattern in `8a7c375`; only
+`inject-agents.sh` remains under `.claude/hooks/`. Verified 2026-08-16.)
 
 ## Surface after this change
 
 ```
-cinch docs move NEW-PATH   move the docs root: git mv, rewrite cinch_manifest's
+cinch move-docs NEW-PATH   move the docs root: git mv, rewrite cinch.yml's
                            paths.docs, re-render — one atomic operation.
 ```
 
@@ -55,7 +75,7 @@ directory's generated files outside `renderDirs` — invisible to every check,
 for as long as the stale directory and the edited-but-uncommitted manifest
 coexist.
 
-**Fix:** also scan the docs/hooks roots implied by `cinch_manifest` **as of
+**Fix:** also scan the docs/hooks roots implied by `cinch.yml` **as of
 `HEAD`** — the last commit — not just the working copy. This targets exactly
 the window that matters: `cinch check` runs from the pre-commit hook
 (`cmdHookPreCommit` in `hook.go`), i.e. precisely when a manifest edit is
@@ -76,34 +96,36 @@ this categorically by making "edit `paths.docs`" and "move the directory" one
 atomic operation that can't be done halfway — Step 1 is the net for every
 rename that doesn't go through it.
 
-### `internal/cinch/manifest.go` — extract a reader-based parser core
+### `internal/cinch/manifest.go` — extract a bytes-based parser core
 
-`parseManifestFile` currently opens a path directly; there's no way to parse
-manifest bytes obtained from `git show` (which returns `[]byte`, not a path).
-Pure refactor, same behavior/error text:
+*Re-derived 2026-08-16: this is now smaller than originally sketched.* The
+YAML migration (`c2ec0b7`) already changed `parseManifestFile` to
+`os.ReadFile(path)` followed by parsing the in-memory `data`
+(`manifest.go:62-86`), so the "reader-based core" refactor the original
+sketch called for is unnecessary — the bytes path already exists internally
+and only needs a name. Pure extraction, same behavior and error text:
 
 ```go
 func parseManifestFile(path string) (*Manifest, error) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, err // raw, so os.IsNotExist stays checkable
 	}
-	defer f.Close()
-	return parseManifestReader(f, path)
+	return parseManifestBytes(data, path)
 }
 
-// parseManifestBytes parses manifest content already read into memory (e.g.
-// a historical revision fetched via `git show`), reporting errors against
+// parseManifestBytes parses manifest content already in memory (e.g. a
+// historical revision fetched via `git show`), reporting errors against
 // label for consistent messages.
 func parseManifestBytes(data []byte, label string) (*Manifest, error) {
-	return parseManifestReader(bytes.NewReader(data), label)
-}
-
-func parseManifestReader(r io.Reader, path string) (*Manifest, error) {
-	// exact existing body of parseManifestFile from the `vars := map[string]string{}`
-	// line onward, unchanged — just re-homed.
+	// the existing body from `var doc yaml.Node` onward, unchanged —
+	// just re-homed, with `path` renamed to `label`.
 }
 ```
+
+Note the error-return split: `loadManifest`/`loadManifestOptional` both
+branch on `os.IsNotExist(err)` (`manifest.go:40,54`), so the `os.ReadFile`
+error must stay raw and unwrapped.
 
 ### `internal/cinch/generated.go` — the fix itself
 
@@ -113,7 +135,7 @@ before the orphan scan loop at line 81):
 ```go
 // Also scan the docs/hooks roots implied by the last *committed* manifest,
 // not just this render pass's roots. A paths.docs edit that hasn't been
-// paired with moving the directory (the mistake `cinch docs move` exists to
+// paired with moving the directory (the mistake `cinch move-docs` exists to
 // prevent) leaves the old directory's generated files completely outside
 // renderDirs — invisible to every check — for exactly as long as the stale
 // directory and the uncommitted manifest edit coexist, i.e. up to the
@@ -130,85 +152,110 @@ if prevData, ok := gitShow(root, "HEAD:"+manifestPath); ok {
 Every downstream line is unchanged (`os.ReadDir`, the `expected[p]` skip,
 `hasGeneratedHeader`, the finding message). `gitShow` already no-ops safely
 (`ok=false`) outside a git repo, before the first commit, or if
-`cinch_manifest` wasn't tracked yet — no extra guard needed.
+`cinch.yml` wasn't tracked yet — no extra guard needed.
 
 ### Tests — `generated_test.go`
 
 - `TestCheckGenerated_CrossRootOrphanAfterUncommittedRename` — commit a
-  render under `.docs`, then edit `cinch_manifest` in the working tree to
+  render under `.docs`, then edit `cinch.yml` in the working tree to
   `paths.docs = .docs2` *without* moving `.docs/workflows/*.md`. Assert
   orphan findings appear for the old files.
 - `TestCheckGenerated_CrossRootCheckIsNoOpWithoutGitHistory` — same setup,
   plain temp dir (no git init). Assert no crash, no false positive.
-- `TestCheckGenerated_MoveViaCmdDocsMoveLeavesNoOrphan` — depends on Step 2;
-  after `CmdDocsMove`, assert zero findings.
+- `TestCheckGenerated_MoveViaCmdMoveDocsLeavesNoOrphan` — depends on Step 2;
+  after `CmdMoveDocs`, assert zero findings.
 
 ---
 
-## Step 2 — `cinch docs move NEW-PATH`
+## Step 2 — `cinch move-docs NEW-PATH`
 
 **Why:** Step 1 is a safety net with a real gap (only the last commit).
 Closing it categorically means the manifest edit and the directory move can
 never happen as two separate, interruptible actions.
 
-**Can the existing manifest code rewrite one key in place?** No.
-`parseManifestFile` (`manifest.go:59-95`) discards comments and blank lines
-entirely — only `key = value` lines populate `Vars`/`order`. The only
-existing manifest-writing code is `init.go`'s `starterManifest`, a static
-string written wholesale for a brand-new manifest; it doesn't edit an
-existing one. A structural re-serialization of `Manifest.Vars`/`order` would
-silently drop every comment in a hand-edited manifest (e.g.
-`project_deltadocs`'s explanatory blocks above `paths.docs` and each
-`hooks.*` group) — unacceptable. The fix is a line-level, in-place rewrite
-that never goes through the `Manifest` struct.
+**Can the existing manifest code rewrite one key in place?** Still no, but
+*for a different reason than originally recorded* — re-derived 2026-08-16
+against the YAML manifest.
+
+The original answer rested on the flat parser discarding comments. That
+premise is gone: the manifest is YAML (`c2ec0b7`), parsed via `yaml.Node`,
+and `yaml.v3`'s node API does carry comments (`HeadComment`, `LineComment`,
+`FootComment`). But re-serializing still isn't safe, because comment
+*retention* is not byte fidelity — marshalling a decoded node normalizes
+indentation, quoting, and blank-line placement. Against
+`project_deltadocs`'s real manifest, whose `paths:` and `hooks:` blocks carry
+multi-paragraph explanatory comments and a mix of scalar and flow-sequence
+`when:` values, a re-serialization round-trip would produce a large spurious
+diff even where it preserved every comment's text.
+
+`Manifest` itself is also the wrong vehicle regardless: it is a flattened
+`dotted.key -> value` bag (`manifest.go:25-32`) with the YAML structure
+already collapsed, so it cannot reconstruct the file's nesting at all. And
+the only existing manifest-writing code, `init.go`'s starter manifest, writes
+a static string wholesale for a brand-new file; it never edits one.
+
+So the conclusion holds — a line-level, in-place rewrite that never goes
+through the `Manifest` struct — but the *shape* of that rewrite changes: the
+target is no longer a flat `paths.docs = value` line but a nested
+
+```yaml
+paths:
+  docs: .agent
+```
 
 ### `internal/cinch/manifest.go` — `writeManifestValue`
 
-```go
-// writeManifestValue rewrites key's value to newVal in root's manifest
-// file, preserving every other line byte-for-byte — comments, blank lines,
-// declaration order — and the original whitespace of key's own line. If no
-// existing `key = value` line is found, one is appended at the end. The
-// manifest must already exist.
-func writeManifestValue(root, key, newVal string) error {
-	path := filepath.Join(root, manifestPath)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	lines := strings.Split(string(data), "\n")
-	if strings.HasSuffix(string(data), "\n") {
-		lines = lines[:len(lines)-1] // Split leaves a bogus trailing "" element
-	}
+*Sketch re-derived for YAML; the original flat-file version is in git
+history (`0ed1ebd` and earlier).* The dotted key must be walked segment by
+segment, tracking indentation, rather than matched against one line:
 
-	found := false
-	for i, raw := range lines {
-		text := strings.TrimSpace(raw)
-		if text == "" || strings.HasPrefix(text, "#") {
-			continue
-		}
-		k, _, ok := strings.Cut(text, "=")
-		if !ok || strings.TrimSpace(k) != key {
-			continue
-		}
-		eqIdx := strings.Index(raw, "=")
-		after := raw[eqIdx+1:]
-		leadingWS := after[:len(after)-len(strings.TrimLeft(after, " \t"))]
-		lines[i] = raw[:eqIdx+1] + leadingWS + newVal
-		found = true
-		break
-	}
-	if !found {
-		lines = append(lines, key+" = "+newVal)
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
+```go
+// writeManifestValue rewrites a dotted key's value in root's manifest file,
+// preserving every other line byte-for-byte — comments, blank lines,
+// declaration order, and the original spacing of the target line. Walks the
+// key's segments as increasingly-indented YAML mapping keys; the terminal
+// segment's scalar is replaced in place.
+//
+// Deliberately not a YAML round-trip: yaml.v3 retains comment text but
+// normalizes layout, which would produce a large spurious diff in a
+// hand-commented manifest.
+func writeManifestValue(root, key, newVal string) error {
+	// Read the file, split into lines (dropping Split's bogus trailing ""
+	// when the file ends in a newline).
+	//
+	// For each segment of strings.Split(key, "."):
+	//   scan forward for a line whose trimmed text is `<segment>:` (for a
+	//   non-terminal segment) or `<segment>: <scalar>` (terminal), and whose
+	//   indent is deeper than the parent's. Track the matched line's indent
+	//   as the new parent indent; a line at or below the parent indent ends
+	//   the search for that segment. Skip blank and `#`-only lines.
+	//
+	// Terminal match: replace only the text after `<segment>:` and its
+	// original leading whitespace, leaving any trailing line comment intact
+	// if one is present.
+	//
+	// No match: this is the interesting case, and it is a decision, not a
+	// detail — see below.
 }
 ```
 
-Verified against `project_deltadocs`'s real `cinch_manifest`
-(`paths.docs = .agent`, preceded by a multi-line `#` comment block): rewrites
-only the `paths.docs` line; every comment block and every `hooks.*` line
-stays byte-identical.
+**Decision needed — the append case.** The flat version appended
+`key = value` at the end of the file when the key was absent, which is
+meaningless in YAML: appending `paths.docs: X` at column 0 creates a
+*different* key than `paths: { docs: X }`. Three options, in increasing
+effort: (a) error out — "`paths.docs` not found in cinch.yml; add it by
+hand", which is honest and one line, and reasonable given `cinch init`
+always scaffolds the key; (b) synthesize the missing nesting; (c) fall back
+to a YAML round-trip only in this branch, accepting the diff. Recommend
+**(a)** — a move command that refuses to guess at manifest structure is
+better than one that silently writes a key nothing reads.
+
+**Still to verify at implementation time:** run the rewrite against
+`project_deltadocs`'s real `cinch.yml` (nested `paths.docs: .agent` under a
+six-line comment block, plus `hooks.*` entries with both scalar and
+flow-sequence `when:` values) and confirm `git diff` shows exactly one
+changed line. The original plan claimed this as verified; that verification
+was against the flat format and does not carry over.
 
 ### `internal/cinch/docsmove.go` (new)
 
@@ -217,13 +264,13 @@ package cinch
 
 import ( "fmt"; "os"; "os/exec"; "path/filepath" )
 
-// CmdDocsMove implements `cinch docs move NEW-PATH`: moves the docs root on
+// CmdMoveDocs implements `cinch move-docs NEW-PATH`: moves the docs root on
 // disk (git mv in a git repo, plain rename otherwise), rewrites paths.docs
-// in cinch_manifest, and re-renders — as one operation, so the manifest
+// in cinch.yml, and re-renders — as one operation, so the manifest
 // never points at a path while the old directory still sits abandoned (the
 // window Step 1's cross-root check exists to catch when this command isn't
 // used).
-func CmdDocsMove(root, newPath string) int {
+func CmdMoveDocs(root, newPath string) int {
 	m, err := loadManifest(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cinch: "+err.Error())
@@ -232,7 +279,7 @@ func CmdDocsMove(root, newPath string) int {
 	oldPath := docsPathValue(m)
 
 	if filepath.IsAbs(oldPath) || filepath.IsAbs(newPath) {
-		fmt.Fprintln(os.Stderr, "cinch: docs move: paths.docs must be repo-relative")
+		fmt.Fprintln(os.Stderr, "cinch: move-docs: paths.docs must be repo-relative")
 		return 2
 	}
 	oldClean, newClean := filepath.Clean(oldPath), filepath.Clean(newPath)
@@ -243,7 +290,7 @@ func CmdDocsMove(root, newPath string) int {
 
 	oldAbs, newAbs := filepath.Join(root, oldClean), filepath.Join(root, newClean)
 	if _, err := os.Stat(newAbs); err == nil {
-		fmt.Fprintf(os.Stderr, "cinch: docs move: %s already exists — refusing to overwrite\n", newClean)
+		fmt.Fprintf(os.Stderr, "cinch: move-docs: %s already exists — refusing to overwrite\n", newClean)
 		return 1
 	}
 
@@ -252,7 +299,7 @@ func CmdDocsMove(root, newPath string) int {
 			cmd := exec.Command("git", "mv", oldClean, newClean)
 			cmd.Dir = root
 			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Fprintf(os.Stderr, "cinch: docs move: git mv failed: %v\n%s", err, out)
+				fmt.Fprintf(os.Stderr, "cinch: move-docs: git mv failed: %v\n%s", err, out)
 				return 1
 			}
 		} else {
@@ -271,16 +318,16 @@ func CmdDocsMove(root, newPath string) int {
 	}
 
 	if err := writeManifestValue(root, pathsDocsKey, newClean); err != nil {
-		fmt.Fprintln(os.Stderr, "cinch: docs move: rewriting manifest: "+err.Error())
+		fmt.Fprintln(os.Stderr, "cinch: move-docs: rewriting manifest: "+err.Error())
 		return 1
 	}
-	fmt.Printf("cinch_manifest: paths.docs = %s\n", newClean)
+	fmt.Printf("cinch.yml: paths.docs = %s\n", newClean)
 
 	if code := CmdRender(root); code != 0 {
 		return code
 	}
 	if isGitRepo(root) {
-		fmt.Println("next: `git add cinch_manifest` (the directory move is already staged by git mv), then `cinch check` and commit")
+		fmt.Println("next: `git add cinch.yml` (the directory move is already staged by git mv), then `cinch check` and commit")
 	} else {
 		fmt.Println("next: `cinch check` and commit")
 	}
@@ -295,34 +342,40 @@ existing error style throughout `init.go`/`render.go`.
 
 ### `main.go` — wiring
 
+*Re-derived 2026-08-16: flattened from a `docs move` subcommand tree to a
+single `move-docs` command, since `cinch docs` was renamed to `cinch index`
+(`4281887`) and `docs` is no longer a command namespace.* Matches the
+one-argument shape of the existing `workflow` case (`main.go:109-113`):
+
 ```go
-case "docs":
-	if len(os.Args) < 3 {
-		os.Exit(usageError("docs: requires a subcommand (move)"))
+case "move-docs":
+	if len(os.Args) != 3 {
+		os.Exit(output.UsageErr("move-docs: requires exactly one NEW-PATH argument"))
 	}
-	switch os.Args[2] {
-	case "move":
-		if len(os.Args) != 4 {
-			os.Exit(usageError("docs move: requires exactly one NEW-PATH argument"))
-		}
-		os.Exit(impl.CmdDocsMove(".", os.Args[3]))
-	default:
-		os.Exit(usageError(fmt.Sprintf("docs: %q is not a docs subcommand", os.Args[2])))
-	}
+	os.Exit(impl.CmdMoveDocs(".", os.Args[2]))
 ```
 
 Plus one usage-string line (see *Surface after this change*, above).
 
+**Output style, across every sketch above:** these predate `internal/output`
+(`befd5e1`, `a66c3dd`). Bare `fmt.Fprintln(os.Stderr, "cinch: "+err)`,
+`fmt.Printf`, and a local `usageError` are no longer how this repo reports
+anything — use `output.Fail(cmd, err)`, `output.Failf`, `output.Step` for
+progress lines, and `output.UsageErr`. The sketches' *logic* stands; their
+I/O calls need translating at implementation time.
+
 ### Tests
 
 - `manifest_test.go`: `TestWriteManifestValue_PreservesCommentsAndOrder`
-  (feed `project_deltadocs`-shaped content with comment blocks, assert only
-  the target line changes), `TestWriteManifestValue_AppendsWhenKeyAbsent`.
-- `docsmove_test.go` (new): `TestCmdDocsMove_GitRepoMovesAndRerenders` (old
+  (feed `project_deltadocs`-shaped nested YAML with comment blocks, assert
+  only the target line changes), plus a test for whichever append-case
+  behavior is chosen above — `TestWriteManifestValue_ErrorsWhenKeyAbsent`
+  under the recommended option (a).
+- `docsmove_test.go` (new): `TestCmdMoveDocs_GitRepoMovesAndRerenders` (old
   dir gone, new dir has fresh renders, manifest updated, `git diff --cached
-  --name-status` shows a staged rename), `TestCmdDocsMove_NonGitRepoFallsBackToRename`,
-  `TestCmdDocsMove_RefusesToOverwriteExistingTarget`,
-  `TestCmdDocsMove_NoOpWhenAlreadyAtTarget`.
+  --name-status` shows a staged rename), `TestCmdMoveDocs_NonGitRepoFallsBackToRename`,
+  `TestCmdMoveDocs_RefusesToOverwriteExistingTarget`,
+  `TestCmdMoveDocs_NoOpWhenAlreadyAtTarget`.
 
 ---
 
@@ -336,15 +389,42 @@ prefix (`${f#.agent/plans/}`). Its failure mode after a silent rename is a
 broken SessionStart hook (globs nothing, "active plans: none" forever) — not
 a security control, so a soft fallback (not fail-closed) is correct here.
 
+*Re-derived 2026-08-16.* The original snippet grepped for a flat
+`paths.docs = …` line, which the YAML manifest no longer contains — it would
+match nothing and silently fall through to the `.docs` default, which is
+exactly the "globs nothing, active plans: none forever" failure it was meant
+to prevent. The value now lives nested:
+
+```yaml
+paths:
+  docs: .agent
+```
+
+Reading a nested YAML value from shell without a YAML parser means matching
+`docs:` only within the `paths:` block:
+
 ```bash
-docs_root=$(grep -m1 '^[[:space:]]*paths\.docs[[:space:]]*=' cinch_manifest 2>/dev/null \
-    | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+docs_root=$(awk '
+    /^[^[:space:]#]/ { in_paths = ($0 ~ /^paths:/) }
+    in_paths && /^[[:space:]]+docs:[[:space:]]*/ {
+        sub(/^[[:space:]]*docs:[[:space:]]*/, ""); sub(/[[:space:]]*(#.*)?$/, "")
+        print; exit
+    }
+' cinch.yml 2>/dev/null)
 docs_root="${docs_root:-.docs}"
 ```
 
 Replace the two hardcoded globs with `"$docs_root/plans"/*.md
 "$docs_root/plans/fix"/*.md`, and `${f#.agent/plans/}` with
 `${f#"$docs_root"/plans/}`.
+
+**Consider instead:** `cinch` itself can now answer this — if `cinch context`
+lands (`cinch-context.md`), or via existing commands, the hook can ask the
+binary rather than re-parsing the manifest in awk. A second manifest parser
+living in a consumer's shell script is precisely the kind of duplicated,
+drift-prone surface cinch's seam exists to retire. Prefer that if the
+sequencing allows; the awk above is the fallback for a consumer that must not
+depend on the binary being installed.
 
 ---
 
@@ -361,13 +441,14 @@ check-squash-merge-msg.sh,update-version.js,generate-color-tokens.js}`,
 files (`.claude/skills/*/SKILL.md`, `.cursor/skills/*/SKILL.md`,
 `.opencode/skills/*/SKILL.md`, `.pi/skills/*/SKILL.md`), cross-references
 inside `.agent/*.md` itself, and — per this plan's scope decision —
-`.claude/hooks/auditor-bash-guard.py` and `.pi/extensions/auditor.ts`,
-which stay hardcoded and are flagged here as a **known, deliberate gap**,
-not silently omitted.
+`.pi/extensions/auditor.ts`, which stays hardcoded and is flagged here as a
+**known, deliberate gap**, not silently omitted. (The
+`.claude/hooks/auditor-bash-guard.py` originally listed alongside it is gone,
+removed with the seams pattern in `8a7c375`.)
 
 Deliverable: a checklist living in `project_deltadocs` (e.g. `TODO.md` or a
 `.agent/plans/` entry) grouping these into "moves automatically via `git
-mv`/`cinch docs move`" vs. "needs manual search/replace" vs. "gitignored, so
+mv`/`cinch move-docs`" vs. "needs manual search/replace" vs. "gitignored, so
 `git mv` won't touch it." Recommended sweep aid to document:
 `grep -rn '\.agent' --exclude-dir={.git,node_modules,frontend/build,frontend/.svelte-kit} .`
 run before/after to confirm only intentional post-rename references remain.
@@ -378,19 +459,20 @@ run before/after to confirm only intentional post-rename references remain.
 
 **A. cinch unit tests** — `go test ./...`, covering Steps 1 and 2's new
 tests, plus the full existing suite to confirm the
-`parseManifestFile`/`parseManifestReader` refactor is behavior-preserving.
+`parseManifestFile`/`parseManifestBytes` extraction is behavior-preserving —
+in particular that `os.IsNotExist` still matches the missing-manifest error.
 
 **B. Dry-run rehearsal in `project_deltadocs`** (`.agent` → `.agent2`, on a
 scratch branch, never pushed):
 
 1. `git checkout -b rename-dry-run`; build/install the patched cinch.
-2. `cinch docs move .agent2` from the repo root.
+2. `cinch move-docs .agent2` from the repo root.
 3. Verify: `git status` shows `.agent/... -> .agent2/...` as renames (not
-   delete+add) plus a modified `cinch_manifest`; `git diff cinch_manifest`
+   delete+add) plus a modified `cinch.yml`; `git diff cinch.yml`
    shows exactly one changed line; `cinch check` reports zero `generated`
    findings.
 4. Negative-path rehearsal, proving Step 1's detector independent of Step 2:
-   on a fresh copy of the branch, edit `paths.docs` in `cinch_manifest` by
+   on a fresh copy of the branch, edit `paths.docs` in `cinch.yml` by
    hand to `.agent2` *without* moving the directory. `cinch check` must now
    report orphan findings for every generated file still under
    `.agent/workflows/*` — today (unpatched), this step reports zero findings
@@ -408,4 +490,4 @@ scratch branch, never pushed):
 - `main.go`
 - `internal/cinch/generated_test.go`
 - `project_deltadocs/.claude/hooks/inject-agents.sh`
-- `project_deltadocs/cinch_manifest`
+- `project_deltadocs/cinch.yml`
