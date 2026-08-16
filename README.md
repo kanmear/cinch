@@ -180,6 +180,10 @@ agent to write is guaranteed to be one `cinch check` actually scans:
 - **commit** (error) — when `MSGFILE` is given and the manifest's
   `commit.pattern` key is set, the commit's subject line must match it.
   Absent key, no behavior change.
+- **core** (error) — when the manifest's `require.cinch` key is set, it must
+  match the running binary's version (`cinch version`). Absent key, no
+  behavior change; an unreleased (`devel`) binary skips the comparison so a
+  local dev build never reddens a consumer that pins a release.
 
 `cinch render` writes into `paths.docs`'s `workflows/` subdirectory (default
 `.docs/workflows/`): `docs-philosophy.md` (copied verbatim — no variables, no
@@ -241,12 +245,13 @@ invocable by any harness or by a human, rather than in per-harness config
 that evaporates with the session.
 
 **Version-skew note:** upgrading the cinch binary can redden every
-consumer's `generated` check until `cinch render` is re-run — `cinch
-version` prints the installed binary's version so this is at least
-checkable by hand against however a project chooses to record the version
-it expects (there's no manifest-enforced pin; a fuzzy warn was considered
-and rejected). The green state is reachable and the fix is exact (`cinch
-render`), which is what matters.
+consumer's `generated` check until `cinch render` is re-run. `require.cinch`
+in `cinch.yml` (see § `core` check above) makes this a decidable, enforced
+property instead of a hope: set it to the version a project expects, and a
+mismatch is a `core` finding naming both versions and the exact fix (`make
+install` / re-run `cinch render`) — not a fuzzy warn, which was considered
+and rejected. Absent the key, nothing changes; `cinch version` still lets
+you check by hand.
 
 ### `cinch init` and self-enforcement
 
@@ -303,6 +308,9 @@ hooks:
 
 commit:
   pattern: '^\[[a-z-]+\] .+'
+
+require:
+  cinch: 0.1.0           # pinned core version; mismatch is a `core` finding
 ```
 
 ### Workflow postconditions belong in the manifest
@@ -371,10 +379,11 @@ directory `paths.docs` controls.
 ### A richer project manifest
 
 `cinch.yml` only binds what cinch itself reads: `paths.*`, `hooks.*`,
-`commit.pattern`. Workflow-template *prose*, though, can reference arbitrary
-project-specific values cinch never touches — commands, ports, service
-layout, test taxonomy — and a project with enough of those is better served
-by its own separate, schema-free file than by overloading `cinch.yml`.
+`commit.pattern`, `require.cinch`. Workflow-template *prose*, though, can
+reference arbitrary project-specific values cinch never touches — commands,
+ports, service layout, test taxonomy — and a project with enough of those is
+better served by its own separate, schema-free file than by overloading
+`cinch.yml`.
 There's no cinch convention format for this (by design — principle 5, cinch
 binds values, not shape), but the convention name is `manifest.yml` —
 deliberately distinct from `cinch.yml` so the two are never confused: one is
