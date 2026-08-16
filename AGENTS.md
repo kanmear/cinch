@@ -16,8 +16,6 @@ Docs: run `cinch index` to see every doc's path and title.
   ranked by evidence, each with its rebuild constraint. Read this before any
   rebuild work; it is the only memory of the old design that is allowed in the
   room — the old design itself is git history.
-- `.docs/plans/cinch-0.1.0.md` — the plan that took cinch from Stage 2 to
-  0.1.0: init, the `generated` check, and manifest-driven extension.
 - `README.md` — the orientation artifact: status, layout map, pointers.
 - `cinch.yml` — this repo's own manifest (`paths.docs = .docs`, plus a
   `hooks.pre-commit.build.run` entry) — cinch self-hosts.
