@@ -169,30 +169,29 @@ func TestCheck_CustomDocsRootFromManifest(t *testing.T) {
 	}
 }
 
-func TestCheck_AbsoluteDocsRootFromManifest(t *testing.T) {
-	dir := t.TempDir()
-	docs := filepath.Join(t.TempDir(), "elsewhere-docs")
-	if err := os.MkdirAll(docs, 0o755); err != nil {
-		t.Fatalf("mkdir elsewhere-docs: %v", err)
-	}
-	content := "see [x](./missing.md) for details\n"
-	if err := os.WriteFile(filepath.Join(docs, "a.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("write a.md: %v", err)
-	}
-	manifest := "paths:\n  docs: " + docs + "\n"
-	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
-	}
+// Replaces TestCheck_AbsoluteDocsRootFromManifest, which asserted that check
+// scanned an absolute docs root — the read half of a split that let render
+// write elsewhere and every check pass against a corpus none of them saw.
+// The refusal has to be visible end to end through the binary, since that is
+// the surface a consumer misconfigures.
+func TestCheck_NonLocalDocsRootFromManifestFires(t *testing.T) {
+	for _, val := range []string{filepath.Join(t.TempDir(), "elsewhere-docs"), "../elsewhere-docs"} {
+		dir := t.TempDir()
+		manifest := "paths:\n  docs: " + val + "\n"
+		if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte(manifest), 0o644); err != nil {
+			t.Fatalf("write manifest: %v", err)
+		}
 
-	cmd := exec.Command(binPath(t), "check")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	ee, ok := err.(*exec.ExitError)
-	if !ok || ee.ExitCode() != 1 {
-		t.Fatalf("check against absolute docs root: want exit 1, got %v\n%s", err, out)
-	}
-	if !strings.Contains(string(out), "links error") || !strings.Contains(string(out), "missing.md") {
-		t.Fatalf("check against absolute docs root: finding not named:\n%s", out)
+		cmd := exec.Command(binPath(t), "check")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		ee, ok := err.(*exec.ExitError)
+		if !ok || ee.ExitCode() != 1 {
+			t.Fatalf("check with paths.docs = %q: want exit 1, got %v\n%s", val, err, out)
+		}
+		if !strings.Contains(string(out), "paths.docs") || !strings.Contains(string(out), "outside the repository") {
+			t.Fatalf("check with paths.docs = %q: refusal not named:\n%s", val, out)
+		}
 	}
 }
 

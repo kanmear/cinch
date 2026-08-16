@@ -26,18 +26,15 @@ func docsPathValue(m *Manifest) string {
 // ResolveDocsRoot determines the docs corpus location for root, honoring an
 // optional `paths.docs` key in cinch.yml. Defaults to ".docs" when no
 // manifest, or no such key, is present — check must stay zero-config by
-// default. An absolute value is used as-is; a relative value is resolved
-// against root.
+// default. The value is always resolved against root: Manifest.validate
+// guarantees it is repo-local, which is what keeps this resolution and
+// render's agreeing on one directory.
 func ResolveDocsRoot(root string) (string, error) {
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return "", err
 	}
-	val := docsPathValue(m)
-	if filepath.IsAbs(val) {
-		return val, nil
-	}
-	return filepath.Join(root, val), nil
+	return filepath.Join(root, docsPathValue(m)), nil
 }
 
 // Finding is one thing a check found wrong with the tree.

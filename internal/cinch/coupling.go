@@ -44,9 +44,10 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 	if err != nil {
 		return couplingResult{NoOp: "could not resolve paths.docs"}
 	}
-	if rel, err := filepath.Rel(absRoot, absDocs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return couplingResult{NoOp: "paths.docs is outside the repository"}
-	}
+	// No outside-the-repository guard here: Manifest.validate rejects such a
+	// value at load, so this check can never be reached with one. It used to
+	// degrade to a no-op, which meant one check went dark while the other
+	// four passed against a corpus none of them scanned.
 	docsDir, repoRoot = absDocs, absRoot
 
 	changed, err := gitChangedFiles(repoRoot)

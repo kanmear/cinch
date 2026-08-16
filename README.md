@@ -78,8 +78,13 @@ scoped to the paths that should trigger them. This repo self-hosts: its own
 
 `cinch check` runs five checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
-elsewhere with `paths.docs` in `cinch.yml` (relative to the project
-root, or an absolute path). `cinch render` substitutes the same value into
+elsewhere with `paths.docs` in `cinch.yml` — anywhere **inside the
+repository**. A value that escapes it, absolute or `../`-relative, is refused
+when the manifest loads, naming the key: cinch renders into that directory
+and scans it, and a root outside the repo sends those two resolutions to
+different places, leaving every check green against a corpus none of them
+can see. `paths.hooks` carries the same constraint for the same reason.
+`cinch render` substitutes the same value into
 templates as `{{paths.docs}}` — one root, so a rule doc a workflow tells an
 agent to write is guaranteed to be one `cinch check` actually scans:
 
