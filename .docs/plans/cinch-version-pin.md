@@ -1,6 +1,11 @@
 # cinch — `version` command + optional core-version pin
 
-Status: **proposed** — not started.
+Status: **partially shipped** — Step 1 (`cinch version` command, scope 2a)
+landed, `bf4ef96`. Step 2 (`require.cinch` pin enforced by `cinch check`) was
+deliberately deferred, not forgotten: the user chose scope "2a, version
+command only" over "2b, also verify the pin in `cinch check`". Reopen this
+plan (Step 2 onward) if/when the consumer-side pin should become enforced
+rather than a human-checkable convention.
 
 ## Context
 
