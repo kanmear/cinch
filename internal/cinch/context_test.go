@@ -1,6 +1,7 @@
 package cinch
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -27,7 +28,7 @@ func TestContext_ReportsBranchPlansWorkflowsAndStaged(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "newfile.go"), "package main\n")
 	runGit(t, dir, "add", "newfile.go")
 
-	got := contextReport(dir, filepath.Join(dir, ".docs"))
+	got := contextReport(dir, filepath.Join(dir, ".docs"), nil)
 
 	for _, want := range []string{
 		"on main",
@@ -52,7 +53,7 @@ func TestContext_ReportsBranchPlansWorkflowsAndStaged(t *testing.T) {
 func TestContext_PlanWithoutStatusPrintsTitleOnly(t *testing.T) {
 	dir := seedContextRepo(t)
 
-	got := contextReport(dir, filepath.Join(dir, ".docs"))
+	got := contextReport(dir, filepath.Join(dir, ".docs"), nil)
 
 	beta := ""
 	for _, line := range strings.Split(got, "\n") {
@@ -75,7 +76,7 @@ func TestContext_StatusIsVerbatim(t *testing.T) {
 	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "odd.md"),
 		"# Odd Plan\n\nStatus: half-done, blocked on a decision nobody has made.\n")
 
-	got := contextReport(dir, filepath.Join(dir, ".docs"))
+	got := contextReport(dir, filepath.Join(dir, ".docs"), nil)
 
 	if !strings.Contains(got, "Status: half-done, blocked on a decision nobody has made.") {
 		t.Fatalf("want the status line verbatim, got:\n%s", got)
@@ -89,7 +90,7 @@ func TestContext_StatusOnlyReadFromTheHead(t *testing.T) {
 		"\nStatus: this is prose, not the plan's status.\n"
 	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "deep.md"), body)
 
-	got := contextReport(dir, filepath.Join(dir, ".docs"))
+	got := contextReport(dir, filepath.Join(dir, ".docs"), nil)
 
 	if strings.Contains(got, "this is prose") {
 		t.Fatalf("a Status: buried in prose should not be read as the plan's status:\n%s", got)
@@ -101,11 +102,92 @@ func TestContext_PlansAreFoundInSubdirectories(t *testing.T) {
 	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "fix", "bug.md"),
 		"# A Bug Fix\n\nStatus: **proposed**.\n")
 
-	got := contextReport(dir, filepath.Join(dir, ".docs"))
+	got := contextReport(dir, filepath.Join(dir, ".docs"), nil)
 
 	if !strings.Contains(got, "fix/bug.md — A Bug Fix") {
 		t.Fatalf("want a nested plan listed with its relative path, got:\n%s", got)
 	}
+}
+
+// With a declared vocabulary, plans sort by it rather than by path — the
+// point being that live work reads first at session start.
+func TestContext_PlansSortByDeclaredStatusOrder(t *testing.T) {
+	dir := gitInitRepo(t)
+	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "a-blocked.md"),
+		"# A\n\nStatus: **blocked** — waiting on a decision.\n")
+	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "b-proposed.md"),
+		"# B\n\nStatus: **proposed** — not started.\n")
+	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "c-progress.md"),
+		"# C\n\nStatus: **in progress** — Step 2 of 4.\n")
+
+	statuses := []string{"proposed", "in progress", "blocked"}
+	got := contextReport(dir, filepath.Join(dir, ".docs"), statuses)
+
+	wantOrder := []string{"b-proposed.md", "c-progress.md", "a-blocked.md"}
+	if err := assertOrder(got, wantOrder); err != nil {
+		t.Fatalf("%v\n%s", err, got)
+	}
+
+	// Absent vocabulary: path order, exactly as before the key existed.
+	if err := assertOrder(contextReport(dir, filepath.Join(dir, ".docs"), nil),
+		[]string{"a-blocked.md", "b-proposed.md", "c-progress.md"}); err != nil {
+		t.Fatalf("with no declared statuses: %v", err)
+	}
+}
+
+// An unrecognized status sorts last and prints unchanged. It is not a
+// finding: a plan may say anything about itself, and context is a report.
+func TestContext_UnknownStatusSortsLastAndStillPrints(t *testing.T) {
+	dir := gitInitRepo(t)
+	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "a-odd.md"),
+		"# A\n\nStatus: marinating.\n")
+	writeFile(t, filepath.Join(dir, ".docs", plansSubdir, "z-known.md"),
+		"# Z\n\nStatus: **proposed** — not started.\n")
+
+	got := contextReport(dir, filepath.Join(dir, ".docs"), []string{"proposed"})
+
+	if err := assertOrder(got, []string{"z-known.md", "a-odd.md"}); err != nil {
+		t.Fatalf("%v\n%s", err, got)
+	}
+	if !strings.Contains(got, "Status: marinating.") {
+		t.Fatalf("an unrecognized status must still print verbatim:\n%s", got)
+	}
+}
+
+// Emphasis and trailing prose don't defeat the match, so a declared term
+// never dictates the rest of the status line.
+func TestStatusRank_MatchesPrefixIgnoringEmphasisAndCase(t *testing.T) {
+	statuses := []string{"proposed", "partially shipped"}
+	for _, tc := range []struct {
+		status string
+		want   int
+	}{
+		{"**proposed** — not started.", 0},
+		{"proposed", 0},
+		{"**Partially Shipped** — Step 1 landed, bf4ef96", 1},
+		{"partially shipped, Step 2 deferred", 1},
+		{"analysis, point-in-time", 2}, // no match: ranks past the end
+		{"", 2},
+	} {
+		if got := statusRank(tc.status, statuses); got != tc.want {
+			t.Fatalf("statusRank(%q): want %d, got %d", tc.status, tc.want, got)
+		}
+	}
+}
+
+func assertOrder(report string, want []string) error {
+	var seen []string
+	for _, line := range strings.Split(report, "\n") {
+		for _, w := range want {
+			if strings.HasPrefix(line, w) {
+				seen = append(seen, w)
+			}
+		}
+	}
+	if strings.Join(seen, ",") != strings.Join(want, ",") {
+		return fmt.Errorf("want plan order %v, got %v", want, seen)
+	}
+	return nil
 }
 
 // Every missing input degrades to a stated skip and the rest still prints —
@@ -115,7 +197,7 @@ func TestContext_MissingInputsDegradeRatherThanFail(t *testing.T) {
 	dir := t.TempDir() // not a git repo, no plans, no render
 	writeFile(t, filepath.Join(dir, "cinch.yml"), "paths:\n  docs: .docs\n")
 
-	got := contextReport(dir, filepath.Join(dir, ".docs"))
+	got := contextReport(dir, filepath.Join(dir, ".docs"), nil)
 
 	if !strings.Contains(got, "no plans under") {
 		t.Fatalf("want an explicit no-plans line, got:\n%s", got)
