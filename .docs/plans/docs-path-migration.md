@@ -43,6 +43,25 @@ directory:
   which all resolve strictly against the new value (tested, intentional,
   non-additive behavior).
 
+**Reproduced 2026-08-16, unprompted.** The onboarding-checklist dogfood run
+hit this on the most ordinary adoption path there is, without trying to: a
+fresh `cinch init` under the default `.docs`, then `paths.docs: .agent` in
+`cinch.yml` and `cinch init` again — the sequence the checklist itself
+recommended at the time. Result: `.docs/` and `.agent/` both on disk, nine
+orphaned generated workflows under `.docs/`, and **`cinch check` reporting
+all five checks clean**. No warning at any point.
+
+That matters for this plan's priority. It had been held on the reasoning that
+the gap needs a rare deliberate act (repointing an established docs root) and
+that the one consumer who did it survived. That reasoning was wrong in one
+respect: the trap is not reserved for established repos deliberately
+migrating, it is on the path a *new* consumer takes while still deciding
+where their docs go, when nothing is committed and the mistake is invisible.
+The mitigation now in README (§ Known limitations, and the adoption
+checklist's step 3: treat the manifest edit and a `git mv` as one step) is
+cheap and reduces the urgency again — but it is prose, which is the category
+of guarantee this tool exists to distrust.
+
 This plan closes the gap with two changes in cinch — a detection safety net
 and a prevention mechanism — plus one follow-up fix in `project_deltadocs`
 for the one piece of its own tooling that's genuinely load-bearing (not just
