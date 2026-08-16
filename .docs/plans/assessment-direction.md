@@ -8,10 +8,16 @@ machine, not taken from the docs.
 
 *Amended 2026-08-16, minimally:* citations to `.docs/plans/cinch-0.1.0.md`
 repointed at git history (the file was deleted in `0ed1ebd`), §3.5 sharpened
-after the `paths.docs` defect turned out to be larger than recorded, §8's
-second crack marked resolved, and §6 routed to the plan files that now carry
-items 1 and 2. The analysis itself is unchanged — its value is that it says
-what was believed when.
+after the `paths.docs` defect turned out to be larger than recorded, and §8's
+second crack marked resolved. The analysis itself is unchanged — its value is
+that it says what was believed when.
+
+*Direction items closed since:* §6.1 `cinch context` (`276aedd`), §6.2
+workflow postconditions (`24debab`), §8's first crack (`2d572e8`). Their plan
+files are deleted, per this repo's rule that shipped artifacts are not kept
+alive; git is the archive. §6.3 (small-repo adoption) remains open and
+deliberately unplanned, and §6.4–6.6, §7 and §9 are standing direction rather
+than work items.
 
 ## 1. What the project claims
 
@@ -93,8 +99,9 @@ what was believed when.
    to every check that reads it, and `{{paths.docs}}` in the rendered
    workflows points agents at the location render never writes to. The tool
    that exists to catch docs claiming what code doesn't do has a supported
-   configuration in which drift is structurally undetectable. Filed as
-   `absolute-docs-path.md`.
+   configuration in which drift is structurally undetectable. Fixed in
+   `2d572e8`: both `paths.docs` and `paths.hooks` must now be repo-local, and
+   the value is refused at manifest load.
 6. **Version skew is a standing operational tax.** Every cinch upgrade
    reddens every consumer until re-render. Acknowledged, fix is exact, but it
    is a cost the README buries in a note. (See also
@@ -150,7 +157,7 @@ In order of value-per-line:
    holdability line"); 0.1.0 has since proven itself on two repos, so that
    argument has served its purpose. ~100 lines; reads state already computed
    (`index.go`, `title.go`, `check.go`); adds no new check to hold.
-   → `cinch-context.md`.
+   → shipped, `276aedd`.
 2. **Workflows as executable contracts, using the existing seam — no new
    code.** A workflow is more than prose if its postconditions live in the
    manifest: "fix-bug says tests must pass" becomes a `hooks.pre-commit`
@@ -160,7 +167,7 @@ In order of value-per-line:
    The work is *discipline, not features*: when a workflow is adopted or
    written, its checkable postconditions get written into `cinch.yml` in the
    same commit. The rule→test marker pattern, one level up.
-   → `workflow-postconditions.md`.
+   → shipped, `24debab`.
 3. **Adopt on one or two small personal repos** (bevy-test, odin-landing,
    pistolhand, …). The only remaining experiment that answers the original
    question ("can I use this for other mostly personal projects?"). It will
@@ -264,7 +271,7 @@ in the daily loop, so its value isn't just the absence of rot.
   claims absolute paths work; they nest under the repo root. Fix or walk the
   README claim back. *Still live;* on re-examination it is a read/write split
   that renders drift undetectable rather than a mere false README line (see
-  §3.5). Filed as `absolute-docs-path.md`.
+  §3.5). Fixed in `2d572e8`.
 - **Stale plan claim** — `.docs/plans/cinch-0.1.0.md` said the deltadocs
   strain test "did not run"; it did (see §2). **Resolved by deletion:** the
   plan file was removed in `0ed1ebd` along with ten other shipped plans, so

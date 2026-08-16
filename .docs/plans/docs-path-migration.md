@@ -17,7 +17,7 @@ design and status are otherwise unchanged: still **proposed, not started**.
 
 One correctness note carried forward: `paths.docs` being repo-relative is no
 longer an assumption this plan can make on its own — it is enforced at
-manifest load (see `absolute-docs-path.md`), which removes the
+manifest load (`2d572e8`), which removes the
 `move-docs`-time check the Step 2 sketch performs at line 276.
 
 ## Context
@@ -419,7 +419,7 @@ Replace the two hardcoded globs with `"$docs_root/plans"/*.md
 `${f#"$docs_root"/plans/}`.
 
 **Consider instead:** `cinch` itself can now answer this — if `cinch context`
-lands (`cinch-context.md`), or via existing commands, the hook can ask the
+has landed (`276aedd`), the hook can ask the
 binary rather than re-parsing the manifest in awk. A second manifest parser
 living in a consumer's shell script is precisely the kind of duplicated,
 drift-prone surface cinch's seam exists to retire. Prefer that if the
