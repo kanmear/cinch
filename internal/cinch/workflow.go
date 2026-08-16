@@ -45,7 +45,7 @@ func workflowsTable(docsRoot string) (string, error) {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d workflows:\n\n", len(names))
+	fmt.Fprintf(&b, "%d %s:\n\n", len(names), output.Plural(len(names), "workflow"))
 	b.WriteString("| Workflow | Trigger |\n")
 	b.WriteString("|---|---|\n")
 	for _, name := range names {

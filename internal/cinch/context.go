@@ -17,10 +17,29 @@ import (
 const plansSubdir = "plans"
 
 // planStatusPrefix is the line a plan file carries to say where it stands.
-// The value is printed verbatim, never parsed into a status vocabulary — a
-// vocabulary would be a new convention needing its own enforcement, and this
-// command exists to report state, not to mint any.
+// The value is always printed verbatim; a project may additionally declare
+// plansStatusesKey to give its own vocabulary a running order, which changes
+// how plans are sorted and nothing else.
 const planStatusPrefix = "Status:"
+
+// plansStatusesKey optionally declares a project's plan-status vocabulary,
+// in the order live work should be read:
+//
+//	plans:
+//	  statuses: [proposed, in progress, partially shipped, blocked]
+//
+// Absence-based, the same contract as commit.pattern: with no key, plans sort
+// by path exactly as before. With one, they sort by the declared order first.
+// The vocabulary is per-project on purpose — cinch's own plans are "proposed"
+// and "partially shipped" while project_deltadocs' are "open" and "complete",
+// two lifecycles no built-in list could serve.
+//
+// Deliberately not validated. An unrecognized status sorts last and prints
+// unchanged; it is not a finding, because a plan is free to say anything
+// about itself and `cinch context` is a report, not a check. Making the
+// vocabulary mandatory would mint a status-line format convention and start
+// the plan-lifecycle system this tool has declined to build.
+const plansStatusesKey = "plans.statuses"
 
 // plan is one plan file's decidable facts: where it is, what it's called,
 // and what it says about itself.
@@ -31,11 +50,12 @@ type plan struct {
 }
 
 // listPlans walks docsRoot's plans subdirectory and returns every plan file
-// with its title and status line. Recursive, because a consumer may group
-// plans into subdirectories (project_deltadocs uses plans/fix/). A missing
-// directory returns no plans and no error — a repo with no plans in flight
-// is an ordinary state, not a failure.
-func listPlans(docsRoot string) []plan {
+// with its title and status line, ordered by statuses when a project has
+// declared a vocabulary and by path otherwise. Recursive, because a consumer
+// may group plans into subdirectories (project_deltadocs uses plans/fix/). A
+// missing directory returns no plans and no error — a repo with no plans in
+// flight is an ordinary state, not a failure.
+func listPlans(docsRoot string, statuses []string) []plan {
 	plansRoot := filepath.Join(docsRoot, plansSubdir)
 	var plans []plan
 
@@ -66,8 +86,30 @@ func listPlans(docsRoot string) []plan {
 		return nil
 	})
 
-	sort.Slice(plans, func(i, j int) bool { return plans[i].rel < plans[j].rel })
+	sort.Slice(plans, func(i, j int) bool {
+		ri, rj := statusRank(plans[i].status, statuses), statusRank(plans[j].status, statuses)
+		if ri != rj {
+			return ri < rj
+		}
+		return plans[i].rel < plans[j].rel
+	})
 	return plans
+}
+
+// statusRank returns status's position in the declared vocabulary, or a rank
+// past the end when it matches nothing — so an unrecognized or absent status
+// sorts last without being treated as wrong. Matching is a case-insensitive
+// prefix test after markdown emphasis is stripped, which is what lets
+// "**partially shipped** — Step 1 landed, bf4ef96" match the declared term
+// "partially shipped" without the vocabulary dictating the rest of the line.
+func statusRank(status string, statuses []string) int {
+	normalized := strings.ToLower(strings.TrimLeft(status, "*"))
+	for i, want := range statuses {
+		if strings.HasPrefix(normalized, strings.ToLower(want)) {
+			return i
+		}
+	}
+	return len(statuses)
 }
 
 // planStatus returns the plan's status line verbatim, minus the prefix, or
@@ -98,7 +140,7 @@ func planStatus(body string) string {
 // is "you have read your context" — the proxy metric the principles forbid.
 // Sections that cannot be computed announce themselves as skips and the rest
 // still prints.
-func contextReport(root, docsRoot string) string {
+func contextReport(root, docsRoot string, statuses []string) string {
 	var b strings.Builder
 	git := isGitRepo(root)
 
@@ -112,11 +154,11 @@ func contextReport(root, docsRoot string) string {
 		output.Skip("context", "branch", "not a git repository")
 	}
 
-	plans := listPlans(docsRoot)
+	plans := listPlans(docsRoot, statuses)
 	if len(plans) == 0 {
 		fmt.Fprintf(&b, "no plans under %s\n", filepath.Join(docsRoot, plansSubdir))
 	} else {
-		fmt.Fprintf(&b, "%d %s under %s:\n\n", len(plans), pluralize(len(plans), "plan"), filepath.Join(docsRoot, plansSubdir))
+		fmt.Fprintf(&b, "%d %s under %s:\n\n", len(plans), output.Plural(len(plans), "plan"), filepath.Join(docsRoot, plansSubdir))
 		for _, p := range plans {
 			fmt.Fprintf(&b, "%s — %s\n", p.rel, p.title)
 			if p.status != "" {
@@ -140,7 +182,7 @@ func contextReport(root, docsRoot string) string {
 		case len(staged) == 0:
 			b.WriteString("\nnothing staged\n")
 		default:
-			fmt.Fprintf(&b, "\n%d staged %s:\n\n", len(staged), pluralize(len(staged), "path"))
+			fmt.Fprintf(&b, "\n%d staged %s:\n\n", len(staged), output.Plural(len(staged), "path"))
 			for _, f := range staged {
 				fmt.Fprintf(&b, "%s\n", f)
 			}
@@ -152,13 +194,6 @@ func contextReport(root, docsRoot string) string {
 	return b.String()
 }
 
-func pluralize(n int, word string) string {
-	if n == 1 {
-		return word
-	}
-	return word + "s"
-}
-
 // CmdContext implements `cinch context`: prints the session-start report.
 // Fails only when the docs root itself can't be resolved — every other
 // missing input is a stated skip, since a command meant to be the first
@@ -168,6 +203,10 @@ func CmdContext(root string) int {
 	if err != nil {
 		return output.Fail("context", err)
 	}
-	fmt.Print(contextReport(root, docsRoot))
+	m, err := loadManifestOptional(root)
+	if err != nil {
+		return output.Fail("context", err)
+	}
+	fmt.Print(contextReport(root, docsRoot, m.List(plansStatusesKey)))
 	return 0
 }

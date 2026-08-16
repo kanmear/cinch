@@ -154,6 +154,25 @@ inputs (no git repo, no plans, render not yet run) announce themselves as
 skips and the remaining sections still print, because the first command a
 session runs must not refuse to run.
 
+Plan statuses print verbatim. A project can optionally declare its own
+vocabulary to give them a running order, so live work reads first:
+
+```yaml
+plans:
+  statuses: [proposed, in progress, partially shipped, blocked, analysis]
+```
+
+Absence-based, the same contract as `commit.pattern`: with no key, plans sort
+by path. Matching is a case-insensitive prefix test with markdown emphasis
+stripped, so `**partially shipped** — Step 1 landed` matches the term
+`partially shipped` without the vocabulary dictating the rest of the line.
+**Ordering only** — an unrecognized status sorts last and prints unchanged;
+it is never a finding, because a plan may say anything about itself and this
+is a report, not a check. The vocabulary is per-project because lifecycles
+differ: cinch's plans are `proposed`/`partially shipped` and have no terminal
+"shipped" state at all (a shipped plan is deleted, not marked), where another
+consumer's are `open`/`complete`.
+
 It is harness-neutral by construction: a harness with a session-start hook
 calls it, and a harness without one has AGENTS.md say "run `cinch context`."
 The distribution is the point — it lives in the repo, versioned and

@@ -62,7 +62,7 @@ func indexList(docsRoot string) (string, error) {
 
 	sort.Slice(entries, func(i, j int) bool { return entries[i].rel < entries[j].rel })
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d docs under %s:\n\n", len(entries), docsRoot)
+	fmt.Fprintf(&b, "%d %s under %s:\n\n", len(entries), output.Plural(len(entries), "doc"), docsRoot)
 	for _, e := range entries {
 		fmt.Fprintf(&b, "%s — %s\n", e.rel, e.title)
 	}

@@ -111,6 +111,17 @@ func CheckStatus(check string, findingCount int, noOp string) {
 	}
 }
 
+// Plural returns word, suffixed with "s" unless n is 1 — for the "N things:"
+// headers the listing commands print. Here rather than in each command so
+// `1 workflow` and `2 plans` read the same way whichever command produced
+// them.
+func Plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
+}
+
 // Level colorizes a finding's severity word for stdout — block red+bold,
 // error yellow — a no-op (returns level unchanged) when color is disabled.
 func Level(level string) string {

@@ -1,10 +1,11 @@
 # cinch — assessment: claims, direction, and position
 
-Status: **analysis, point-in-time (2026-07-22).** Not an implementation plan —
-a record of a critical assessment and a strategic discussion, written so a
-future session can pick up the decisions without the conversation. Claims
-marked *verified* were checked by building and running the tool on this
-machine, not taken from the docs.
+Status: **analysis** — point-in-time, 2026-07-22.
+
+Not an implementation plan: a record of a critical assessment and a strategic
+discussion, written so a future session can pick up the decisions without the
+conversation. Claims marked *verified* were checked by building and running
+the tool on this machine, not taken from the docs.
 
 *Amended 2026-08-16, minimally:* citations to `.docs/plans/cinch-0.1.0.md`
 repointed at git history (the file was deleted in `0ed1ebd`), §3.5 sharpened

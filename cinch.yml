@@ -11,6 +11,14 @@ paths:
 commit:
   pattern: '^(feat|fix|docs|refactor|test|chore|plan|revert): .+'
 
+# This project's plan-status vocabulary, in the order live work should be
+# read — `cinch context` sorts plans by it. Ordering only: an unrecognized
+# status sorts last and prints unchanged, it is never a finding. No terminal
+# "shipped" here on purpose, since a shipped plan is deleted rather than
+# marked (see AGENTS.md), so that state never appears in-tree.
+plans:
+  statuses: [proposed, in progress, partially shipped, blocked, analysis]
+
 hooks:
   pre-commit:
     build:
