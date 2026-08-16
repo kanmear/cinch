@@ -20,13 +20,15 @@ const starterManifest = `paths:
 #       when: [src/]
 `
 
-// agentsWorkflowsLine and agentsIndexLine are the two lines a consumer's
-// AGENTS.md needs: commands, not paths, so neither can go stale under a
-// customized paths.docs.
+// agentsContextLine, agentsWorkflowsLine and agentsIndexLine are the lines a
+// consumer's AGENTS.md needs: commands, not paths, so none can go stale under
+// a customized paths.docs. Context comes first because it is what a session
+// runs first.
+const agentsContextLine = "Orientation: run `cinch context` first — branch, plans and their status, workflows, staged paths."
 const agentsWorkflowsLine = "Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one."
 const agentsIndexLine = "Docs: run `cinch index` to see every doc's path and title."
 
-const starterAgentsMD = "# AGENTS.md\n\n" + agentsWorkflowsLine + "\n" + agentsIndexLine + "\n"
+const starterAgentsMD = "# AGENTS.md\n\n" + agentsContextLine + "\n" + agentsWorkflowsLine + "\n" + agentsIndexLine + "\n"
 
 // starterManifestExample is written by `cinch init` when no manifest.example.yml
 // exists yet — a commented starting point for the "richer project manifest"
@@ -128,7 +130,7 @@ func CmdInit(root string) int {
 		}
 		output.Step("wrote AGENTS.md")
 	} else {
-		output.Step("AGENTS.md already exists — add these lines if missing: %q, %q", agentsWorkflowsLine, agentsIndexLine)
+		output.Step("AGENTS.md already exists — add these lines if missing: %q, %q, %q", agentsContextLine, agentsWorkflowsLine, agentsIndexLine)
 	}
 
 	return 0
