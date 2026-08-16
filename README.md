@@ -263,6 +263,9 @@ development:
 taxonomy:
   test_tiers:
     - { id: unit, cmd: test-backend }
+seams:
+  auditor:
+    allow: [test-backend, lint-frontend]
 ```
 
 Note this manifest is outside cinch's `{{key}}` substitution entirely — it's
@@ -274,6 +277,14 @@ hand: a project's own doc saying "run the command named `test-backend` under
 `development.commands` in `manifest.yml`," for instance. This keeps the
 richer manifest entirely a project concern: no new render output, no schema
 for cinch to version or validate.
+
+`seams` is one more instance of this same convention, not a new cinch
+mechanism: it declares, per AI-agent persona, which `development.commands`
+entries that persona's harness-side tooling may run. cinch never reads or
+enforces it — same boundary as the rest of the richer manifest — enforcement
+is entirely the project's own harness-side glue (a `PreToolUse` hook, an
+extension's tool-call guard, or equivalent for whatever harness the project
+uses).
 
 Exit codes: `0` clean, `1` findings (`check`) or a render/dispatch failure,
 `2` usage error.
