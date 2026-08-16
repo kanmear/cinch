@@ -14,11 +14,11 @@ second crack marked resolved. The analysis itself is unchanged — its value is
 that it says what was believed when.
 
 *Direction items closed since:* §6.1 `cinch context` (`276aedd`), §6.2
-workflow postconditions (`24debab`), §8's first crack (`2d572e8`). Their plan
-files are deleted, per this repo's rule that shipped artifacts are not kept
-alive; git is the archive. §6.3 (small-repo adoption) remains open and
-deliberately unplanned, and §6.4–6.6, §7 and §9 are standing direction rather
-than work items.
+workflow postconditions (`24debab`), §8's first crack (`2d572e8`), §3's item
+6, the version-skew pin (`2789d46`). Their plan files are deleted, per this
+repo's rule that shipped artifacts are not kept alive; git is the archive.
+§6.3 (small-repo adoption) remains open and deliberately unplanned, and
+§6.4–6.6, §7 and §9 are standing direction rather than work items.
 
 ## 1. What the project claims
 
@@ -105,9 +105,11 @@ than work items.
    the value is refused at manifest load.
 6. **Version skew is a standing operational tax.** Every cinch upgrade
    reddens every consumer until re-render. Acknowledged, fix is exact, but it
-   is a cost the README buries in a note. (See also
-   `.docs/plans/cinch-version-pin.md` — the consumer-side pin is
-   deliberately deferred.)
+   was a cost the README buried in a note, and the consumer-side pin was
+   dead prose — nothing compared a declared expectation against the binary.
+   Fixed in `2789d46`: `require.cinch` in `cinch.yml` is now enforced by
+   `cinch check` (absence-based, same contract as `commit.pattern`), turning
+   the tax into a decidable `core` finding with an exact close action.
 
 ## 4. Verdict on claims
 
