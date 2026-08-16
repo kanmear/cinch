@@ -28,6 +28,40 @@ const agentsIndexLine = "Docs: run `cinch index` to see every doc's path and tit
 
 const starterAgentsMD = "# AGENTS.md\n\n" + agentsWorkflowsLine + "\n" + agentsIndexLine + "\n"
 
+// starterManifestExample is written by `cinch init` when no manifest.example.yml
+// exists yet — a commented starting point for the "richer project manifest"
+// convention (see README.md), which cinch never reads or validates.
+const starterManifestExample = `# manifest.example.yml — project-owned, cinch never reads this file.
+#
+# cinch.yml only binds what cinch itself reads: paths.*, hooks.*,
+# commit.pattern. Workflow-template *prose*, though, can reference
+# arbitrary project-specific values cinch never touches — commands, ports,
+# service layout, test taxonomy. A project with enough of those is better
+# served by its own separate, schema-free file than by overloading
+# cinch.yml. There's no cinch convention format for this (by design —
+# cinch binds values, not shape): rename this file, restructure it, or
+# delete it — nothing here is enforced or read by cinch. The convention
+# name is manifest.yml, deliberately distinct from cinch.yml so the two
+# are never confused.
+#
+# Reference it from your own docs/workflow prose by hand, e.g. "run the
+# command named test-backend under development.commands in manifest.yml" —
+# cinch's {{key}} substitution never sees or resolves against this file.
+
+project:
+  name: my-app
+services:
+  backend:  { path: backend,  port: 8080 }
+  frontend: { path: frontend, port: 5173 }
+development:
+  commands:
+    test-backend:  make test-backend
+    test-frontend: make test-frontend
+taxonomy:
+  test_tiers:
+    - { id: unit, cmd: test-backend }
+`
+
 // CmdInit scaffolds a new cinch consumer: a manifest (if one doesn't already
 // exist), the docs directory structure, a full render, and activated git
 // hooks. Idempotent and non-destructive to anything authored — running it
@@ -42,6 +76,16 @@ func CmdInit(root string) int {
 		output.Step("wrote %s", manifestPath)
 	} else {
 		output.Step("%s already exists — left as-is", manifestPath)
+	}
+
+	manifestExampleFile := filepath.Join(root, "manifest.example.yml")
+	if _, err := os.Stat(manifestExampleFile); os.IsNotExist(err) {
+		if err := os.WriteFile(manifestExampleFile, []byte(starterManifestExample), 0o644); err != nil {
+			return output.Fail("init", err)
+		}
+		output.Step("wrote manifest.example.yml")
+	} else {
+		output.Step("manifest.example.yml already exists — left as-is")
 	}
 
 	m, err := loadManifest(root)
