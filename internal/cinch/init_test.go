@@ -40,6 +40,40 @@ func TestCmdInit_KeepsExistingManifest(t *testing.T) {
 	}
 }
 
+func TestCmdInit_WritesManifestExampleWhenAbsent(t *testing.T) {
+	root := gitInitRepo(t)
+
+	if code := CmdInit(root); code != 0 {
+		t.Fatalf("CmdInit: want exit 0, got %d", code)
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, "manifest.example.yml"))
+	if err != nil {
+		t.Fatalf("read manifest.example.yml: %v", err)
+	}
+	if !strings.Contains(string(data), "cinch never reads this file") {
+		t.Fatalf("want manifest.example.yml to carry its explanatory header, got:\n%s", data)
+	}
+}
+
+func TestCmdInit_LeavesExistingManifestExampleUntouched(t *testing.T) {
+	root := gitInitRepo(t)
+	custom := "# my own manifest\nproject:\n  name: custom\n"
+	writeFile(t, filepath.Join(root, "manifest.example.yml"), custom)
+
+	if code := CmdInit(root); code != 0 {
+		t.Fatalf("CmdInit: want exit 0, got %d", code)
+	}
+
+	got, err := os.ReadFile(filepath.Join(root, "manifest.example.yml"))
+	if err != nil {
+		t.Fatalf("read manifest.example.yml: %v", err)
+	}
+	if string(got) != custom {
+		t.Fatalf("want existing manifest.example.yml untouched, got:\n%s", got)
+	}
+}
+
 func TestCmdInit_CreatesPlansDirWithGitkeep(t *testing.T) {
 	root := gitInitRepo(t)
 

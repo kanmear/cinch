@@ -247,26 +247,10 @@ by its own separate, schema-free file than by overloading `cinch.yml`.
 There's no cinch convention format for this (by design — principle 5, cinch
 binds values, not shape), but the convention name is `manifest.yml` —
 deliberately distinct from `cinch.yml` so the two are never confused: one is
-cinch's own config, the other a project's. A common shape looks like:
-
-```yaml
-# manifest.yml — project-owned, cinch never reads this file
-project:
-  name: my-app
-services:
-  backend:  { path: backend,  port: 8080 }
-  frontend: { path: frontend, port: 5173 }
-development:
-  commands:
-    test-backend:  make test-backend
-    test-frontend: make test-frontend
-taxonomy:
-  test_tiers:
-    - { id: unit, cmd: test-backend }
-seams:
-  auditor:
-    allow: [test-backend, lint-frontend]
-```
+cinch's own config, the other a project's. `cinch init` writes a starting
+point at the repo root, `manifest.example.yml`, commented with the why and
+how — rename or restructure it as you like; cinch never reads it, so nothing
+about its shape is enforced.
 
 Note this manifest is outside cinch's `{{key}}` substitution entirely — it's
 not `cinch.yml`, so cinch's renderer never sees or resolves against it.
@@ -277,14 +261,6 @@ hand: a project's own doc saying "run the command named `test-backend` under
 `development.commands` in `manifest.yml`," for instance. This keeps the
 richer manifest entirely a project concern: no new render output, no schema
 for cinch to version or validate.
-
-`seams` is one more instance of this same convention, not a new cinch
-mechanism: it declares, per AI-agent persona, which `development.commands`
-entries that persona's harness-side tooling may run. cinch never reads or
-enforces it — same boundary as the rest of the richer manifest — enforcement
-is entirely the project's own harness-side glue (a `PreToolUse` hook, an
-extension's tool-call guard, or equivalent for whatever harness the project
-uses).
 
 Exit codes: `0` clean, `1` findings (`check`) or a render/dispatch failure,
 `2` usage error.
