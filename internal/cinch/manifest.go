@@ -31,30 +31,65 @@ type Manifest struct {
 	order []string
 }
 
-// loadManifest reads root's manifest file. A missing file, or a malformed
-// document, is a named, actionable error — render has nothing to substitute
-// without it.
+// loadManifest reads root's manifest file. A missing file, a malformed
+// document, or a value that fails validate is a named, actionable error —
+// render has nothing to substitute without it.
 func loadManifest(root string) (*Manifest, error) {
 	path := filepath.Join(root, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf("%s: not found — cinch render needs a manifest file to bind template variables against, e.g.:\n  paths:\n    docs: .docs", path)
 	}
-	return m, err
+	if err != nil {
+		return nil, err
+	}
+	return m, m.validate(path)
 }
 
 // loadManifestOptional reads root's manifest file if one exists, returning
 // (nil, nil) when it doesn't — unlike loadManifest, a missing manifest is
 // not an error. Callers that must work with zero configuration (check,
-// ignores) use this instead. A malformed document is still an error either
-// way.
+// ignores) use this instead. A malformed document, or a value that fails
+// validate, is still an error either way.
 func loadManifestOptional(root string) (*Manifest, error) {
 	path := filepath.Join(root, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
-	return m, err
+	if err != nil {
+		return nil, err
+	}
+	return m, m.validate(path)
+}
+
+// repoLocalPathKeys are the manifest keys naming a directory cinch both
+// renders into and resolves independently. render joins them onto the repo
+// root (render.go's filepath.Join) while the checks resolve them on their
+// own, so a value pointing outside the repository makes render write where
+// the checks never look: every check then passes against a corpus none of
+// them can see. Keeping these repo-local is what makes the two resolutions
+// agree.
+var repoLocalPathKeys = []string{pathsDocsKey, pathsHooksKey}
+
+// validate rejects manifest values that would break an invariant cinch
+// depends on, reporting against path. Called from both load paths so every
+// command fails identically, and never from parseManifestFile — the parser
+// stays a generic YAML-to-dotted-key flattener that knows no specific key.
+func (m *Manifest) validate(path string) error {
+	if m == nil {
+		return nil
+	}
+	for _, key := range repoLocalPathKeys {
+		val, ok := m.Vars[key]
+		if !ok || val == "" {
+			continue // unset falls back to a built-in default, always local
+		}
+		if !filepath.IsLocal(val) {
+			return fmt.Errorf("%s: %s: %q is outside the repository — use a path inside it, e.g. `.docs`. cinch renders into this directory and scans it; a value that escapes makes render write where the checks never look", path, key, val)
+		}
+	}
+	return nil
 }
 
 // parseManifestFile reads and parses the manifest at path. Returns the raw

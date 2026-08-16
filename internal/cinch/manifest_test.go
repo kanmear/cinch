@@ -3,6 +3,7 @@ package cinch
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -235,5 +236,67 @@ func TestManifestNames_NoMatchReturnsNil(t *testing.T) {
 
 	if got := m.Names("hooks.pre-commit"); got != nil {
 		t.Fatalf("Names with no matches: want nil, got %v", got)
+	}
+}
+
+// The mutation fixtures for the repo-local path invariant. Each of these
+// configurations used to load cleanly and then report five green checks
+// against a corpus no check could see: render joins the value onto the repo
+// root while the checks resolve it independently, so an escaping value sends
+// the two resolutions to different directories. Reverting Manifest.validate
+// turns every case below red.
+func TestLoadManifest_NonLocalPathFires(t *testing.T) {
+	cases := []struct {
+		name     string
+		manifest string
+		wantKey  string
+	}{
+		{"absolute docs", "paths:\n  docs: /tmp/elsewhere\n", "paths.docs"},
+		{"escaping docs", "paths:\n  docs: ../elsewhere\n", "paths.docs"},
+		{"escaping docs mid-path", "paths:\n  docs: a/../../b\n", "paths.docs"},
+		{"absolute hooks", "paths:\n  hooks: /tmp/hooks\n", "paths.hooks"},
+		{"escaping hooks", "paths:\n  hooks: ../hooks\n", "paths.hooks"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeManifest(t, dir, tc.manifest)
+
+			_, err := loadManifest(dir)
+			if err == nil {
+				t.Fatalf("loadManifest with %s: want error, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.wantKey) {
+				t.Fatalf("error should name the offending key %q, got: %v", tc.wantKey, err)
+			}
+			if !strings.Contains(err.Error(), "outside the repository") {
+				t.Fatalf("error should say why, got: %v", err)
+			}
+
+			// Both load paths must refuse identically — a value that
+			// loadManifestOptional waved through would leave check green
+			// while render failed.
+			if _, err := loadManifestOptional(dir); err == nil {
+				t.Fatalf("loadManifestOptional with %s: want error, got nil", tc.name)
+			}
+		})
+	}
+}
+
+func TestLoadManifest_RepoLocalPathsAreAccepted(t *testing.T) {
+	for _, manifest := range []string{
+		"paths:\n  docs: .docs\n",
+		"paths:\n  docs: .agent\n",
+		"paths:\n  docs: docs/\n",
+		"paths:\n  docs: a/../b\n",
+		"paths:\n  docs: .docs\n  hooks: .githooks\n",
+		"commands:\n  check: make check\n", // neither key set: defaults apply
+	} {
+		dir := t.TempDir()
+		writeManifest(t, dir, manifest)
+
+		if _, err := loadManifest(dir); err != nil {
+			t.Fatalf("loadManifest(%q): want clean, got %v", manifest, err)
+		}
 	}
 }

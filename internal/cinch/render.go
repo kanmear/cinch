@@ -156,6 +156,7 @@ func renderAll(m *Manifest) ([]renderFile, error) {
 	return files, nil
 }
 
+const pathsHooksKey = "paths.hooks"
 const defaultHooksPath = ".githooks"
 
 // hookEvents are the git hooks CmdHook dispatches — the only shims render
@@ -163,10 +164,11 @@ const defaultHooksPath = ".githooks"
 var hookEvents = []string{"pre-commit", "commit-msg", "post-commit"}
 
 // hooksPathValue returns m's paths.hooks value, or the default when unset
-// or m is nil.
+// or m is nil. Like paths.docs, the value is guaranteed repo-local by
+// Manifest.validate, so callers can join it onto the repo root.
 func hooksPathValue(m *Manifest) string {
 	if m != nil {
-		if v, ok := m.Vars["paths.hooks"]; ok && v != "" {
+		if v, ok := m.Vars[pathsHooksKey]; ok && v != "" {
 			return v
 		}
 	}

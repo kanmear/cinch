@@ -45,17 +45,20 @@ func TestResolveDocsRoot_RelativeKeyJoinsRoot(t *testing.T) {
 	}
 }
 
-func TestResolveDocsRoot_AbsoluteKeyUsedAsIs(t *testing.T) {
-	dir := t.TempDir()
-	abs := filepath.Join(t.TempDir(), "elsewhere", "docs")
-	writeManifest(t, dir, "paths:\n  docs: "+abs+"\n")
+// Replaces TestResolveDocsRoot_AbsoluteKeyUsedAsIs, which asserted the
+// behavior this refusal removes. An absolute value was honored here but
+// joined onto the repo root by render, so the two resolutions pointed at
+// different directories and every check passed against a corpus none of them
+// scanned. The refusal has to reach ResolveDocsRoot's callers, not just
+// loadManifest's.
+func TestResolveDocsRoot_NonLocalKeyFires(t *testing.T) {
+	for _, val := range []string{filepath.Join(t.TempDir(), "elsewhere", "docs"), "../elsewhere"} {
+		dir := t.TempDir()
+		writeManifest(t, dir, "paths:\n  docs: "+val+"\n")
 
-	got, err := ResolveDocsRoot(dir)
-	if err != nil {
-		t.Fatalf("ResolveDocsRoot: %v", err)
-	}
-	if got != abs {
-		t.Fatalf("want %q, got %q", abs, got)
+		if _, err := ResolveDocsRoot(dir); err == nil {
+			t.Fatalf("ResolveDocsRoot with paths.docs = %q: want error, got nil", val)
+		}
 	}
 }
 

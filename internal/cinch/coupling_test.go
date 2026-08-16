@@ -129,26 +129,12 @@ func TestCoupling_UntrackedMarkerFileCountsAsChanged(t *testing.T) {
 	}
 }
 
-func TestCoupling_DocsRootOutsideRepoAnnouncesNoOp(t *testing.T) {
-	dir := gitInitRepo(t)
-	seedCoupledRule(t, dir)
-
-	// A real, uncommitted change so the check doesn't take the unrelated
-	// "working tree matches HEAD" no-op path — the only thing under test
-	// here is the paths.docs-escapes-the-repo guard.
-	writeFile(t, filepath.Join(dir, "foo_test.go"), marker("CIN-001")+"\nfunc TestFoo(t *testing.T) { /* updated */ }\n")
-
-	outside := t.TempDir()
-
-	result := checkCoupling(outside, dir, "")
-
-	if len(result.Findings) != 0 {
-		t.Fatalf("want 0 findings, got %+v", result.Findings)
-	}
-	if !strings.Contains(result.NoOp, "outside the repository") {
-		t.Fatalf("want a no-op naming paths.docs as outside the repository, got: %q", result.NoOp)
-	}
-}
+// TestCoupling_DocsRootOutsideRepoAnnouncesNoOp is deliberately gone. It
+// asserted that an out-of-repo paths.docs degraded this check to a no-op —
+// the weakest form of the invariant, since the other four checks carried on
+// regardless. Manifest.validate now refuses such a value at load, so the
+// branch it covered is unreachable; the invariant is asserted at its new
+// home in TestLoadManifest_NonLocalPathFires (manifest_test.go).
 
 func TestCoupling_NotAGitRepoAnnouncesNoOp(t *testing.T) {
 	dir := t.TempDir()
