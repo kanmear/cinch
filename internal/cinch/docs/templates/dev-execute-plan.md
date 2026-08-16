@@ -63,8 +63,13 @@ next task.
 
 ## Commit Conventions
 
-Load `{{paths.docs}}/conventions.md` § Git before proposing the first commit message of the session,
-unconditionally. It is **not** subject to the per-task manifest-minimization rule in
+Establish this project's commit convention before proposing the first commit message of the
+session, unconditionally. Two sources, in order: `commit.pattern` in `cinch.yml`, if the project
+sets it — that is the convention's enforced form, and `cinch check` rejects a commit whose subject
+doesn't match — and then whichever doc states the convention in prose, if there is one (find it via
+`cinch index`).
+
+This is **not** subject to the per-task manifest-minimization rule in
 `{{paths.docs}}/workflows/dev-task-primitive.md` § Context manifest — those manifests are deliberately narrow
 to protect context budget for a single task; this is a fixed rule of the execution workflow itself,
 not a task-specific doc, so it doesn't get squeezed out.
@@ -97,7 +102,7 @@ For each `T<N>` in dependency order:
    tiers (Tier 1 → Tier 2 → Tier 3). Some tasks defer Tier 3 to a later regression-checkpoint task —
    follow that task's own Verify spec.
 5. Mark the task's `**Status:**` `[x]` in the plan file.
-6. Propose a commit message (per conventions.md § Git). **Do not run `git commit`.** The user reviews the diff and commits manually.
+6. Propose a commit message (per § Commit Conventions above). **Do not run `git commit`.** The user reviews the diff and commits manually.
 7. Update `## Session Handoff` (template above).
 8. **SESSION STOP** — end the session, unless the user explicitly asks to continue further
    tasks in the same session.

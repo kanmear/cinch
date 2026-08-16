@@ -34,11 +34,13 @@ rule set by hand — the checkers never miss a rule; a hand extraction can.
 Categories:
 **API-enforced** — the rule is enforced at the handler level and causes a specific HTTP response
 when violated (e.g. a mutation rejected with a specific status when the caller lacks the
-permission the rule requires). Look in `backend/tests/handlers`.
+permission the rule requires). Look in the test directory covering your request-handling layer
+(e.g. `<service>/tests/handlers`).
 
 **Model-enforced** — the rule is enforced by the DB schema or model layer (UNIQUE constraint,
-CASCADE, model-level guard). Look in `backend/tests/models`. Examples: a uniqueness constraint,
-a cascade delete, an immutable-history rule.
+CASCADE, model-level guard). Look in the test directory covering your persistence layer (e.g.
+`<service>/tests/models`). Examples: a uniqueness constraint, a cascade delete, an
+immutable-history rule.
 
 **N/A** — the rule describes display or structural behavior that cannot be tested automatically
 (e.g. "display names are derived from another field"). Declare it in the doc by placing
@@ -88,14 +90,14 @@ Produce one table per domain file under a `## <domain>.md` heading, with **verba
 evidence in every row**:
 
 ```
-## signatures.md
+## <domain>.md
 
 | Rule | Rule text (verbatim) | Testable | Covered | Test file | Test | Assertion (verbatim) |
 |------|----------------------|----------|---------|-----------|------|----------------------|
-| SIG-001 | `Editing a tab is always free — never locked by a signature request.` | Yes | ✅ | `backend/tests/handlers/tab_test.go` | `TestEditTab_AlwaysFree` | `the exact assertion line from the test, verbatim` |
-| SIG-002 | `At most one pending signature request can exist per tab at a time.` | Yes | ⚠️ TENSION | `backend/tests/handlers/tab_test.go` | `TestRequestSignature_AlreadyPending` | `the contradicting assertion line, verbatim` |
-| SIG-003 | `Creating a signature request requires edit permission on the tab's category.` | Yes | ⚠️ MISSING | — | — | — |
-| SIG-004 | `A display name is derived from another field.` | N/A | N/A | — | — | — |
+| RULE-001 | `<the rule's text, copied exactly from the doc>` | Yes | ✅ | `<path/to/the_test_file>` | `TestTheCoveringTest` | `the exact assertion line from the test, verbatim` |
+| RULE-002 | `<a rule whose test asserts something that contradicts it>` | Yes | ⚠️ TENSION | `<path/to/the_test_file>` | `TestTheContradictingTest` | `the contradicting assertion line, verbatim` |
+| RULE-003 | `<a testable rule with no test anywhere>` | Yes | ⚠️ MISSING | — | — | — |
+| RULE-004 | `<a rule describing display or structural behavior>` | N/A | N/A | — | — | — |
 ```
 
 The **Rule text** and **Assertion** cells are verbatim copies: copy the exact text from
