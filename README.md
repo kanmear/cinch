@@ -142,6 +142,24 @@ computes and prints the workflow trigger table from whatever is under
 and title from whatever is under `paths.docs` right now (excluding
 `plans/`). Both read the current tree at call time.
 
+`cinch context` is the third of that family and the one meant to run first:
+it prints what a session needs to re-orient — current branch, the plans
+under `plans/` with their `Status:` lines verbatim, the workflow trigger
+table, and the staged set. Every input is decidable from the tree, so there
+is no model in it and nothing to persist. It is deliberately **not a check**:
+no findings, no green mark, and no exit code beyond 0 or an unresolvable
+docs root — a session-start command that quietly ran the checks would be a
+sixth check whose green state is "you have read your context." Missing
+inputs (no git repo, no plans, render not yet run) announce themselves as
+skips and the remaining sections still print, because the first command a
+session runs must not refuse to run.
+
+It is harness-neutral by construction: a harness with a session-start hook
+calls it, and a harness without one has AGENTS.md say "run `cinch context`."
+The distribution is the point — it lives in the repo, versioned and
+invocable by any harness or by a human, rather than in per-harness config
+that evaporates with the session.
+
 **Version-skew note:** upgrading the cinch binary can redden every
 consumer's `generated` check until `cinch render` is re-run — `cinch
 version` prints the installed binary's version so this is at least

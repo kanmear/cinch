@@ -43,13 +43,17 @@ usage:
   cinch workflows         compute and print the workflow trigger table.
   cinch workflow NAME     print one rendered workflow's full content.
   cinch index             compute and print every doc's path and title.
+  cinch context           compute and print what a session needs to
+                          re-orient: branch, plans in flight and their
+                          status, the workflow trigger table, staged paths.
+                          Not a check — reports state, never a verdict.
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
 
 // commands is every subcommand cinch recognizes, in usage order — shared
 // between the dispatch switch below and the unknown-command suggestion.
-var commands = []string{"version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
+var commands = []string{"version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index", "context"}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -116,6 +120,11 @@ func main() {
 			os.Exit(output.UsageErr("index: takes no arguments"))
 		}
 		os.Exit(impl.CmdIndex("."))
+	case "context":
+		if len(os.Args) > 2 {
+			os.Exit(output.UsageErr("context: takes no arguments"))
+		}
+		os.Exit(impl.CmdContext("."))
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
