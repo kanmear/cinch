@@ -2,6 +2,15 @@ paths:
   docs: .docs
   hooks: .githooks
 
+# Workflow postcondition. dev-execute-plan.md § Commit Conventions declares a
+# commit-message convention; this is the half of it a script can decide.
+# Without this key the commit check reported "opt-in, not configured" on
+# every commit — the workflow's one decidable demand going unenforced in the
+# repo that ships the workflow. Encodes the convention this repo already
+# follows (verified against 40 commits of history), it does not tighten it.
+commit:
+  pattern: '^(feat|fix|docs|refactor|test|chore|plan|revert): .+'
+
 hooks:
   pre-commit:
     build:
