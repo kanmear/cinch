@@ -30,7 +30,7 @@ Docs: run `cinch index` to see every doc's path and title.
   `cinch hook` dispatcher. `init.go` — `cinch init`. `workflow.go` —
   `cinch workflows` / `cinch workflow NAME`, computed on demand. `index.go` —
   `cinch index`, computed on demand. `context.go` — `cinch context`, the
-  session-start report; reports state, never a verdict. `docs/philosophy.md`,
+  session-start report; reports state, never a verdict. `docs/docs-philosophy.md`,
   `docs/templates/*.md` (nine workflows) — the content `render` ships,
   embedded via `go:embed`. `tests/` — CLI-level tests against the built
   binary. `Makefile` — `build` / `test`.

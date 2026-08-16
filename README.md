@@ -80,13 +80,11 @@ adopting cinch into.
    build`; see § Install just above for why, including the stale-binary
    failure.
 
-2. **`cinch init`** — in the target repo. Writes `cinch.yml` and `AGENTS.md`
-   if they're absent, creates `<paths.docs>/plans/`, renders the workflows
-   and the hook shims, scaffolds `manifest.example.yml`, and activates the
-   hooks with `git config core.hooksPath`. Idempotent — running it twice
-   produces a byte-identical tree. Outside a git repo it still writes the
-   shims but says on stderr that it didn't activate them. See § `cinch init`
-   and self-enforcement.
+2. **`cinch init`** — in the target repo. Writes `cinch.yml` and `AGENTS.md` if
+   they're absent, creates `<paths.docs>/plans/`, renders the workflows and the
+   hook shims, scaffolds `manifest.example.yml`, and activates the hooks with
+   `git config core.hooksPath`. See § `cinch init` and self-enforcement for the
+   idempotence guarantee and the outside-a-git-repo behavior.
 
 3. **Point `paths.docs` somewhere else, if `.docs` doesn't suit** — set it in
    `cinch.yml` *before* the first `cinch init`, and it must name a directory
@@ -130,15 +128,14 @@ adopting cinch into.
 
 ## Status: 0.1.0 — init, self-enforcement, manifest-driven extension
 
-`cinch init` scaffolds a new consumer end to end: a manifest, the docs
-directory structure, a full render, and activated git hooks — one command,
-idempotent. `cinch check` runs five checks, including one that verifies the
-render output on disk hasn't been hand-edited or fallen out of date, and
-another that enforces a commit message convention. Git hooks are generated
-and, once activated, run `cinch check` on every commit — a project can also
-hook its own scripts into `pre-commit`/`commit-msg` through the manifest,
-scoped to the paths that should trigger them. This repo self-hosts: its own
-`cinch.yml`, rendered docs, and `.githooks/` are the proof.
+`cinch init` scaffolds a new consumer end to end (see Overview above) — one
+command, idempotent. `cinch check` runs five checks, including one that
+verifies the render output on disk hasn't been hand-edited or fallen out of
+date, and another that enforces a commit message convention. Git hooks are
+generated and, once activated, run `cinch check` on every commit — a project
+can also hook its own scripts into `pre-commit`/`commit-msg` through the
+manifest, scoped to the paths that should trigger them. This repo self-hosts:
+its own `cinch.yml`, rendered docs, and `.githooks/` are the proof.
 
 `cinch check` runs five checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
@@ -405,9 +402,9 @@ fixtures end-to-end.
 ## Layout
 
 - `main.go` — CLI dispatch (`init`, `check`, `render`, `hook`, `workflows`,
-  `workflow`, `index`, `ignores`); the only `package main` file — everything
-  else lives in `internal/cinch`, a private package the Go compiler forbids
-  other modules from importing.
+  `workflow`, `index`, `context`, `ignores`); the only `package main` file —
+  everything else lives in `internal/cinch`, a private package the Go compiler
+  forbids other modules from importing.
 - `internal/cinch/check.go` — the `Finding` model and `CmdCheck` orchestrator.
 - `internal/cinch/links.go`, `internal/cinch/rules.go`,
   `internal/cinch/coupling.go`, `internal/cinch/generated.go`,
@@ -429,6 +426,8 @@ fixtures end-to-end.
   computed on demand from `workflows/` on disk.
 - `internal/cinch/index.go` — `cinch index`, computed on demand from
   `paths.docs` on disk.
+- `internal/cinch/context.go` — `cinch context`, computed on demand: branch,
+  plans, workflow trigger table, staged set. Reports state, never a verdict.
 - `internal/cinch/docs/docs-philosophy.md` — copied verbatim into every consumer.
 - `internal/cinch/docs/templates/*.md` — the nine workflow templates cinch
   ships, grouped by a shared filename prefix: the feature/bug dev lifecycle
