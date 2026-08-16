@@ -125,8 +125,13 @@ func TestCmdInit_WritesAgentsMDWhenAbsent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read AGENTS.md: %v", err)
 	}
-	if !strings.Contains(string(data), agentsWorkflowsLine) {
-		t.Fatalf("want AGENTS.md to carry the workflows line, got:\n%s", data)
+	// All three command pointers, not just the workflows one: a consumer
+	// whose AGENTS.md omits `cinch context` has no session-start entry point,
+	// which is the one line an agent reads first.
+	for _, line := range []string{agentsContextLine, agentsWorkflowsLine, agentsIndexLine} {
+		if !strings.Contains(string(data), line) {
+			t.Fatalf("want AGENTS.md to carry %q, got:\n%s", line, data)
+		}
 	}
 }
 
