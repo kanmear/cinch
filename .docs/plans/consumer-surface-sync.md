@@ -89,10 +89,11 @@ Verified against `~/code/project_deltadocs` on 2026-08-16.
 
 ### Relationship to other plans
 
-Independent of the two plans still open. Worth doing before
-`docs-path-migration.md`, whose Step 3 also edits consumer files
-(`inject-agents.sh`) — landing this first means that plan starts from a green
-consumer rather than debugging a red one it didn't cause.
+Independent of the other plan still open. `docs-path-migration` shipped
+first instead of after this one as originally sequenced — its Step 3 edited
+`inject-agents.sh` against the state left by this plan's Step 1
+(`3d37adb`), which was already green; no conflict resulted, but a reader
+should not expect the original before/after ordering here.
 
 This plan is disposable: it is a checklist for one sync, not a standing
 document. Delete it once the consumer is green, per this repo's rule that
