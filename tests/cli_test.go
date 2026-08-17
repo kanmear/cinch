@@ -765,3 +765,118 @@ func TestWorkflow_TooManyArgsIsUsageError(t *testing.T) {
 		t.Fatalf("workflow with two args: want exit 2, got %v\n%s", err, out)
 	}
 }
+
+func TestMoveDocs_MissingArgIsUsageError(t *testing.T) {
+	out, err := exec.Command(binPath(t), "move-docs").CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("move-docs with no NEW-PATH: want exit 2, got %v\n%s", err, out)
+	}
+}
+
+func TestMoveDocs_TooManyArgsIsUsageError(t *testing.T) {
+	out, err := exec.Command(binPath(t), "move-docs", "a", "b").CombinedOutput()
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("move-docs with two args: want exit 2, got %v\n%s", err, out)
+	}
+}
+
+// TestMoveDocs_EndToEndGitRepo is the CLI-level rehearsal from the migration
+// plan's verification section (B.1-3): `cinch move-docs` in a real git repo
+// must move the docs root as a staged rename, rewrite cinch.yml, re-render,
+// and leave `cinch check` clean.
+func TestMoveDocs_EndToEndGitRepo(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := runGit(t, dir, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, dir, "add", "-A"); err != nil {
+		t.Fatalf("git add: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, dir, "commit", "-q", "-m", "seed"); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
+
+	moveCmd := exec.Command(binPath(t), "move-docs", ".docs2")
+	moveCmd.Dir = dir
+	if out, err := moveCmd.CombinedOutput(); err != nil {
+		t.Fatalf("move-docs: want exit 0, got %v\n%s", err, out)
+	}
+
+	statusOut, err := runGit(t, dir, "diff", "--cached", "--name-status")
+	if err != nil {
+		t.Fatalf("git diff --cached: %v\n%s", err, statusOut)
+	}
+	if !strings.Contains(string(statusOut), "R") {
+		t.Fatalf("want a staged rename after move-docs, got:\n%s", statusOut)
+	}
+
+	manifest, err := os.ReadFile(filepath.Join(dir, "cinch.yml"))
+	if err != nil {
+		t.Fatalf("read cinch.yml: %v", err)
+	}
+	if !strings.Contains(string(manifest), "docs: .docs2") {
+		t.Fatalf("cinch.yml: want paths.docs rewritten to .docs2, got:\n%s", manifest)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".docs")); err == nil {
+		t.Fatalf("old .docs directory should be gone")
+	}
+
+	checkCmd := exec.Command(binPath(t), "check")
+	checkCmd.Dir = dir
+	var stdout bytes.Buffer
+	checkCmd.Stdout = &stdout
+	if err := checkCmd.Run(); err != nil {
+		t.Fatalf("check after move-docs: want exit 0, got %v\nfindings:\n%s", err, stdout.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("check after move-docs: want zero findings, got:\n%s", stdout.String())
+	}
+}
+
+// TestMoveDocs_UncommittedRenameWithoutMoveIsCaught is the negative-path
+// rehearsal from the migration plan's verification section (B.4): the exact
+// mistake `cinch move-docs` exists to prevent — editing paths.docs by hand
+// without moving the directory — must now be caught by `cinch check`.
+func TestMoveDocs_UncommittedRenameWithoutMoveIsCaught(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := runGit(t, dir, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	renderCmd := exec.Command(binPath(t), "render")
+	renderCmd.Dir = dir
+	if out, err := renderCmd.CombinedOutput(); err != nil {
+		t.Fatalf("render: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, dir, "add", "-A"); err != nil {
+		t.Fatalf("git add: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, dir, "commit", "-q", "-m", "seed"); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
+
+	// Hand-edit paths.docs without moving .docs/workflows/*.md — the mistake,
+	// not the fix.
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs2\n"), 0o644); err != nil {
+		t.Fatalf("rewrite manifest: %v", err)
+	}
+
+	checkCmd := exec.Command(binPath(t), "check")
+	checkCmd.Dir = dir
+	out, _ := checkCmd.CombinedOutput()
+	if !strings.Contains(string(out), "orphaned") {
+		t.Fatalf("check after an uncommitted paths.docs rename without moving the directory: want orphan findings, got:\n%s", out)
+	}
+}

@@ -78,6 +78,21 @@ func checkGenerated(root string) generatedResult {
 		}
 	}
 
+	// Also scan the docs/hooks roots implied by the last *committed* manifest,
+	// not just this render pass's roots. A paths.docs edit that hasn't been
+	// paired with moving the directory (the mistake `cinch move-docs` exists to
+	// prevent) leaves the old directory's generated files completely outside
+	// renderDirs — invisible to every check — for exactly as long as the stale
+	// directory and the uncommitted manifest edit coexist, i.e. up to the
+	// commit that should have moved it too. Bounded to one comparison against
+	// HEAD, not a general history scan.
+	if prevData, ok := gitShow(root, "HEAD:"+manifestPath); ok {
+		if prevM, err := parseManifestBytes(prevData, manifestPath+"@HEAD"); err == nil {
+			renderDirs[filepath.Join(root, docsPathValue(prevM), workflowsSubdir)] = true
+			renderDirs[filepath.Join(root, hooksPathValue(prevM))] = true
+		}
+	}
+
 	for dir := range renderDirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {

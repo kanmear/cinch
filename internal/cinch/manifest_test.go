@@ -283,6 +283,92 @@ func TestLoadManifest_NonLocalPathFires(t *testing.T) {
 	}
 }
 
+func TestWriteManifestValue_PreservesCommentsAndOrder(t *testing.T) {
+	dir := t.TempDir()
+	original := `paths:
+  # Where cinch renders generated docs and reads hand-authored ones from.
+  # A pre-existing folder is fine — cinch never assumes .docs.
+  docs: .agent
+  hooks: .githooks
+
+commands:
+  check: make check
+
+hooks:
+  pre-commit:
+    build:
+      run: make test
+      when: [frontend/, backend/]
+    lint:
+      run: make lint
+`
+	writeManifest(t, dir, original)
+
+	if err := writeManifestValue(dir, pathsDocsKey, ".agent2"); err != nil {
+		t.Fatalf("writeManifestValue: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, manifestPath))
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+
+	want := strings.Replace(original, "docs: .agent\n", "docs: .agent2\n", 1)
+	if string(got) != want {
+		t.Fatalf("writeManifestValue changed more than the target line.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+
+	m, err := loadManifest(dir)
+	if err != nil {
+		t.Fatalf("loadManifest after write: %v", err)
+	}
+	if m.Vars[pathsDocsKey] != ".agent2" {
+		t.Fatalf("paths.docs: want %q, got %q", ".agent2", m.Vars[pathsDocsKey])
+	}
+	if m.Vars["hooks.pre-commit.build.run"] != "make test" {
+		t.Fatalf("unrelated key hooks.pre-commit.build.run: want %q, got %q", "make test", m.Vars["hooks.pre-commit.build.run"])
+	}
+}
+
+func TestWriteManifestValue_PreservesTrailingLineComment(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "paths:\n  docs: .agent  # pre-existing folder, not cinch's default\n")
+
+	if err := writeManifestValue(dir, pathsDocsKey, ".agent2"); err != nil {
+		t.Fatalf("writeManifestValue: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, manifestPath))
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+	want := "paths:\n  docs: .agent2  # pre-existing folder, not cinch's default\n"
+	if string(got) != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestWriteManifestValue_ErrorsWhenKeyAbsent(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "commands:\n  check: make check\n")
+
+	err := writeManifestValue(dir, pathsDocsKey, ".agent2")
+	if err == nil {
+		t.Fatalf("writeManifestValue with absent key: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), pathsDocsKey) {
+		t.Fatalf("error should name the missing key %q, got: %v", pathsDocsKey, err)
+	}
+
+	got, readErr := os.ReadFile(filepath.Join(dir, manifestPath))
+	if readErr != nil {
+		t.Fatalf("read manifest: %v", readErr)
+	}
+	if string(got) != "commands:\n  check: make check\n" {
+		t.Fatalf("manifest should be untouched on error, got:\n%s", got)
+	}
+}
+
 func TestLoadManifest_RepoLocalPathsAreAccepted(t *testing.T) {
 	for _, manifest := range []string{
 		"paths:\n  docs: .docs\n",

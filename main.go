@@ -36,6 +36,9 @@ usage:
                           cinch.yml, plus git hook shims under
                           paths.hooks (default .githooks/). Idempotent — a
                           re-render diff proves tampering.
+  cinch move-docs NEW-PATH
+                          move the docs root: git mv, rewrite cinch.yml's
+                          paths.docs, re-render — one atomic operation.
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
                           (pre-commit, commit-msg). Runs cinch check, then
                           any hooks.EVENT.* entries from cinch.yml whose
@@ -53,7 +56,7 @@ exit codes: 0 clean, 1 findings, 2 usage error.
 
 // commands is every subcommand cinch recognizes, in usage order — shared
 // between the dispatch switch below and the unknown-command suggestion.
-var commands = []string{"version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index", "context"}
+var commands = []string{"version", "init", "check", "ignores", "render", "move-docs", "hook", "workflows", "workflow", "index", "context"}
 
 func main() {
 	impl.Version = Version
@@ -102,6 +105,11 @@ func main() {
 			os.Exit(output.UsageErr("render: takes no arguments"))
 		}
 		os.Exit(impl.CmdRender("."))
+	case "move-docs":
+		if len(os.Args) != 3 {
+			os.Exit(output.UsageErr("move-docs: requires exactly one NEW-PATH argument"))
+		}
+		os.Exit(impl.CmdMoveDocs(".", os.Args[2]))
 	case "hook":
 		if len(os.Args) < 3 {
 			os.Exit(output.UsageErr("hook: requires an event argument"))

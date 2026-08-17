@@ -97,12 +97,18 @@ func (m *Manifest) validate(path string) error {
 func parseManifestFile(path string) (*Manifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, err // raw, so os.IsNotExist stays checkable
 	}
+	return parseManifestBytes(data, path)
+}
 
+// parseManifestBytes parses manifest content already in memory (e.g. a
+// historical revision fetched via `git show`), reporting errors against
+// label for consistent messages.
+func parseManifestBytes(data []byte, label string) (*Manifest, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", label, err)
 	}
 
 	vars := map[string]string{}
@@ -110,9 +116,9 @@ func parseManifestFile(path string) (*Manifest, error) {
 	if len(doc.Content) > 0 {
 		root := doc.Content[0]
 		if root.Kind != yaml.MappingNode {
-			return nil, fmt.Errorf("%s: top-level document must be a mapping", path)
+			return nil, fmt.Errorf("%s: top-level document must be a mapping", label)
 		}
-		if err := flattenMapping(path, root, "", vars, &order); err != nil {
+		if err := flattenMapping(label, root, "", vars, &order); err != nil {
 			return nil, err
 		}
 	}
@@ -228,6 +234,131 @@ func (m *Manifest) Names(prefix string) []string {
 		out = append(out, name)
 	}
 	return out
+}
+
+// isBlankOrComment reports whether line carries no YAML structure worth
+// scanning: empty (after trimming) or a `#`-only comment line.
+func isBlankOrComment(line string) bool {
+	t := strings.TrimSpace(line)
+	return t == "" || strings.HasPrefix(t, "#")
+}
+
+// lineIndent returns line's leading-space count.
+func lineIndent(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " "))
+}
+
+// writeManifestValue rewrites a dotted key's value in root's manifest file,
+// preserving every other line byte-for-byte — comments, blank lines,
+// declaration order, and the original spacing of the target line. Walks the
+// key's segments as increasingly-indented YAML mapping keys; the terminal
+// segment's scalar is replaced in place.
+//
+// Deliberately not a YAML round-trip: yaml.v3 retains comment text but
+// normalizes layout, which would produce a large spurious diff in a
+// hand-commented manifest.
+func writeManifestValue(root, key, newVal string) error {
+	path := filepath.Join(root, manifestPath)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	text := string(data)
+	trailingNewline := strings.HasSuffix(text, "\n")
+	lines := strings.Split(text, "\n")
+	if trailingNewline {
+		lines = lines[:len(lines)-1]
+	}
+
+	segments := strings.Split(key, ".")
+	start, end := 0, len(lines)
+
+	for i, seg := range segments {
+		terminal := i == len(segments)-1
+		blockIndent := -1
+		found := -1
+
+		j := start
+		for j < end {
+			if isBlankOrComment(lines[j]) {
+				j++
+				continue
+			}
+			indent := lineIndent(lines[j])
+			if blockIndent == -1 {
+				blockIndent = indent
+			}
+			if indent < blockIndent {
+				break // this block ended without a match
+			}
+
+			trimmed := strings.TrimSpace(lines[j])
+			isMatch := trimmed == seg+":" || strings.HasPrefix(trimmed, seg+": ")
+			if isMatch {
+				found = j
+				break
+			}
+
+			// Not our key: skip past this sibling's own nested block (every
+			// line more indented than blockIndent) so its descendants are
+			// never mistaken for a match at this level.
+			j++
+			for j < end {
+				if isBlankOrComment(lines[j]) {
+					j++
+					continue
+				}
+				if lineIndent(lines[j]) <= blockIndent {
+					break
+				}
+				j++
+			}
+		}
+
+		if found == -1 {
+			return fmt.Errorf("%s: %s not found in cinch.yml; add it by hand", path, key)
+		}
+
+		if terminal {
+			line := lines[found]
+			indent := lineIndent(line)
+			after := line[indent+len(seg)+1:] // text following "<seg>:"
+			comment := ""
+			if h := strings.Index(after, "#"); h >= 0 {
+				comment = after[h:]
+			}
+			newLine := strings.Repeat(" ", indent) + seg + ": " + newVal
+			if comment != "" {
+				newLine += "  " + comment
+			}
+			lines[found] = newLine
+
+			out := strings.Join(lines, "\n")
+			if trailingNewline {
+				out += "\n"
+			}
+			return os.WriteFile(path, []byte(out), 0o644)
+		}
+
+		// Descend: the next segment's block is found's children — every
+		// following line more indented than found, up to (but excluding) the
+		// first line back at found's indent or shallower.
+		parentIndent := blockIndent
+		start = found + 1
+		end = len(lines)
+		for k := start; k < len(lines); k++ {
+			if isBlankOrComment(lines[k]) {
+				continue
+			}
+			if lineIndent(lines[k]) <= parentIndent {
+				end = k
+				break
+			}
+		}
+	}
+
+	return fmt.Errorf("%s: %s not found in cinch.yml; add it by hand", path, key)
 }
 
 func sortedKeys(m map[string]bool) []string {

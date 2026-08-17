@@ -181,6 +181,67 @@ func TestCheckGenerated_UnrenderedRepoAnnouncesNoOp(t *testing.T) {
 	}
 }
 
+func TestCheckGenerated_CrossRootOrphanAfterUncommittedRename(t *testing.T) {
+	root := gitInitRepo(t)
+	renderToScratch(t, root)
+	gitCommitAll(t, root, "seed")
+
+	// Edit paths.docs in the working tree without moving .docs/workflows/*.md
+	// — exactly the mistake `cinch move-docs` exists to prevent.
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs2\n")
+
+	result := checkGenerated(root)
+
+	var orphans []Finding
+	for _, f := range result.Findings {
+		if strings.Contains(f.Message, "orphaned") {
+			orphans = append(orphans, f)
+		}
+	}
+	oldFiles, err := os.ReadDir(filepath.Join(root, ".docs", "workflows"))
+	if err != nil {
+		t.Fatalf("read old workflows dir: %v", err)
+	}
+	if len(orphans) != len(oldFiles) {
+		t.Fatalf("want %d orphan findings for the abandoned .docs root, got %d: %+v", len(oldFiles), len(orphans), orphans)
+	}
+	for _, f := range orphans {
+		if !strings.HasPrefix(f.File, ".docs/workflows/") {
+			t.Fatalf("orphan finding should be under the old root .docs/workflows/, got %s", f.File)
+		}
+	}
+}
+
+func TestCheckGenerated_CrossRootCheckIsNoOpWithoutGitHistory(t *testing.T) {
+	root := t.TempDir() // no git init
+	renderToScratch(t, root)
+
+	writeFile(t, filepath.Join(root, "cinch.yml"), "paths:\n  docs: .docs2\n")
+
+	result := checkGenerated(root)
+
+	for _, f := range result.Findings {
+		if strings.Contains(f.Message, "orphaned") {
+			t.Fatalf("no git history means no HEAD to compare against — want no orphan findings, got %+v", f)
+		}
+	}
+}
+
+func TestCheckGenerated_MoveViaCmdMoveDocsLeavesNoOrphan(t *testing.T) {
+	root := gitInitRepo(t)
+	renderToScratch(t, root)
+	gitCommitAll(t, root, "seed")
+
+	if code := CmdMoveDocs(root, ".docs2"); code != 0 {
+		t.Fatalf("CmdMoveDocs: want exit 0, got %d", code)
+	}
+
+	result := checkGenerated(root)
+	if len(result.Findings) != 0 {
+		t.Fatalf("cinch move-docs should leave zero generated findings, got %+v", result.Findings)
+	}
+}
+
 func TestCheckGenerated_NoManifestAnnouncesNoOp(t *testing.T) {
 	root := t.TempDir()
 
