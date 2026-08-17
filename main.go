@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	impl "cinch/internal/cinch"
 	"cinch/internal/output"
@@ -14,10 +16,12 @@ import (
 // run outside its own repo, where a git-describe would find nothing.
 var Version = "devel"
 
-const usage = `cinch — referential integrity checker for the operational
+const helpText = `cinch — referential integrity checker for the operational
 documentation that governs a repository (rules, workflows, conventions)
 
 usage:
+  cinch help              print this command list and exit. -h and --help
+                          are aliases.
   cinch version           print the cinch version and exit.
   cinch init              scaffold a new consumer: manifest (if absent),
                           paths.docs/plans, a full render, activated git
@@ -54,19 +58,30 @@ usage:
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
 
+// bareSynopsis is shown when cinch is invoked with no subcommand and the
+// current directory already has a cinch.yml — a short pointer to the full
+// listing (helpText) rather than dumping it unconditionally.
+const bareSynopsis = `cinch — referential integrity checker for the operational
+documentation that governs a repository (rules, workflows, conventions)
+
+run 'cinch help' for the full command list.
+`
+
 // commands is every subcommand cinch recognizes, in usage order — shared
 // between the dispatch switch below and the unknown-command suggestion.
-var commands = []string{"version", "init", "check", "ignores", "render", "move-docs", "hook", "workflows", "workflow", "index", "context"}
+var commands = []string{"help", "version", "init", "check", "ignores", "render", "move-docs", "hook", "workflows", "workflow", "index", "context"}
 
 func main() {
 	impl.Version = Version
 
 	if len(os.Args) < 2 {
-		fmt.Fprint(os.Stdout, usage)
-		os.Exit(2)
+		os.Exit(bareInvocation())
 	}
 
 	switch os.Args[1] {
+	case "help", "-h", "--help":
+		fmt.Print(helpText)
+		os.Exit(0)
 	case "version":
 		if len(os.Args) > 2 {
 			os.Exit(output.UsageErr("version: takes no arguments"))
@@ -147,9 +162,46 @@ func unknownCommand(name string) int {
 	if guess, dist := closestCommand(name); guess != "" && dist <= 2 {
 		msg += fmt.Sprintf(" (did you mean %q?)", guess)
 	}
-	msg += " — run 'cinch' for usage."
+	msg += " — run 'cinch help' for usage."
 	fmt.Fprintln(os.Stderr, output.ColorizeError(msg))
 	return 1
+}
+
+// bareInvocation handles `cinch` with no arguments: a lighter, state-aware
+// response instead of an unconditional full-usage dump. What it says
+// depends on whether the current directory looks like an initialized
+// cinch project, and — if not — whether it's safe to offer to run
+// `cinch init` right now.
+func bareInvocation() int {
+	if impl.ManifestExists(".") {
+		fmt.Print(bareSynopsis)
+		return 2
+	}
+
+	fmt.Println("this doesn't look like an initialized cinch project (no cinch.yml found in the current directory).")
+
+	if impl.IsGitRepo(".") && output.IsInteractiveStdin(os.Stdin) {
+		fmt.Print("run 'cinch init' now? [y/N] ")
+		if promptYes() {
+			return impl.CmdInit(".")
+		}
+	}
+
+	fmt.Println("run 'cinch init' to get started, or 'cinch help' for the full command list.")
+	return 2
+}
+
+// promptYes reads one line from stdin and reports whether it's an
+// affirmative answer ("y" or "yes", case-insensitive). bareInvocation only
+// calls this after confirming stdin is a live terminal, so this never
+// blocks indefinitely on input that will never come.
+func promptYes() bool {
+	scanner := bufio.NewScanner(os.Stdin)
+	if !scanner.Scan() {
+		return false
+	}
+	answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
+	return answer == "y" || answer == "yes"
 }
 
 // closestCommand returns the known command nearest to name by edit

@@ -11,6 +11,11 @@ import (
 	"testing"
 )
 
+// TestShellUsage exercises bare `cinch` run with the test process's own
+// cwd (tests/) — inside the cinch repo's git tree, but tests/ itself has no
+// local cinch.yml, and CombinedOutput leaves Stdin nil (non-interactive).
+// That's the "uninitialized, non-interactive" case: no prompt, just the
+// informational line and the init/help hint, still exit 2.
 func TestShellUsage(t *testing.T) {
 	out, err := exec.Command("../bin/cinch").CombinedOutput()
 	if err == nil {
@@ -20,8 +25,109 @@ func TestShellUsage(t *testing.T) {
 	if !ok || ee.ExitCode() != 2 {
 		t.Fatalf("no-args run: want exit code 2, got %v", err)
 	}
+	if !strings.Contains(string(out), "cinch init") || !strings.Contains(string(out), "cinch help") {
+		t.Fatalf("no-args run: init/help hint not printed:\n%s", out)
+	}
+}
+
+func TestHelp_PrintsCommandListAndExitsZero(t *testing.T) {
+	out, err := exec.Command(binPath(t), "help").CombinedOutput()
+	if err != nil {
+		t.Fatalf("help: want exit 0, got %v\n%s", err, out)
+	}
 	if !strings.Contains(string(out), "usage:") {
-		t.Fatalf("no-args run: usage not printed:\n%s", out)
+		t.Fatalf("help: command list not printed:\n%s", out)
+	}
+}
+
+func TestHelpAliases(t *testing.T) {
+	for _, flag := range []string{"-h", "--help"} {
+		t.Run(flag, func(t *testing.T) {
+			out, err := exec.Command(binPath(t), flag).CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s: want exit 0, got %v\n%s", flag, err, out)
+			}
+			if !strings.Contains(string(out), "usage:") {
+				t.Fatalf("%s: command list not printed:\n%s", flag, out)
+			}
+		})
+	}
+}
+
+// TestBareInvocation_Initialized covers the case a cinch.yml already exists:
+// bare `cinch` should show the short synopsis pointing at `cinch help`, not
+// the full command list.
+func TestBareInvocation_Initialized(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "cinch.yml"), []byte("paths:\n  docs: .docs\n"), 0o644); err != nil {
+		t.Fatalf("write cinch.yml: %v", err)
+	}
+
+	cmd := exec.Command(binPath(t))
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("bare invocation, initialized: want exit 2, got nil\n%s", out)
+	}
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("bare invocation, initialized: want exit code 2, got %v", err)
+	}
+	if !strings.Contains(string(out), "cinch help") {
+		t.Fatalf("bare invocation, initialized: synopsis not printed:\n%s", out)
+	}
+	if strings.Contains(string(out), "cinch version") {
+		t.Fatalf("bare invocation, initialized: want short synopsis, got full command list:\n%s", out)
+	}
+}
+
+// TestBareInvocation_UninitializedNonGit covers a plain, non-git tempdir
+// with no cinch.yml: the init prompt must never appear (not a git repo),
+// and the run must complete without hanging on stdin.
+func TestBareInvocation_UninitializedNonGit(t *testing.T) {
+	dir := t.TempDir()
+	cmd := exec.Command(binPath(t))
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("bare invocation, uninitialized non-git: want exit 2, got nil\n%s", out)
+	}
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("bare invocation, uninitialized non-git: want exit code 2, got %v", err)
+	}
+	if !strings.Contains(string(out), "doesn't look like an initialized cinch project") {
+		t.Fatalf("bare invocation, uninitialized non-git: info line not printed:\n%s", out)
+	}
+	if !strings.Contains(string(out), "cinch init") || !strings.Contains(string(out), "cinch help") {
+		t.Fatalf("bare invocation, uninitialized non-git: hint not printed:\n%s", out)
+	}
+}
+
+// TestBareInvocation_UninitializedGitNonInteractive proves the init prompt
+// requires BOTH a git repo and an interactive stdin — a git repo alone
+// (with CombinedOutput's non-TTY stdin) must not trigger the prompt.
+func TestBareInvocation_UninitializedGitNonInteractive(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := runGit(t, dir, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+
+	cmd := exec.Command(binPath(t))
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("bare invocation, uninitialized git non-interactive: want exit 2, got nil\n%s", out)
+	}
+	ee, ok := err.(*exec.ExitError)
+	if !ok || ee.ExitCode() != 2 {
+		t.Fatalf("bare invocation, uninitialized git non-interactive: want exit code 2, got %v", err)
+	}
+	if strings.Contains(string(out), "[y/N]") {
+		t.Fatalf("bare invocation, uninitialized git non-interactive: prompt shown despite non-TTY stdin:\n%s", out)
+	}
+	if !strings.Contains(string(out), "cinch init") || !strings.Contains(string(out), "cinch help") {
+		t.Fatalf("bare invocation, uninitialized git non-interactive: hint not printed:\n%s", out)
 	}
 }
 

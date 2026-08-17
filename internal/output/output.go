@@ -3,6 +3,8 @@ package output
 import (
 	"fmt"
 	"os"
+
+	"golang.org/x/term"
 )
 
 // This package is cinch's one chokepoint for diagnostic and progress output.
@@ -31,6 +33,17 @@ func isColorTerminal(f *os.File) bool {
 	}
 	info, err := f.Stat()
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+// IsInteractiveStdin reports whether f is a real terminal — used to decide
+// whether it's safe to prompt for input rather than block on a stdin that
+// will never arrive (piped, redirected, /dev/null, a hook invocation).
+// Unlike isColorTerminal's plain os.ModeCharDevice check, this must
+// distinguish an actual TTY from other character devices like /dev/null
+// (exec.Command wires a nil Stdin to /dev/null, which is itself a char
+// device) — term.IsTerminal does that properly via the platform's isatty.
+func IsInteractiveStdin(f *os.File) bool {
+	return term.IsTerminal(int(f.Fd()))
 }
 
 // stdoutColor and stderrColor are computed once per stream, not once
@@ -77,10 +90,10 @@ func Step(format string, args ...any) {
 	fmt.Println(paint(stdoutColor, colorGreen, fmt.Sprintf(format, args...)))
 }
 
-// UsageErr writes "cinch: <msg> — run 'cinch' for usage.\n" to stderr and
-// returns 2, the shared exit code for a malformed invocation.
+// UsageErr writes "cinch: <msg> — run 'cinch help' for usage.\n" to stderr
+// and returns 2, the shared exit code for a malformed invocation.
 func UsageErr(msg string) int {
-	fmt.Fprintln(os.Stderr, paint(stderrColor, colorRed, "cinch: "+msg+" — run 'cinch' for usage."))
+	fmt.Fprintln(os.Stderr, paint(stderrColor, colorRed, "cinch: "+msg+" — run 'cinch help' for usage."))
 	return 2
 }
 

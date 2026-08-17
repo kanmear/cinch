@@ -158,6 +158,11 @@ func isGitRepo(root string) bool {
 	return err == nil && strings.TrimSpace(string(out)) == "true"
 }
 
+// IsGitRepo exports isGitRepo for main's bare-invocation handling.
+func IsGitRepo(root string) bool {
+	return isGitRepo(root)
+}
+
 func hasHead(root string) bool {
 	cmd := exec.Command("git", "rev-parse", "--verify", "-q", "HEAD")
 	cmd.Dir = root
