@@ -28,7 +28,14 @@ const agentsContextLine = "Orientation: run `cinch context` first — branch, pl
 const agentsWorkflowsLine = "Workflows: run `cinch workflows` to see what's available, `cinch workflow <name>` to load one."
 const agentsIndexLine = "Docs: run `cinch index` to see every doc's path and title."
 
-const starterAgentsMD = "# AGENTS.md\n\n" + agentsContextLine + "\n" + agentsWorkflowsLine + "\n" + agentsIndexLine + "\n"
+// agentsAreaGuidanceLine states the doc-role convention once, generically,
+// so a consumer doesn't need to hand-enumerate "for backend work, read
+// backend/architecture.md and backend/conventions.md" per area of its own
+// docs root — the shape is the same for every area, only the area names are
+// project content (and those are what `cinch index` already lists).
+const agentsAreaGuidanceLine = "Working in an area: read that area's architecture.md and conventions.md if present; an overview.md governs judgment calls anywhere under its folder; anything else is topic reference, read when directly relevant. `cinch index` lists what actually exists."
+
+const starterAgentsMD = "# AGENTS.md\n\n" + agentsContextLine + "\n" + agentsWorkflowsLine + "\n" + agentsIndexLine + "\n" + agentsAreaGuidanceLine + "\n"
 
 // starterManifestExample is written by `cinch init` when no manifest.example.yml
 // exists yet — a commented starting point for the "richer project manifest"
@@ -37,28 +44,30 @@ const starterManifestExample = `# manifest.example.yml — project-owned, cinch 
 #
 # cinch.yml only binds what cinch itself reads: paths.*, hooks.*,
 # commit.pattern. Workflow-template *prose*, though, can reference
-# arbitrary project-specific values cinch never touches — commands, ports,
-# service layout, test taxonomy. A project with enough of those is better
-# served by its own separate, schema-free file than by overloading
-# cinch.yml. There's no cinch convention format for this (by design —
-# cinch binds values, not shape): rename this file, restructure it, or
-# delete it — nothing here is enforced or read by cinch. The convention
-# name is manifest.yml, deliberately distinct from cinch.yml so the two
-# are never confused.
+# arbitrary project-specific values cinch never touches — ports, service
+# layout, test taxonomy. A project with enough of those is better served
+# by its own separate, schema-free file than by overloading cinch.yml.
+# There's no cinch convention format for this (by design — cinch binds
+# values, not shape): rename this file, restructure it, or delete it —
+# nothing here is enforced or read by cinch. The convention name is
+# manifest.yml, deliberately distinct from cinch.yml so the two are never
+# confused.
 #
-# Reference it from your own docs/workflow prose by hand, e.g. "run the
-# command named test-backend under development.commands in manifest.yml" —
-# cinch's {{key}} substitution never sees or resolves against this file.
+# Commands are deliberately not mirrored here: a project's Makefile is
+# already the source of truth and, self-documented (target: ## comment),
+# already answers "what can I run" on demand via 'make help' — a
+# development.commands: {test-backend: make test-backend} block would just
+# be a second, hand-maintained copy of Makefile target names, one that
+# nothing re-checks against the Makefile when a target is renamed.
+# Reference targets directly by name in your own docs/workflow prose
+# instead, e.g. "run make test-backend" — cinch's {{key}} substitution
+# never sees or resolves against this file either way.
 
 project:
   name: my-app
 services:
   backend:  { path: backend,  port: 8080 }
   frontend: { path: frontend, port: 5173 }
-development:
-  commands:
-    test-backend:  make test-backend
-    test-frontend: make test-frontend
 taxonomy:
   test_tiers:
     - { id: unit, cmd: test-backend }
@@ -130,7 +139,7 @@ func CmdInit(root string) int {
 		}
 		output.Step("wrote AGENTS.md")
 	} else {
-		output.Step("AGENTS.md already exists — add these lines if missing: %q, %q, %q", agentsContextLine, agentsWorkflowsLine, agentsIndexLine)
+		output.Step("AGENTS.md already exists — add these lines if missing: %q, %q, %q, %q", agentsContextLine, agentsWorkflowsLine, agentsIndexLine, agentsAreaGuidanceLine)
 	}
 
 	return 0

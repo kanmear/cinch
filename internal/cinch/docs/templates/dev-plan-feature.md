@@ -130,8 +130,9 @@ Wait for confirmation.
 ### 2.5 Fill in the plan file — Test Plan section
 
 Tag each row with its tier `id`; test-file locations come from `manifest.paths.tests`. Resolve
-each tier's run command via `taxonomy.test_tiers[].cmd` → `development.commands` (never hardcode
-Make targets here).
+each tier's run command from `taxonomy.test_tiers[].cmd` — the Makefile target name itself (never
+hardcode Make targets here); `development.commands` only aliases the handful of targets whose
+short name differs from the target.
 
 ```markdown
 ## Test Plan
