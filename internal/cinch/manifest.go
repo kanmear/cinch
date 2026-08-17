@@ -63,6 +63,14 @@ func loadManifestOptional(root string) (*Manifest, error) {
 	return m, m.validate(path)
 }
 
+// ManifestExists reports whether root has a manifest file, without parsing
+// or validating it — main's bare-invocation handling only needs to know
+// whether the project looks initialized.
+func ManifestExists(root string) bool {
+	_, err := os.Stat(filepath.Join(root, manifestPath))
+	return err == nil
+}
+
 // repoLocalPathKeys are the manifest keys naming a directory cinch both
 // renders into and resolves independently. render joins them onto the repo
 // root (render.go's filepath.Join) while the checks resolve them on their
