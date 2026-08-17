@@ -373,6 +373,15 @@ system — can run these commands directly. The trade-off: harnesses with
 native slash-command UX (typing `/domain`) lose that explicit affordance in
 exchange for zero duplication and agent-neutrality.
 
+The same reasoning rules out a fourth, hand-written thing: a per-project
+"which docs to read for which kind of task" list. That list follows one
+shape everywhere — an area's `architecture.md`/`conventions.md` pair for
+work in that area, an `overview.md` for judgment calls anywhere under its
+folder, everything else read when directly relevant — only the area names
+differ per project, and those are exactly what `cinch index` already
+prints. `cinch init` writes the shape once, generically, as a fourth
+`AGENTS.md` line; no consumer needs to re-derive or hand-enumerate it.
+
 `cinch.yml` binds the values templates and hooks reference — plain YAML, but
 still no schema: nesting is notation for writing dotted keys hierarchically
 (`paths: {docs: x}` and `paths.docs = x` bind the same thing), not a shape
@@ -387,10 +396,14 @@ directory `paths.docs` controls.
 
 `cinch.yml` only binds what cinch itself reads: `paths.*`, `hooks.*`,
 `commit.pattern`, `require.cinch`. Workflow-template *prose*, though, can
-reference arbitrary project-specific values cinch never touches — commands,
-ports, service layout, test taxonomy — and a project with enough of those is
+reference arbitrary project-specific values cinch never touches — ports,
+service layout, test taxonomy — and a project with enough of those is
 better served by its own separate, schema-free file than by overloading
-`cinch.yml`.
+`cinch.yml`. Commands are deliberately not one of these: a project's
+Makefile, self-documented (`target: ## comment`), already answers "what can
+I run" on demand via `make help`; mirroring target names into the manifest
+would just be a second, hand-maintained copy nothing re-checks against the
+Makefile when a target is renamed.
 There's no cinch convention format for this (by design — principle 5, cinch
 binds values, not shape), but the convention name is `manifest.yml` —
 deliberately distinct from `cinch.yml` so the two are never confused: one is
@@ -404,10 +417,10 @@ not `cinch.yml`, so cinch's renderer never sees or resolves against it.
 A shipped template can only reference `{{paths.docs}}` (an undefined `{{key}}`
 is a render error, not a blank), so any reference to this richer manifest has
 to live in project-owned prose the *reader* — human or agent — resolves by
-hand: a project's own doc saying "run the command named `test-backend` under
-`development.commands` in `manifest.yml`," for instance. This keeps the
-richer manifest entirely a project concern: no new render output, no schema
-for cinch to version or validate.
+hand: a project's own doc saying "the `unit` test tier runs `test-backend`
+under `taxonomy.test_tiers` in `manifest.yml`, i.e. `make test-backend`," for
+instance. This keeps the richer manifest entirely a project concern: no new
+render output, no schema for cinch to version or validate.
 
 Exit codes: `0` clean, `1` findings (`check`) or a render/dispatch failure,
 `2` usage error.
