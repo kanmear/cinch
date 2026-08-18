@@ -1,7 +1,10 @@
 package cinch
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -45,5 +48,65 @@ func TestForEachFencedLineKeepsLineNumbers(t *testing.T) {
 	want := []int{1, 2, 7}
 	if !reflect.DeepEqual(lines, want) {
 		t.Fatalf("line numbers = %v, want %v", lines, want)
+	}
+}
+
+// unreadableTree returns a temp dir whose sub/ subtree is unreadable,
+// skipping the test when running as root (permission checks are void).
+func unreadableTree(t *testing.T) string {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("running as root; permission checks are void")
+	}
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "a.md"), []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(sub, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(sub, 0o755) })
+	return dir
+}
+
+func TestCollectMarkdownPropagatesWalkError(t *testing.T) {
+	root := unreadableTree(t)
+	var got []string
+	_, err := collectMarkdown(root, func(path string) ([]string, error) {
+		got = append(got, path)
+		return nil, nil
+	})
+	if err == nil {
+		t.Fatal("collectMarkdown = nil error, want error for unreadable subdirectory")
+	}
+	if !strings.Contains(err.Error(), "sub") {
+		t.Fatalf("error %q does not mention the unreadable subdirectory", err)
+	}
+	for _, p := range got {
+		if strings.Contains(p, "sub") {
+			t.Fatalf("walk visited %q under the failed subdirectory", p)
+		}
+	}
+}
+
+func TestCollectMarkdownReadError(t *testing.T) {
+	root := t.TempDir()
+	broken := filepath.Join(root, "broken.md")
+	if err := os.Symlink(filepath.Join(root, "missing.md"), broken); err != nil {
+		t.Fatal(err)
+	}
+	_, err := collectMarkdown(root, func(path string) ([]string, error) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		return []string{string(data)}, nil
+	})
+	if err == nil {
+		t.Fatal("collectMarkdown = nil error, want error for unreadable file")
 	}
 }

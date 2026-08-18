@@ -22,6 +22,15 @@ type checkResult struct {
 	NoOp     string
 }
 
+// scanErrorFinding reports a walk or read failure so I/O errors surface as a
+// finding instead of a clean bill of health.
+func scanErrorFinding(check, scope string, err error) []Finding {
+	return []Finding{{
+		Check: check, Level: "error", File: scope, Line: 1,
+		Message: "failed to scan: " + err.Error(),
+	}}
+}
+
 func CmdCheck(msgFile string) int {
 	return runChecks(msgFile, true)
 }

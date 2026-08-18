@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"cinch/internal/output"
 )
 
 var (
@@ -84,30 +86,25 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 	return items
 }
 
-func parseRuleDoc(path string) []ruleItem {
+func parseRuleDoc(path string) ([]ruleItem, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return parseRuleItems(path, data)
+	return parseRuleItems(path, data), nil
 }
 
-func scanRuleDocs(root string) []ruleItem {
-	var items []ruleItem
-	_ = walkMarkdownFiles(root, func(path string) error {
-		items = append(items, parseRuleDoc(path)...)
-		return nil
-	})
-	return items
+func scanRuleDocs(root string) ([]ruleItem, error) {
+	return collectMarkdown(root, parseRuleDoc)
 }
 
-func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
+func scanRuleMarkers(repoRoot, docsDir string) (map[string][]markerLoc, error) {
 	markers := map[string][]markerLoc{}
 	const maxSize = 4 << 20
 
-	_ = filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if d.IsDir() {
 			switch d.Name() {
@@ -120,28 +117,43 @@ func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
 			return nil
 		}
 		info, err := d.Info()
-		if err != nil || info.Size() > maxSize {
+		if err != nil {
+			return err
+		}
+		if info.Size() > maxSize {
 			return nil
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return err
 		}
-		_ = forEachFencedLine(data, func(lineNo int, line string) {
+		return forEachFencedLine(data, func(lineNo int, line string) {
 			if m := markerRe.FindStringSubmatch(line); m != nil {
 				markers[m[1]] = append(markers[m[1]], markerLoc{File: path, Line: lineNo})
 			}
 		})
-		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return markers
+	return markers, nil
 }
 
 func checkRules(docsDir, repoRoot string) []Finding {
-	items := scanRuleDocs(docsDir)
-	markers := scanRuleMarkers(repoRoot, docsDir)
+	items, err := scanRuleDocs(docsDir)
+	if err != nil {
+		return scanErrorFinding("rules", docsDir, err)
+	}
+	markers, err := scanRuleMarkers(repoRoot, docsDir)
+	if err != nil {
+		return append(scanErrorFinding("rules", repoRoot, err), checkRulesFrom(items, nil)...)
+	}
 
+	return checkRulesFrom(items, markers)
+}
+
+func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) []Finding {
 	var findings []Finding
 
 	for _, item := range items {
@@ -184,7 +196,10 @@ func checkRules(docsDir, repoRoot string) []Finding {
 }
 
 func CmdIgnores(docsDir string) int {
-	items := scanRuleDocs(docsDir)
+	items, err := scanRuleDocs(docsDir)
+	if err != nil {
+		return output.Fail("ignores", err)
+	}
 	var ignored []ruleItem
 	for _, item := range items {
 		if item.HasIgnore {
