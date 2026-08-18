@@ -8,7 +8,7 @@ func titleAndTrigger(body string) (title, trigger string) {
 	titleIdx := -1
 	for i, l := range lines {
 		if t, ok := strings.CutPrefix(l, "# "); ok {
-			title = t
+			title = strings.TrimSpace(t)
 			titleIdx = i
 			break
 		}
