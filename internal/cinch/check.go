@@ -37,14 +37,14 @@ type Finding struct {
 }
 
 func CmdCheck(msgFile string) int {
-	return runChecks(msgFile, true, false)
+	return runChecks(msgFile, true)
 }
 
 func hooksCheck(msgFile string) int {
-	return runChecks(msgFile, false, true)
+	return runChecks(msgFile, false)
 }
 
-func runChecks(msgFile string, includeIdentity, staged bool) int {
+func runChecks(msgFile string, includeIdentity bool) int {
 	docsRoot, err := ResolveDocsRoot(".")
 	if err != nil {
 		return output.Fail("check", err)
@@ -59,13 +59,6 @@ func runChecks(msgFile string, includeIdentity, staged bool) int {
 	rulesFindings := checkRules(docsRoot, ".")
 	findings = append(findings, rulesFindings...)
 	output.CheckStatus("rules", len(rulesFindings), "")
-
-	coupling := checkCoupling(docsRoot, ".", msgFile, staged)
-	findings = append(findings, coupling.Findings...)
-	output.CheckStatus("coupling", len(coupling.Findings), coupling.NoOp)
-	for _, s := range coupling.Suppressed {
-		output.Skip("check", "coupling", s)
-	}
 
 	if includeIdentity {
 		identity := checkIdentity(docsRoot, ".")
