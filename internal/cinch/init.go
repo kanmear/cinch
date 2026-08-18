@@ -104,18 +104,6 @@ func CmdInit(root string) int {
 		return output.Fail("init", err)
 	}
 
-	plansDir := filepath.Join(root, docsPathValue(m), "plans")
-	if err := os.MkdirAll(plansDir, 0o755); err != nil {
-		return output.Fail("init", err)
-	}
-	gitkeep := filepath.Join(plansDir, ".gitkeep")
-	if _, err := os.Stat(gitkeep); os.IsNotExist(err) {
-		if err := os.WriteFile(gitkeep, nil, 0o644); err != nil {
-			return output.Fail("init", err)
-		}
-	}
-	output.Step("ensured %s", plansDir)
-
 	if code := CmdRender(root); code != 0 {
 		return code
 	}
