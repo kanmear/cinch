@@ -2,8 +2,7 @@
 
 Update `{{paths.docs}}/` documentation to reflect recent code changes.
 - **Note:** `cinch index` reflects the doc structure live — nothing to regenerate or stage when a
-  doc is added, removed, renamed, or retitled. AGENTS.md itself only changes when a top-level
-  reading-guide entry point changes.
+  doc is added, removed, renamed, or retitled.
 
 Read [Doc Philosophy](docs-philosophy.md) before proceeding — it defines what to document and what to skip.
 
@@ -130,10 +129,6 @@ Create a new file when:
 
 Place new docs alongside existing similar docs — run `cinch index` for this project's
 current layout and naming conventions before creating a new file.
-
-**Update AGENTS.md only when** a top-level reading-guide entry point changes (a new high-level doc
-category / new top-level concern) — not for every new file. Individual files are covered by
-`cinch index`, not by AGENTS.md.
 
 ### 5. Update docs strategically
 
