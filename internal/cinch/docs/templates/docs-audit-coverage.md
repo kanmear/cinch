@@ -69,9 +69,8 @@ for `// cinch:rule <ID>` — plus the closure's report are the recorded answer. 
 marked test and restate its rule's text and the test's assertions side by side, and flag any
 tension *before* deciding. A disagreement is a conflict, not a doubt:
 
-- the marked test's assertions contradict the rule's text → **TENSION** — report it; a rule
-  whose text changed without its marker file is also named by the checker's coupling warn, and
-  the content question — does the marker's test enforce the rule's *new* meaning? — is yours
+- the marked test's assertions contradict the rule's text → **TENSION** — report it; the content
+  question — does the marker's test enforce the rule's *new* meaning? — is yours
 - a rule you derived as enforced by a test that carries no marker above it → the marker is
   missing or misplaced — the rules check warns on every unmarked rule, so search the tree for
   `// cinch:rule <ID>` first and judge the marker's placement and its test's quality

@@ -19,7 +19,7 @@ Apply the admission test (docs-philosophy, The Admission Test) to every existing
 - Any content an agent could recover by reading the source is **removed — not trimmed, not refreshed**.
   Deletion is the fix, and the corpus must only shrink here.
 - What survives: business rules in `{{paths.docs}}/` (the non-derivable residue, IDed and guarded by the
-  rule-ID closure and the change-coupling warning) and generated workflows (cinch-owned).
+  rule-ID closure) and generated workflows (cinch-owned).
 - After pruning, re-run `cinch check` — deletion must leave the corpus green, not just smaller.
 
 ### 3. Audit each doc file
