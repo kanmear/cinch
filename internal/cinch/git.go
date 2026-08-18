@@ -3,14 +3,33 @@ package cinch
 import (
 	"bufio"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
-func isGitRepo(root string) bool {
-	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
+// gitCmd returns a git command run in root's working directory.
+func gitCmd(root string, args ...string) *exec.Cmd {
+	cmd := exec.Command("git", args...)
 	cmd.Dir = root
-	out, err := cmd.Output()
+	return cmd
+}
+
+// gitRun runs git and returns its exit status.
+func gitRun(root string, args ...string) error {
+	return gitCmd(root, args...).Run()
+}
+
+// gitOutput runs git and returns its stdout.
+func gitOutput(root string, args ...string) ([]byte, error) {
+	return gitCmd(root, args...).Output()
+}
+
+// gitCombinedOutput runs git and returns its combined stdout/stderr.
+func gitCombinedOutput(root string, args ...string) ([]byte, error) {
+	return gitCmd(root, args...).CombinedOutput()
+}
+
+func isGitRepo(root string) bool {
+	out, err := gitOutput(root, "rev-parse", "--is-inside-work-tree")
 	return err == nil && strings.TrimSpace(string(out)) == "true"
 }
 
@@ -19,15 +38,11 @@ func IsGitRepo(root string) bool {
 }
 
 func hasHead(root string) bool {
-	cmd := exec.Command("git", "rev-parse", "--verify", "-q", "HEAD")
-	cmd.Dir = root
-	return cmd.Run() == nil
+	return gitRun(root, "rev-parse", "--verify", "-q", "HEAD") == nil
 }
 
 func gitOutputLines(root string, args ...string) ([]string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = root
-	out, err := cmd.Output()
+	out, err := gitOutput(root, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,21 +57,9 @@ func gitOutputLines(root string, args ...string) ([]string, error) {
 }
 
 func gitShow(root, spec string) (content []byte, ok bool) {
-	cmd := exec.Command("git", "show", spec)
-	cmd.Dir = root
-	out, err := cmd.Output()
+	out, err := gitOutput(root, "show", spec)
 	if err != nil {
 		return nil, false
 	}
 	return out, true
-}
-
-// relTo returns path relative to base (best-effort: git's own output is
-// always repo-relative, but filesystem walks may produce absolute paths).
-func relTo(base, path string) string {
-	rel, err := filepath.Rel(base, path)
-	if err != nil {
-		return path
-	}
-	return rel
 }

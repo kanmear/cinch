@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -45,6 +44,31 @@ func loadManifestOptional(root string) (*Manifest, error) {
 func ManifestExists(root string) bool {
 	_, err := os.Stat(filepath.Join(root, manifestPath))
 	return err == nil
+}
+
+// manifestVar returns the value of key in m, or def if unset or empty.
+func manifestVar(m *Manifest, key, def string) string {
+	if m != nil {
+		if v, ok := m.Vars[key]; ok && v != "" {
+			return v
+		}
+	}
+	return def
+}
+
+// manifestSetting returns the non-empty value of key from the optional
+// manifest at root. ok is false when the manifest is absent or the key is
+// unset; err is non-nil only when the manifest exists but is malformed.
+func manifestSetting(root, key string) (val string, ok bool, err error) {
+	m, err := loadManifestOptional(root)
+	if err != nil || m == nil {
+		return "", false, err
+	}
+	v, present := m.Vars[key]
+	if !present || v == "" {
+		return "", false, nil
+	}
+	return v, true, nil
 }
 
 var repoLocalPathKeys = []string{pathsDocsKey, pathsHooksKey}
@@ -172,14 +196,5 @@ func (m *Manifest) Names(prefix string) []string {
 		seen[name] = true
 		out = append(out, name)
 	}
-	return out
-}
-
-func sortedKeys(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
 	return out
 }

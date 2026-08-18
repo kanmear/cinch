@@ -10,27 +10,18 @@ var Version = "dev"
 
 const requireCinchKey = "require.cinch"
 
-type pinResult struct {
-	Findings []Finding
-	NoOp     string
-}
-
-func checkPin(root, version string) pinResult {
-	m, err := loadManifestOptional(root)
-	if err != nil || m == nil {
-		return pinResult{NoOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
-	}
-	want, ok := m.Vars[requireCinchKey]
-	if !ok || want == "" {
-		return pinResult{NoOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
+func checkPin(root, version string) checkResult {
+	want, ok, _ := manifestSetting(root, requireCinchKey)
+	if !ok {
+		return checkResult{NoOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
 	}
 	if version == "dev" {
-		return pinResult{NoOp: "binary is an unreleased (dev) build — require.cinch is not checked"}
+		return checkResult{NoOp: "binary is an unreleased (dev) build — require.cinch is not checked"}
 	}
 	if semverEqual(version, want) {
-		return pinResult{}
+		return checkResult{}
 	}
-	return pinResult{Findings: []Finding{{
+	return checkResult{Findings: []Finding{{
 		Check: "core", Level: "error", File: manifestPath, Line: 1,
 		Message: fmt.Sprintf("installed cinch %s does not match require.cinch %s — reinstall and re-run cinch render", version, want),
 	}}}

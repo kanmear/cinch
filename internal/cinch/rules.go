@@ -1,8 +1,6 @@
 package cinch
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,11 +32,19 @@ type markerLoc struct {
 	Line int
 }
 
+// ruleItemIDs returns the set of rule IDs present in items.
+func ruleItemIDs(items []ruleItem) map[string]bool {
+	ids := make(map[string]bool, len(items))
+	for _, item := range items {
+		ids[item.ID] = true
+	}
+	return ids
+}
+
 func parseRuleItems(file string, content []byte) []ruleItem {
 	var items []ruleItem
 	var cur *ruleItem
 	var textLines []string
-	inFence := false
 
 	flush := func() {
 		if cur == nil {
@@ -50,32 +56,19 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		textLines = nil
 	}
 
-	lineNo := 0
-	scanner := bufio.NewScanner(bytes.NewReader(content))
-	for scanner.Scan() {
-		lineNo++
-		line := scanner.Text()
-
-		if fenceRe.MatchString(line) {
-			inFence = !inFence
-			continue
-		}
-		if inFence {
-			continue
-		}
-
+	_ = forEachFencedLine(content, func(lineNo int, line string) {
 		if m := ruleItemRe.FindStringSubmatch(line); m != nil {
 			flush()
 			cur = &ruleItem{ID: m[1], File: file, Line: lineNo}
 			textLines = []string{line}
-			continue
+			return
 		}
 		if anyItemRe.MatchString(line) {
 			flush()
-			continue
+			return
 		}
 		if cur == nil {
-			continue
+			return
 		}
 		textLines = append(textLines, line)
 		if !cur.HasIgnore {
@@ -85,7 +78,7 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 				cur.IgnoreLine = lineNo
 			}
 		}
-	}
+	})
 	flush()
 
 	return items
@@ -101,13 +94,7 @@ func parseRuleDoc(path string) []ruleItem {
 
 func scanRuleDocs(root string) []ruleItem {
 	var items []ruleItem
-	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return nil
-		}
+	_ = walkMarkdownFiles(root, func(path string) error {
 		items = append(items, parseRuleDoc(path)...)
 		return nil
 	})
@@ -140,23 +127,11 @@ func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
 		if err != nil {
 			return nil
 		}
-		lineNo := 0
-		inFence := false
-		scanner := bufio.NewScanner(bytes.NewReader(data))
-		for scanner.Scan() {
-			lineNo++
-			line := scanner.Text()
-			if fenceRe.MatchString(line) {
-				inFence = !inFence
-				continue
-			}
-			if inFence {
-				continue
-			}
+		_ = forEachFencedLine(data, func(lineNo int, line string) {
 			if m := markerRe.FindStringSubmatch(line); m != nil {
 				markers[m[1]] = append(markers[m[1]], markerLoc{File: path, Line: lineNo})
 			}
-		}
+		})
 		return nil
 	})
 
@@ -192,10 +167,7 @@ func checkRules(docsDir, repoRoot string) []Finding {
 		}
 	}
 
-	ruleIDs := map[string]bool{}
-	for _, item := range items {
-		ruleIDs[item.ID] = true
-	}
+	ruleIDs := ruleItemIDs(items)
 	for id, locs := range markers {
 		if ruleIDs[id] {
 			continue
