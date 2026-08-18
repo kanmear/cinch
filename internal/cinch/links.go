@@ -35,7 +35,7 @@ func checkLinksInFile(path string) []Finding {
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var findings []Finding
 	inFence := false
@@ -75,6 +75,16 @@ func checkLinksInFile(path string) []Finding {
 				})
 			}
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		findings = append(findings, Finding{
+			Check:   "links",
+			Level:   "error",
+			File:    path,
+			Line:    lineNo,
+			Message: "failed to scan file: " + err.Error(),
+		})
 	}
 
 	return findings
