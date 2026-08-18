@@ -76,10 +76,7 @@ func cmdHookPostCommit(root string) int {
 	if err != nil {
 		return output.Fail("hook", err)
 	}
-	ok := true
-	if m != nil && !dispatchHooks(root, m, "post-commit", committed) {
-		ok = false
-	}
+	ok := m == nil || dispatchHooks(root, m, "post-commit", committed)
 
 	if !ok {
 		return 1
