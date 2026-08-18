@@ -6,20 +6,15 @@ import (
 	"sort"
 )
 
-type generatedResult struct {
-	Findings []Finding
-	NoOp     string
-}
-
-func checkGenerated(root string) generatedResult {
+func checkGenerated(root string) checkResult {
 	m, err := loadManifestOptional(root)
 	if err != nil || m == nil {
-		return generatedResult{NoOp: "cinch render has not run — nothing to verify"}
+		return checkResult{NoOp: "cinch render has not run — nothing to verify"}
 	}
 
 	files, err := renderAll(m)
 	if err != nil {
-		return generatedResult{Findings: []Finding{{
+		return checkResult{Findings: []Finding{{
 			Check: "generated", Level: "error", File: manifestPath, Line: 1,
 			Message: err.Error() + " — cinch render fails here, so no generated output can be verified",
 		}}}
@@ -33,7 +28,7 @@ func checkGenerated(root string) generatedResult {
 		}
 	}
 	if !rendered {
-		return generatedResult{NoOp: "cinch render has not run — nothing to verify"}
+		return checkResult{NoOp: "cinch render has not run — nothing to verify"}
 	}
 
 	expected := map[string]bool{}
@@ -84,10 +79,7 @@ func checkGenerated(root string) generatedResult {
 			if err != nil || !hasGeneratedHeader(string(data)) {
 				continue
 			}
-			rel, err := filepath.Rel(root, p)
-			if err != nil {
-				rel = p
-			}
+			rel := relTo(root, p)
 			findings = append(findings, Finding{
 				Check: "generated", Level: "error", File: rel, Line: 1,
 				Message: "orphaned generated file, no longer produced by cinch render — delete it (cinch render never removes files)",
@@ -96,5 +88,5 @@ func checkGenerated(root string) generatedResult {
 	}
 
 	sort.Slice(findings, func(i, j int) bool { return findings[i].File < findings[j].File })
-	return generatedResult{Findings: findings}
+	return checkResult{Findings: findings}
 }

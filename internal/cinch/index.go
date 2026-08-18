@@ -2,7 +2,6 @@ package cinch
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,18 +17,8 @@ func indexList(docsRoot string) (string, error) {
 	}
 	var entries []entry
 
-	walkErr := filepath.WalkDir(docsRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return nil
-		}
-		rel, err := filepath.Rel(docsRoot, path)
-		if err != nil {
-			return nil
-		}
-		rel = filepath.ToSlash(rel)
+	_ = walkMarkdownFiles(docsRoot, func(path string) error {
+		rel := filepath.ToSlash(relTo(docsRoot, path))
 		if strings.HasPrefix(rel, "plans/") {
 			return nil
 		}
@@ -44,9 +33,7 @@ func indexList(docsRoot string) (string, error) {
 		entries = append(entries, entry{rel: rel, title: title})
 		return nil
 	})
-	if walkErr != nil {
-		return "", walkErr
-	}
+
 	if len(entries) == 0 {
 		return "", fmt.Errorf("cinch render has not run — nothing to show")
 	}

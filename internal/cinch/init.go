@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -52,9 +51,7 @@ func CmdInit(root string) int {
 
 	if isGitRepo(root) {
 		hooksDir := hooksPathValue(m)
-		cmd := exec.Command("git", "config", "core.hooksPath", hooksDir)
-		cmd.Dir = root
-		if out, err := cmd.CombinedOutput(); err != nil {
+		if out, err := gitCombinedOutput(root, "config", "core.hooksPath", hooksDir); err != nil {
 			return output.Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
 		output.Step("activated hooks: core.hooksPath = %s", hooksDir)

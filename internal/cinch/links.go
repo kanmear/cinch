@@ -1,58 +1,33 @@
 package cinch
 
 import (
-	"bufio"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
 
-var (
-	mdLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
-	fenceRe  = regexp.MustCompile("^\\s*```")
-)
+var mdLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 
 func checkLinks(root string) []Finding {
 	var findings []Finding
-
-	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return nil
-		}
+	_ = walkMarkdownFiles(root, func(path string) error {
 		findings = append(findings, checkLinksInFile(path)...)
 		return nil
 	})
-
 	return findings
 }
 
 func checkLinksInFile(path string) []Finding {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
-	defer func() { _ = f.Close() }()
 
 	var findings []Finding
-	inFence := false
 	lineNo := 0
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lineNo++
-		line := scanner.Text()
-		if fenceRe.MatchString(line) {
-			inFence = !inFence
-			continue
-		}
-		if inFence {
-			continue
-		}
-
+	scanErr := forEachFencedLine(data, func(n int, line string) {
+		lineNo = n
 		for _, m := range mdLinkRe.FindAllStringSubmatch(line, -1) {
 			target := strings.TrimSpace(m[1])
 			if linkTargetIsExempt(target) {
@@ -75,15 +50,14 @@ func checkLinksInFile(path string) []Finding {
 				})
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
+	})
+	if scanErr != nil {
 		findings = append(findings, Finding{
 			Check:   "links",
 			Level:   "error",
 			File:    path,
 			Line:    lineNo,
-			Message: "failed to scan file: " + err.Error(),
+			Message: "failed to scan file: " + scanErr.Error(),
 		})
 	}
 

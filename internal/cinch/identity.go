@@ -1,55 +1,49 @@
 package cinch
 
 import (
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
 
-type identityResult struct {
-	Findings []Finding
-	NoOp     string
-}
-
-func checkIdentity(docsDir, repoRoot string) identityResult {
+func checkIdentity(docsDir, repoRoot string) checkResult {
 	if !isGitRepo(repoRoot) {
-		return identityResult{NoOp: "not a git repository"}
+		return checkResult{NoOp: "not a git repository"}
 	}
 	if !hasHead(repoRoot) {
-		return identityResult{NoOp: "no commits yet"}
+		return checkResult{NoOp: "no commits yet"}
 	}
 	if !hasParent(repoRoot) {
-		return identityResult{NoOp: "only one commit; no HEAD^ to compare"}
+		return checkResult{NoOp: "only one commit; no HEAD^ to compare"}
 	}
 
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
-		return identityResult{NoOp: "could not resolve repo root"}
+		return checkResult{NoOp: "could not resolve repo root"}
 	}
 	absDocs, err := filepath.Abs(docsDir)
 	if err != nil {
-		return identityResult{NoOp: "could not resolve paths.docs"}
+		return checkResult{NoOp: "could not resolve paths.docs"}
 	}
 	docsDir, repoRoot = absDocs, absRoot
 
 	tombstone, err := tombstonePattern(repoRoot)
 	if err != nil {
-		return identityResult{Findings: []Finding{{
+		return checkResult{Findings: []Finding{{
 			Check: "identity", Level: "error", File: manifestPath, Line: 1,
 			Message: "rules.tombstone is not a valid regexp: " + err.Error(),
 		}}}
 	}
 	if tombstone == nil {
-		return identityResult{NoOp: "rules.tombstone is not set in cinch.yml — opt-in, not configured"}
+		return checkResult{NoOp: "rules.tombstone is not set in cinch.yml — opt-in, not configured"}
 	}
 
 	paths, err := gitOutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", relTo(repoRoot, docsDir))
 	if err != nil {
-		return identityResult{NoOp: "git ls-tree failed"}
+		return checkResult{NoOp: "git ls-tree failed"}
 	}
 
-	var result identityResult
+	var result checkResult
 
 	for _, path := range paths {
 		if !strings.HasSuffix(path, ".md") {
@@ -63,11 +57,9 @@ func checkIdentity(docsDir, repoRoot string) identityResult {
 		parentItems := parseRuleItems(path, parentContent)
 
 		headContent, headOK := gitShow(repoRoot, "HEAD:"+path)
-		headIDs := map[string]bool{}
+		var headIDs map[string]bool
 		if headOK {
-			for _, item := range parseRuleItems(path, headContent) {
-				headIDs[item.ID] = true
-			}
+			headIDs = ruleItemIDs(parseRuleItems(path, headContent))
 		}
 
 		for _, item := range parentItems {
@@ -88,18 +80,12 @@ func checkIdentity(docsDir, repoRoot string) identityResult {
 }
 
 func hasParent(root string) bool {
-	cmd := exec.Command("git", "rev-parse", "--verify", "-q", "HEAD^")
-	cmd.Dir = root
-	return cmd.Run() == nil
+	return gitRun(root, "rev-parse", "--verify", "-q", "HEAD^") == nil
 }
 
 func tombstonePattern(root string) (*regexp.Regexp, error) {
-	m, err := loadManifestOptional(root)
-	if err != nil || m == nil {
-		return nil, nil
-	}
-	pattern, ok := m.Vars["rules.tombstone"]
-	if !ok || pattern == "" {
+	pattern, ok, _ := manifestSetting(root, "rules.tombstone")
+	if !ok {
 		return nil, nil
 	}
 	return regexp.Compile(pattern)

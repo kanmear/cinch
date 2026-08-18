@@ -2,31 +2,10 @@ package cinch
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
 
 	"cinch/internal/output"
 )
-
-const pathsDocsKey = "paths.docs"
-const defaultDocsPath = ".docs"
-
-func docsPathValue(m *Manifest) string {
-	if m != nil {
-		if v, ok := m.Vars[pathsDocsKey]; ok && v != "" {
-			return v
-		}
-	}
-	return defaultDocsPath
-}
-
-func ResolveDocsRoot(root string) (string, error) {
-	m, err := loadManifestOptional(root)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, docsPathValue(m)), nil
-}
 
 type Finding struct {
 	Check   string
@@ -34,6 +13,13 @@ type Finding struct {
 	File    string
 	Line    int
 	Message string
+}
+
+// checkResult is the outcome of a single check: findings to report, or a
+// NoOp reason why the check was skipped.
+type checkResult struct {
+	Findings []Finding
+	NoOp     string
 }
 
 func CmdCheck(msgFile string) int {
