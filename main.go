@@ -40,9 +40,6 @@ usage:
                           cinch.yml, plus git hook shims under
                           paths.hooks (default .githooks/). Idempotent — a
                           re-render diff proves tampering.
-  cinch move-docs NEW-PATH
-                          move the docs root: git mv, rewrite cinch.yml's
-                          paths.docs, re-render — one atomic operation.
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
                           (pre-commit, commit-msg). Runs cinch check, then
                           any hooks.EVENT.* entries from cinch.yml whose
@@ -50,10 +47,6 @@ usage:
   cinch workflows         compute and print the workflow trigger table.
   cinch workflow NAME     print one rendered workflow's full content.
   cinch index             compute and print every doc's path and title.
-  cinch context           compute and print what a session needs to
-                          re-orient: branch, plans in flight and their
-                          status, the workflow trigger table, staged paths.
-                          Not a check — reports state, never a verdict.
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -69,7 +62,7 @@ run 'cinch help' for the full command list.
 
 // commands is every subcommand cinch recognizes, in usage order — shared
 // between the dispatch switch below and the unknown-command suggestion.
-var commands = []string{"help", "version", "init", "check", "ignores", "render", "move-docs", "hook", "workflows", "workflow", "index", "context"}
+var commands = []string{"help", "version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
 
 func main() {
 	impl.Version = Version
@@ -120,11 +113,6 @@ func main() {
 			os.Exit(output.UsageErr("render: takes no arguments"))
 		}
 		os.Exit(impl.CmdRender("."))
-	case "move-docs":
-		if len(os.Args) != 3 {
-			os.Exit(output.UsageErr("move-docs: requires exactly one NEW-PATH argument"))
-		}
-		os.Exit(impl.CmdMoveDocs(".", os.Args[2]))
 	case "hook":
 		if len(os.Args) < 3 {
 			os.Exit(output.UsageErr("hook: requires an event argument"))
@@ -145,11 +133,6 @@ func main() {
 			os.Exit(output.UsageErr("index: takes no arguments"))
 		}
 		os.Exit(impl.CmdIndex("."))
-	case "context":
-		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("context: takes no arguments"))
-		}
-		os.Exit(impl.CmdContext("."))
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
