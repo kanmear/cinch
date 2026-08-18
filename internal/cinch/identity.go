@@ -19,7 +19,9 @@ type identityResult struct {
 // no recognized tombstone in its place. Direction: doc-upstream — a rule
 // doc's own convention (append-only, tombstoned in place when retired) is
 // the spec; this checks the doc still conforms to it across the most recent
-// commit.
+// commit. Opt-in: absent rules.tombstone, the check no-ops rather than
+// assuming a convention it was never told — a project that hasn't declared
+// how it tombstones can't have that declaration checked.
 //
 // This is a transition check like coupling, but one step further back: HEAD^
 // vs HEAD rather than the working tree vs HEAD. coupling's window goes dark
@@ -54,6 +56,9 @@ func checkIdentity(docsDir, repoRoot string) identityResult {
 			Message: "rules.tombstone is not a valid regexp: " + err.Error(),
 		}}}
 	}
+	if tombstone == nil {
+		return identityResult{NoOp: "rules.tombstone is not set in cinch.yml — opt-in, not configured"}
+	}
 
 	paths, err := gitOutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", relTo(repoRoot, docsDir))
 	if err != nil {
@@ -85,7 +90,7 @@ func checkIdentity(docsDir, repoRoot string) identityResult {
 			if headIDs[item.ID] {
 				continue
 			}
-			if headOK && tombstone != nil && idIsTombstoned(tombstone, headContent, item.ID) {
+			if headOK && idIsTombstoned(tombstone, headContent, item.ID) {
 				continue
 			}
 			result.Findings = append(result.Findings, Finding{
@@ -105,9 +110,9 @@ func hasParent(root string) bool {
 }
 
 // tombstonePattern reads the optional rules.tombstone manifest key. A nil,
-// nil-error return means no tombstone convention is recognized, so any ID
-// disappearance is a finding — the same stricter-default contract absent
-// commit.pattern has.
+// nil-error return means the key is absent — checkIdentity no-ops in that
+// case, the same opt-in-only contract absent commit.pattern and
+// require.cinch already have.
 func tombstonePattern(root string) (*regexp.Regexp, error) {
 	m, err := loadManifestOptional(root)
 	if err != nil || m == nil {
