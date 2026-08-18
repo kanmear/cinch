@@ -2,8 +2,15 @@
 
 Status: **spec.** This file is the memory of what survived contact with
 evidence. Everything else the previous cinch built or believed was deleted on
-2026-08-07; git history is the archive. A rebuild session reads this
-file and nothing else about the old design — the old design is the history.
+2026-08-07; git history is the archive. The rule a rebuild session actually
+follows is narrower than "read nothing else about the old design": the old
+design is never reloaded as *present-tense design authority* for what
+cinch's core should do next — this file alone carries that authority. Its
+history remains available and citable as evidence (`cinch-v0/records/pi-audits/`,
+`decisions.jsonl`), and a demoted, harness-level use of its semantic layer —
+`project_deltadocs` still runs the old design's auditor apparatus
+essentially unchanged — is fine. What's excluded is the old design's
+opinions about what cinch's core should be, not its record of what happened.
 
 ## The failure mode
 
