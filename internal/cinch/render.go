@@ -78,6 +78,20 @@ type renderFile struct {
 	Style  fileStyle
 }
 
+func substitutionVars(m *Manifest) map[string]string {
+	vars := map[string]string{}
+	if m == nil {
+		return vars
+	}
+	for k, v := range m.Vars {
+		vars[k] = v
+	}
+	for k, v := range m.Lists {
+		vars[k] = strings.Join(v, ", ")
+	}
+	return vars
+}
+
 func renderAll(m *Manifest) ([]renderFile, error) {
 	entries, err := fs.ReadDir(templatesFS, templatesDir)
 	if err != nil {
@@ -88,12 +102,7 @@ func renderAll(m *Manifest) ([]renderFile, error) {
 	workflowsDir := docsRoot + "/" + workflowsSubdir
 	hooksDir := hooksPathValue(m)
 
-	vars := map[string]string{}
-	if m != nil {
-		for k, v := range m.Vars {
-			vars[k] = v
-		}
-	}
+	vars := substitutionVars(m)
 	vars[pathsDocsKey] = docsRoot
 
 	var files []renderFile
