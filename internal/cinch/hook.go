@@ -28,7 +28,7 @@ func cmdHookPreCommit(root string) int {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
-	ok := CmdCheck("") == 0
+	ok := hooksCheck("") == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
@@ -50,7 +50,7 @@ func cmdHookCommitMsg(root string, args []string) int {
 	}
 	msgFile := args[0]
 
-	ok := CmdCheck(msgFile) == 0
+	ok := hooksCheck(msgFile) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {

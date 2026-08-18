@@ -17,7 +17,7 @@ type couplingResult struct {
 	Suppressed []string
 }
 
-func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
+func checkCoupling(docsDir, repoRoot, msgFile string, staged bool) couplingResult {
 	if !isGitRepo(repoRoot) {
 		return couplingResult{NoOp: "not a git repository"}
 	}
@@ -35,11 +35,14 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 	}
 	docsDir, repoRoot = absDocs, absRoot
 
-	changed, err := gitChangedFiles(repoRoot)
+	changed, err := gitChangedFiles(repoRoot, staged)
 	if err != nil {
 		return couplingResult{NoOp: "git diff failed"}
 	}
 	if len(changed) == 0 {
+		if staged {
+			return couplingResult{NoOp: "nothing staged to compare"}
+		}
 		return couplingResult{NoOp: "working tree matches HEAD, nothing to compare"}
 	}
 	changedSet := map[string]bool{}
@@ -66,7 +69,18 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 			headByID[item.ID] = item.Text
 		}
 
-		for _, wi := range parseRuleDoc(path) {
+		var workItems []ruleItem
+		if staged {
+			indexContent, ok := gitShow(repoRoot, ":"+relTo(repoRoot, path))
+			if !ok {
+				return nil
+			}
+			workItems = parseRuleItems(path, indexContent)
+		} else {
+			workItems = parseRuleDoc(path)
+		}
+
+		for _, wi := range workItems {
 			headText, existed := headByID[wi.ID]
 			if !existed || headText == wi.Text {
 				continue
@@ -148,7 +162,10 @@ func hasHead(root string) bool {
 	return cmd.Run() == nil
 }
 
-func gitChangedFiles(root string) ([]string, error) {
+func gitChangedFiles(root string, staged bool) ([]string, error) {
+	if staged {
+		return gitOutputLines(root, "diff", "--cached", "--name-only")
+	}
 	tracked, err := gitOutputLines(root, "diff", "HEAD", "--name-only")
 	if err != nil {
 		return nil, err
