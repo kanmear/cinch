@@ -1,0 +1,27 @@
+package cinch
+
+import "testing"
+
+func TestSemverEqual(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"1.2.3", "1.2.3", true},
+		{"1.2.3", "1.2.4", false},
+		{"1.2.3", "2.0.0", false},
+		{"1.2", "1.2.0", true},
+		{"1", "1.0.0", true},
+		{"1.2.3.4", "1.2.3.4", true},
+		{"1.2.3-dev", "1.2.3-dev", true},
+		{"1.2.3-dev", "1.2.3", false},
+		{"dev", "dev", true},
+		{"dev", "1.0.0", false},
+		{"", "", true},
+	}
+	for _, tc := range cases {
+		if got := semverEqual(tc.a, tc.b); got != tc.want {
+			t.Fatalf("semverEqual(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
