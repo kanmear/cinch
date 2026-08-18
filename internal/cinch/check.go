@@ -37,6 +37,14 @@ type Finding struct {
 }
 
 func CmdCheck(msgFile string) int {
+	return runChecks(msgFile, true, false)
+}
+
+func hooksCheck(msgFile string) int {
+	return runChecks(msgFile, false, true)
+}
+
+func runChecks(msgFile string, includeIdentity, staged bool) int {
 	docsRoot, err := ResolveDocsRoot(".")
 	if err != nil {
 		return output.Fail("check", err)
@@ -52,16 +60,20 @@ func CmdCheck(msgFile string) int {
 	findings = append(findings, rulesFindings...)
 	output.CheckStatus("rules", len(rulesFindings), "")
 
-	coupling := checkCoupling(docsRoot, ".", msgFile)
+	coupling := checkCoupling(docsRoot, ".", msgFile, staged)
 	findings = append(findings, coupling.Findings...)
 	output.CheckStatus("coupling", len(coupling.Findings), coupling.NoOp)
 	for _, s := range coupling.Suppressed {
 		output.Skip("check", "coupling", s)
 	}
 
-	identity := checkIdentity(docsRoot, ".")
-	findings = append(findings, identity.Findings...)
-	output.CheckStatus("identity", len(identity.Findings), identity.NoOp)
+	if includeIdentity {
+		identity := checkIdentity(docsRoot, ".")
+		findings = append(findings, identity.Findings...)
+		output.CheckStatus("identity", len(identity.Findings), identity.NoOp)
+	} else {
+		output.Skip("check", "identity", "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI")
+	}
 
 	generated := checkGenerated(".")
 	findings = append(findings, generated.Findings...)
