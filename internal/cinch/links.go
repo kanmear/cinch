@@ -13,15 +13,12 @@ var (
 	fenceRe  = regexp.MustCompile("^\\s*```")
 )
 
-// checkLinks fires on a relative markdown link under root that doesn't
-// resolve to a file on disk. Direction: structural — a doc's own asserted
-// cross-reference must resolve; not a copy of a machine-readable fact.
 func checkLinks(root string) []Finding {
 	var findings []Finding
 
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil // missing docs dir is a quiet pass, not a check error
+			return nil
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".md") {
 			return nil

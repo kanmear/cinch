@@ -11,15 +11,6 @@ import (
 	"cinch/internal/output"
 )
 
-// indexList walks docsRoot right now and returns every doc's path and title,
-// one line each — the on-demand replacement for a persisted doc map.
-// Nothing is written, so nothing can drift from disk; a re-run always
-// reflects the corpus as it currently stands.
-//
-// Excludes plans/ (transient work artifacts). A doc with no `# Title` line
-// is skipped rather than erroring — this is a convenience listing, not a
-// validated build step the way `cinch render` is. Returns an error when
-// there is nothing to show.
 func indexList(docsRoot string) (string, error) {
 	type entry struct {
 		rel   string
@@ -29,7 +20,7 @@ func indexList(docsRoot string) (string, error) {
 
 	walkErr := filepath.WalkDir(docsRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil // docsRoot (or a subpath) doesn't exist — nothing to list
+			return nil
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".md") {
 			return nil
@@ -69,7 +60,6 @@ func indexList(docsRoot string) (string, error) {
 	return b.String(), nil
 }
 
-// CmdIndex implements `cinch index`: prints the computed doc list.
 func CmdIndex(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {

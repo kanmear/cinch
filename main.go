@@ -10,58 +10,30 @@ import (
 	"cinch/internal/output"
 )
 
-// Version is the cinch release this binary was built from — "devel" unless
-// set at build time via -ldflags "-X main.Version=x.y.z" (make build/install
-// do this). No runtime VCS lookup: cinch is typically installed to GOBIN and
-// run outside its own repo, where a git-describe would find nothing.
 var Version = "devel"
 
-const helpText = `cinch — referential integrity checker for the operational
-documentation that governs a repository (rules, workflows, conventions)
+const helpText = `cinch — check the operational docs that govern a repository
 
 usage:
-  cinch help              print this command list and exit. -h and --help
-                          are aliases.
-  cinch version           print the cinch version and exit.
-  cinch init              scaffold a new consumer: manifest (if absent),
-                          paths.docs/plans, a full render, activated git
-                          hooks (in a git repo), and AGENTS.md (if absent).
-                          Idempotent.
-  cinch check [MSGFILE]   run all checks against the current directory.
-                          MSGFILE, if given, is a path to a file containing
-                          the in-progress commit message (wired via a
-                          commit-msg git hook) — only the coupling check's
-                          rule-reword escape hatch consults it.
-  cinch ignores           list every cinch:ignore declaration and its
-                          reason. Not a check: always exits 0.
-  cinch render            render docs/philosophy.md and docs/templates/*.md into
-                          paths.docs's workflows/ subdirectory (default
-                          .docs/workflows/), substituting values from
-                          cinch.yml, plus git hook shims under
-                          paths.hooks (default .githooks/). Idempotent — a
-                          re-render diff proves tampering.
+  cinch help              print this list; -h and --help are aliases
+  cinch version           print the cinch version
+  cinch init              scaffold a consumer (fills cinch.yml, renders, activates hooks)
+  cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
+  cinch ignores           list every cinch:ignore declaration
+  cinch render            render docs/templates and git hook shims from cinch.yml
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
-                          (pre-commit, commit-msg). Runs cinch check, then
-                          any hooks.EVENT.* entries from cinch.yml whose
-                          'when' path prefixes match the staged set.
-  cinch workflows         compute and print the workflow trigger table.
-  cinch workflow NAME     print one rendered workflow's full content.
-  cinch index             compute and print every doc's path and title.
+  cinch workflows         print the workflow trigger table
+  cinch workflow NAME     print one rendered workflow
+  cinch index             print every doc's path and title
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
 
-// bareSynopsis is shown when cinch is invoked with no subcommand and the
-// current directory already has a cinch.yml — a short pointer to the full
-// listing (helpText) rather than dumping it unconditionally.
-const bareSynopsis = `cinch — referential integrity checker for the operational
-documentation that governs a repository (rules, workflows, conventions)
+const bareSynopsis = `cinch — check the operational docs that govern a repository
 
 run 'cinch help' for the full command list.
 `
 
-// commands is every subcommand cinch recognizes, in usage order — shared
-// between the dispatch switch below and the unknown-command suggestion.
 var commands = []string{"help", "version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
 
 func main() {
@@ -138,8 +110,6 @@ func main() {
 	}
 }
 
-// unknownCommand reports an unrecognized subcommand, suggesting the closest
-// known command name when one is close enough to plausibly be a typo.
 func unknownCommand(name string) int {
 	msg := fmt.Sprintf("cinch: %q is not a command", name)
 	if guess, dist := closestCommand(name); guess != "" && dist <= 2 {
@@ -150,11 +120,6 @@ func unknownCommand(name string) int {
 	return 1
 }
 
-// bareInvocation handles `cinch` with no arguments: a lighter, state-aware
-// response instead of an unconditional full-usage dump. What it says
-// depends on whether the current directory looks like an initialized
-// cinch project, and — if not — whether it's safe to offer to run
-// `cinch init` right now.
 func bareInvocation() int {
 	if impl.ManifestExists(".") {
 		fmt.Print(bareSynopsis)
@@ -174,10 +139,6 @@ func bareInvocation() int {
 	return 2
 }
 
-// promptYes reads one line from stdin and reports whether it's an
-// affirmative answer ("y" or "yes", case-insensitive). bareInvocation only
-// calls this after confirming stdin is a live terminal, so this never
-// blocks indefinitely on input that will never come.
 func promptYes() bool {
 	scanner := bufio.NewScanner(os.Stdin)
 	if !scanner.Scan() {
@@ -187,8 +148,6 @@ func promptYes() bool {
 	return answer == "y" || answer == "yes"
 }
 
-// closestCommand returns the known command nearest to name by edit
-// distance, and that distance.
 func closestCommand(name string) (string, int) {
 	best, bestDist := "", -1
 	for _, c := range commands {
@@ -200,7 +159,6 @@ func closestCommand(name string) (string, int) {
 	return best, bestDist
 }
 
-// levenshtein computes the edit distance between a and b.
 func levenshtein(a, b string) int {
 	ra, rb := []rune(a), []rune(b)
 	prev := make([]int, len(rb)+1)

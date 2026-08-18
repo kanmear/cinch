@@ -11,13 +11,8 @@ import (
 	"cinch/internal/output"
 )
 
-// workflowsSubdir is the render output's workflows directory name, shared
-// between render.go (where it writes) and here (where it reads).
 const workflowsSubdir = "workflows"
 
-// listWorkflowNames returns every rendered workflow's name — its filename
-// under docsRoot's workflows subdirectory, without the .md extension —
-// sorted.
 func listWorkflowNames(docsRoot string) ([]string, error) {
 	dir := filepath.Join(docsRoot, workflowsSubdir)
 	entries, err := os.ReadDir(dir)
@@ -35,9 +30,6 @@ func listWorkflowNames(docsRoot string) ([]string, error) {
 	return names, nil
 }
 
-// workflowsTable computes the workflow trigger table from whatever is on
-// disk right now — nothing persisted, so nothing to go stale. Returns an
-// error when there is nothing to show (render hasn't run).
 func workflowsTable(docsRoot string) (string, error) {
 	names, err := listWorkflowNames(docsRoot)
 	if err != nil || len(names) == 0 {
@@ -60,8 +52,6 @@ func workflowsTable(docsRoot string) (string, error) {
 	return b.String(), nil
 }
 
-// CmdWorkflows implements `cinch workflows`: prints the computed workflow
-// trigger table.
 func CmdWorkflows(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
@@ -75,9 +65,6 @@ func CmdWorkflows(root string) int {
 	return 0
 }
 
-// CmdWorkflow implements `cinch workflow NAME`: prints one rendered
-// workflow's full content, so a consumer's AGENTS.md can point agents at a
-// command instead of a path that goes stale under a customized paths.docs.
 func CmdWorkflow(root, name string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {

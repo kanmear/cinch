@@ -11,23 +11,12 @@ import (
 
 var ruleRewordRe = regexp.MustCompile(`^\s*rule-reword:\s*([A-Z0-9]+-[0-9]+)\s*$`)
 
-// couplingResult separates real findings from the two things that must be
-// said explicitly rather than folded into "0 findings": the check didn't run
-// at all (no-op), or a finding was suppressed by the escape hatch. Silence
-// must never read as a pass.
 type couplingResult struct {
 	Findings   []Finding
 	NoOp       string
 	Suppressed []string
 }
 
-// checkCoupling fires when a rule's item-scoped text changed in the working
-// tree vs HEAD and the file holding that rule's // cinch:rule marker is not
-// among the changed files. Direction: lateral — principle 1's own named
-// pattern ("this text changed and its enforcing file did not").
-//
-// This is a transition check: its window is the working tree against HEAD,
-// so it is invisible post-commit (nothing changed, nothing to compare).
 func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 	if !isGitRepo(repoRoot) {
 		return couplingResult{NoOp: "not a git repository"}
@@ -44,10 +33,6 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 	if err != nil {
 		return couplingResult{NoOp: "could not resolve paths.docs"}
 	}
-	// No outside-the-repository guard here: Manifest.validate rejects such a
-	// value at load, so this check can never be reached with one. It used to
-	// degrade to a no-op, which meant one check went dark while the other
-	// four passed against a corpus none of them scanned.
 	docsDir, repoRoot = absDocs, absRoot
 
 	changed, err := gitChangedFiles(repoRoot)
@@ -74,7 +59,7 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 
 		headContent, ok := gitShow(repoRoot, "HEAD:"+relTo(repoRoot, path))
 		if !ok {
-			return nil // new file, nothing at HEAD to diff against
+			return nil
 		}
 		headByID := map[string]string{}
 		for _, item := range parseRuleItems(path, headContent) {
@@ -89,7 +74,7 @@ func checkCoupling(docsDir, repoRoot, msgFile string) couplingResult {
 
 			locs, hasMarker := markers[wi.ID]
 			if !hasMarker {
-				continue // no marker: rules check's job, not coupling's
+				continue
 			}
 			markerChanged := false
 			for _, loc := range locs {
@@ -138,11 +123,6 @@ func parseRuleReword(msgFile string) map[string]bool {
 	return escaped
 }
 
-// relTo returns path relative to base (best-effort: git's own output —
-// gitChangedFiles — is always repo-relative, but the filesystem-walk paths
-// this check builds take whatever form the caller's repoRoot/docsDir had,
-// which is absolute in tests and "." in production; the two must be
-// normalized to the same form before comparing).
 func relTo(base, path string) string {
 	rel, err := filepath.Rel(base, path)
 	if err != nil {
@@ -158,7 +138,6 @@ func isGitRepo(root string) bool {
 	return err == nil && strings.TrimSpace(string(out)) == "true"
 }
 
-// IsGitRepo exports isGitRepo for main's bare-invocation handling.
 func IsGitRepo(root string) bool {
 	return isGitRepo(root)
 }
@@ -169,11 +148,6 @@ func hasHead(root string) bool {
 	return cmd.Run() == nil
 }
 
-// gitChangedFiles returns the union of files changed in the working tree
-// relative to HEAD and untracked files not yet known to git. Without the
-// untracked half, a rule's marker landing in a brand-new test file that
-// hasn't been `git add`-ed yet is invisible to the diff, so a coupling
-// finding false-positives on a file the author did, in fact, touch.
 func gitChangedFiles(root string) ([]string, error) {
 	tracked, err := gitOutputLines(root, "diff", "HEAD", "--name-only")
 	if err != nil {
@@ -212,8 +186,6 @@ func gitOutputLines(root string, args ...string) ([]string, error) {
 	return lines, nil
 }
 
-// gitShow returns a file's content at the given revision-and-path spec
-// (e.g. "HEAD:.docs/rules.md"), or ok=false if it doesn't exist there.
 func gitShow(root, spec string) (content []byte, ok bool) {
 	cmd := exec.Command("git", "show", spec)
 	cmd.Dir = root
