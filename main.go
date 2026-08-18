@@ -10,7 +10,7 @@ import (
 	"cinch/internal/output"
 )
 
-var Version = "devel"
+var Version = "dev"
 
 const helpText = `cinch — check the operational docs that govern a repository
 

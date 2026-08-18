@@ -75,7 +75,7 @@ func askInit() initAnswers {
 		answers.commitPat = askLine("commit.pattern", "")
 	}
 
-	if Version != "devel" && askYesNo(fmt.Sprintf("require cinch %s?", Version)) {
+	if Version != "dev" && askYesNo(fmt.Sprintf("require cinch %s?", Version)) {
 		answers.require = Version
 	}
 
