@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestIdentity_IDRemovedNoTombstoneFires(t *testing.T) {
+func TestIdentity_AbsentTombstoneKeyIsNoOp(t *testing.T) {
 	dir := gitInitRepo(t)
 	writeFile(t, filepath.Join(dir, ".docs", "rules.md"),
 		"1. **CIN-001** the first rule's text.\n"+
@@ -19,11 +19,11 @@ func TestIdentity_IDRemovedNoTombstoneFires(t *testing.T) {
 
 	result := checkIdentity(filepath.Join(dir, ".docs"), dir)
 
-	if result.NoOp != "" {
-		t.Fatalf("want a real comparison, got no-op: %s", result.NoOp)
+	if result.NoOp == "" {
+		t.Fatalf("want a no-op (rules.tombstone unset — opt-in, not configured), got a real comparison")
 	}
-	if len(result.Findings) != 1 || !strings.HasPrefix(result.Findings[0].Message, "CIN-001") {
-		t.Fatalf("want 1 finding for CIN-001, got %+v", result.Findings)
+	if len(result.Findings) != 0 {
+		t.Fatalf("want 0 findings on a no-op, got %+v", result.Findings)
 	}
 }
 
@@ -70,6 +70,7 @@ func TestIdentity_IDRemovedWithTombstoneSetButNoMarkerFires(t *testing.T) {
 
 func TestIdentity_NormalEditNoIDsTouchedIsClean(t *testing.T) {
 	dir := gitInitRepo(t)
+	writeFile(t, filepath.Join(dir, "cinch.yml"), "rules:\n  tombstone: '~~[A-Z0-9]+-[0-9]+~~'\n")
 	writeFile(t, filepath.Join(dir, ".docs", "rules.md"),
 		"1. **CIN-001** the first rule's text.\n")
 	gitCommitAll(t, dir, "seed")
@@ -87,6 +88,7 @@ func TestIdentity_NormalEditNoIDsTouchedIsClean(t *testing.T) {
 
 func TestIdentity_WholeFileDeletedFiresPerLostID(t *testing.T) {
 	dir := gitInitRepo(t)
+	writeFile(t, filepath.Join(dir, "cinch.yml"), "rules:\n  tombstone: '~~[A-Z0-9]+-[0-9]+~~'\n")
 	writeFile(t, filepath.Join(dir, ".docs", "rules.md"),
 		"1. **CIN-001** the first rule's text.\n"+
 			"2. **CIN-002** the second rule's text.\n")

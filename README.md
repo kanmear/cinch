@@ -185,8 +185,8 @@ agent to write is guaranteed to be one `cinch check` actually scans:
   committed. A tombstone convention is project-defined: set `rules.tombstone`
   in `cinch.yml` to a regexp, and an ID counts as tombstoned when a match
   against the file's `HEAD` content contains the ID's own text. Absent the
-  key, no convention is recognized and any disappearance is a finding.
-  Bounded to one commit back; see § Known limitations.
+  key, the check is a no-op — opt-in, not configured, same as
+  `commit.pattern`. Bounded to one commit back; see § Known limitations.
 - **generated** (error) — the render output on disk doesn't match what
   `cinch render` would produce right now: a missing file, altered bytes, an
   orphaned generated file (one no longer produced by the current render), or
@@ -459,18 +459,6 @@ cinch's own config, the other a project's. `cinch init` writes a starting
 point at the repo root, `manifest.example.yml`, commented with the why and
 how — rename or restructure it as you like; cinch never reads it, so nothing
 about its shape is enforced.
-
-One value worth naming as a convention rather than inventing per-project: a
-`permissions` key mapping a workflow name to a tool-call allow-list, e.g.
-`permissions: {docs-audit-coverage: [Read, Grep]}`, for a harness's own
-permission system to consume — a Claude Code `PreToolUse` hook or an
-opencode auditor envelope, say. This is the one deliberately narrow piece
-kept from an earlier, fuller design
-(`.docs/plans/workflow-permission-convention.md` has the history); what's
-kept is only the key shape, documented in `manifest.example.yml`. cinch has
-no `PreToolUse` guard, no `cinch hook`-driven enforcement of this key, and no
-opinion on which harnesses consume it — `cinch check` will never fail on it,
-same as every other key in this file.
 
 Note this manifest is outside cinch's `{{key}}` substitution entirely — it's
 not `cinch.yml`, so cinch's renderer never sees or resolves against it.

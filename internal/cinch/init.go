@@ -71,13 +71,6 @@ services:
 taxonomy:
   test_tiers:
     - { id: unit, cmd: test-backend }
-
-# Optional: per-workflow tool-call allow-lists, consumed by your harness's
-# own permission system (e.g. a Claude Code PreToolUse hook or an opencode
-# auditor envelope) — cinch never reads or enforces this key.
-# permissions:
-#   docs-audit-coverage: [Read, Grep]
-#   dev-execute-plan: [Read, Edit, Bash]
 `
 
 // CmdInit scaffolds a new cinch consumer: a manifest (if one doesn't already
