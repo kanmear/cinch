@@ -77,8 +77,8 @@ append them any time); auto-discovery means no wiring task is ever needed.
 For each task, list the `{{paths.docs}}/` docs to load — **and nothing else**.
 
 The constraint is a **context budget the running agent judges on the spot**, not a fixed count and
-not a fixed number of tokens. A task's full working context includes AGENTS.md, the system prompt,
-the manifest docs, and the source files being changed — all of which must fit alongside each other.
+not a fixed number of tokens. A task's full working context includes the system prompt, the
+manifest docs, and the source files being changed — all of which must fit alongside each other.
 A large-context agent has room for more; a small local model has room for less. Use as many or as
 few docs as the task genuinely needs — but if the manifest starts feeling like "load everything,"
 that's a sign the task is too large and should be split, whatever the agent.
