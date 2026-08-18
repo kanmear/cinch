@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var Version = "devel"
+var Version = "dev"
 
 const requireCinchKey = "require.cinch"
 
@@ -24,8 +24,8 @@ func checkPin(root, version string) pinResult {
 	if !ok || want == "" {
 		return pinResult{NoOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
 	}
-	if version == "devel" {
-		return pinResult{NoOp: "binary is an unreleased (devel) build — require.cinch is not checked"}
+	if version == "dev" {
+		return pinResult{NoOp: "binary is an unreleased (dev) build — require.cinch is not checked"}
 	}
 	if semverEqual(version, want) {
 		return pinResult{}
