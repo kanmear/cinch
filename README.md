@@ -70,6 +70,20 @@ stale templates and the `generated` check reports a mismatch that isn't
 really there — a confusing failure, since `make build && ./bin/cinch check`
 passes while the commit hook rejects the same tree.
 
+## Found a problem in a rendered file?
+
+If you're reading a workflow or doc under `<paths.docs>/workflows/` (or
+another render output) and it's wrong — stale advice, a bad ordering claim, a
+missing case — don't edit it in place. `generated` will flag the hand-edit as
+tamper (correctly: it's a byte-for-byte check against what `cinch render`
+would produce right now), and the fix would be lost on the next re-render
+anyway. The fix belongs upstream, in the source cinch renders from:
+`internal/cinch/docs/templates/*.md` for a workflow, `docs/philosophy.md` for
+the philosophy doc. Open the issue against cinch, not the consumer repo — the
+consumer repo doesn't own the content, only a rendered copy of it. Once the
+fix ships and you've upgraded (see § Version-skew note below for the general
+mechanic), `cinch render` picks it up for every consumer, not just yours.
+
 ## Adopting cinch: the linear version
 
 Everything below is documented in full elsewhere in this README. This is the
@@ -298,6 +312,26 @@ that the script itself is bug-free. This includes reentrancy: a
 amends owns its own loop guard — cinch runs the dispatch table once per
 event, it does not deduplicate a script re-triggering itself.
 
+**Worked example — a project-specific referential check.** The `error-codes`
+entry in the `cinch.yml` example just below is a real pattern, not a
+placeholder: a consumer with a frontend/backend split can have a domain rule
+cinch has no vocabulary for — every `@throws {ApiError} CODE` annotation in
+its TypeScript API client must resolve to a matching Go error constant *and*
+a translation key in every locale file, a three-way, cross-language
+contract. That's not a rule cinch should learn to check (it's specific to
+one project's error-handling convention, not a general property of docs or
+code), and it's not a gap in `hooks.*` either — it's exactly what the seam is
+for. All three prefixes below are registered together on the same entry
+because a change on any one side of the contract should re-trigger the
+check, not just a change to the side that happens to match a narrower
+`when`. This is the general shape for "a check specific to one project's
+domain, not cinch-worthy": write the script, register it once, done — no
+semantic harness validator, no generic `make docs-check` target, no
+project-manifest schema for cinch to grow and enforce. Those are the three
+different ways a check like this tends to get proposed when the `hooks.*`
+seam isn't the first thing reached for; this is what already answers all
+three, per project, for free.
+
 ```yaml
 # cinch.yml
 paths:
@@ -308,7 +342,7 @@ hooks:
   pre-commit:
     error-codes:
       run: scripts/check_error_codes.sh
-      when: [frontend/src/lib/api/, backend/errors/]
+      when: [frontend/src/lib/api/, backend/errors/, frontend/src/lib/translations/]
     frontend:
       run: make check-frontend
       when: [frontend/]
@@ -385,8 +419,14 @@ prints. `cinch init` writes the shape once, generically, as a fourth
 `cinch.yml` binds the values templates and hooks reference — plain YAML, but
 still no schema: nesting is notation for writing dotted keys hierarchically
 (`paths: {docs: x}` and `paths.docs = x` bind the same thing), not a shape
-cinch validates. Declaration order is preserved (hook entries run in the
-order they're written). `paths.docs` is the one variable any shipped
+cinch validates. `hooks.<event>.*` is the one place this is slightly
+qualified: which per-entry keys mean something is event-dependent — `when`
+is read and matched against the staged/committed set for `pre-commit` and
+`post-commit`, but ignored for `commit-msg` (see above), so a `when:` key
+written under a `commit-msg` entry parses fine and is silently never
+consulted. Harmless today, and worth naming rather than leaving the "not a
+shape" claim unqualified. Declaration order is preserved (hook entries run in
+the order they're written). `paths.docs` is the one variable any shipped
 template uses, and defaults to `.docs` when unset. The manifest itself
 always lives at the repo root, independent of `paths.docs` — its own
 location can't depend on a value it defines, so it's pinned outside the
