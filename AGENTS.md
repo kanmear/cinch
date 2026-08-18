@@ -22,9 +22,9 @@ Docs: run `cinch index` to see every doc's path and title.
   `hooks.pre-commit.build.run` entry) — cinch self-hosts.
 - `main.go` — CLI dispatch, the only `package main` file. Everything else
   lives in `internal/cinch` (compiler-enforced private to this module):
-  `check.go`, `links.go`, `rules.go`, `coupling.go`, `generated.go`,
-  `commit.go` — the five checks, each paired with a `_test.go` carrying its
-  mutation fixtures. `render.go`, `manifest.go` — the `render` command:
+  `check.go`, `links.go`, `rules.go`, `coupling.go`, `identity.go`,
+  `generated.go`, `commit.go` — the six checks, each paired with a
+  `_test.go` carrying its mutation fixtures. `render.go`, `manifest.go` — the `render` command:
   `{{key}}` substitution, hook shims, and the `cinch.yml` parser.
   `title.go` — shared H1 title/trigger extraction. `hook.go` — the
   `cinch hook` dispatcher. `init.go` — `cinch init`. `workflow.go` —

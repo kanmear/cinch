@@ -144,7 +144,7 @@ adopting cinch into.
 ## Status: 0.1.0 — init, self-enforcement, manifest-driven extension
 
 `cinch init` scaffolds a new consumer end to end (see Overview above) — one
-command, idempotent. `cinch check` runs five checks, including one that
+command, idempotent. `cinch check` runs six checks, including one that
 verifies the render output on disk hasn't been hand-edited or fallen out of
 date, and another that enforces a commit message convention. Git hooks are
 generated and, once activated, run `cinch check` on every commit — a project
@@ -152,7 +152,7 @@ can also hook its own scripts into `pre-commit`/`commit-msg` through the
 manifest, scoped to the paths that should trigger them. This repo self-hosts:
 its own `cinch.yml`, rendered docs, and `.githooks/` are the proof.
 
-`cinch check` runs five checks against the current directory. The docs root
+`cinch check` runs six checks against the current directory. The docs root
 defaults to `.docs` and needs no configuration; a project can point it
 elsewhere with `paths.docs` in `cinch.yml` — anywhere **inside the
 repository**. A value that escapes it, absolute or `../`-relative, is refused
@@ -179,6 +179,14 @@ agent to write is guaranteed to be one `cinch check` actually scans:
   so on stderr rather than reporting a silent pass. Escape via
   `rule-reword: <ID>` in a commit message, wired through `cinch check
   [MSGFILE]` (matches git's own `commit-msg` hook contract).
+- **identity** (error) — a rule ID present at `HEAD^` is absent at `HEAD`
+  with no recognized tombstone in its place — the gap `coupling` structurally
+  can't see, since its own window goes dark the moment a change is
+  committed. A tombstone convention is project-defined: set `rules.tombstone`
+  in `cinch.yml` to a regexp, and an ID counts as tombstoned when a match
+  against the file's `HEAD` content contains the ID's own text. Absent the
+  key, no convention is recognized and any disappearance is a finding.
+  Bounded to one commit back; see § Known limitations.
 - **generated** (error) — the render output on disk doesn't match what
   `cinch render` would produce right now: a missing file, altered bytes, an
   orphaned generated file (one no longer produced by the current render), or
@@ -488,9 +496,9 @@ fixtures end-to-end.
   the Go compiler forbids other modules from importing.
 - `internal/cinch/check.go` — the `Finding` model and `CmdCheck` orchestrator.
 - `internal/cinch/links.go`, `internal/cinch/rules.go`,
-  `internal/cinch/coupling.go`, `internal/cinch/generated.go`,
-  `internal/cinch/commit.go` — one file per check, each paired with a
-  `_test.go` carrying its mutation fixtures.
+  `internal/cinch/coupling.go`, `internal/cinch/identity.go`,
+  `internal/cinch/generated.go`, `internal/cinch/commit.go` — one file per
+  check, each paired with a `_test.go` carrying its mutation fixtures.
 - `internal/cinch/render.go` — the `{{key}}` substituter, header/body-sha
   (comment-style aware), hook shims, and `CmdRender`; embeds
   `docs/philosophy.md` and the whole `docs/templates/` directory via
@@ -531,6 +539,18 @@ fixtures end-to-end.
 - `Makefile` — `build`, `test`.
 
 ## Known limitations
+
+**`identity`'s window is bounded to the single most recent commit.** Like
+`generated`'s path-migration detection, it only ever diffs `HEAD^` against
+`HEAD`: a rule ID removed several commits back is only caught if `identity`
+happened to run (as a pre-commit hook, typically) on the very next commit
+after the removal — once a second commit lands on top, the removal is no
+longer the `HEAD^`→`HEAD` transition and drops out of view for good. A
+tombstone added several commits after the removal, rather than in the same
+commit, is invisible for the same reason: by the time it lands, the removal
+itself is already outside the window. Consistent, regular use of the
+pre-commit hook is what keeps the window from ever skipping a commit; a repo
+that only runs `cinch check` sporadically can lose coverage this way.
 
 **Changing `paths.docs` without `cinch move-docs` still strands the old
 directory, and the safety net only reaches back one commit.** cinch only ever

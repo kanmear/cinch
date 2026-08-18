@@ -90,11 +90,10 @@ a checker category).
 
 ### Relationship to other plans
 
-Touches the same file as `rule-id-monotonicity.md` (`coupling.go`'s git-walk
-helpers). Land that plan first if both are picked up — it adds a new checker
-alongside `coupling`; this one modifies `coupling` itself, and doing the
-addition first avoids rebasing a modification through a new sibling checker's
-landing.
+Touches the same file as the `identity` checker (`coupling.go`'s git-walk
+helpers), added by the now-landed rule-ID-monotonicity plan. That addition is
+already in, so this plan modifies `coupling.go` on top of `identity.go`
+existing rather than needing to sequence ahead of it.
 
 New capability: on completion, mark status `complete` and keep the file — it
 documents why the window is configurable rather than fully closed (the
