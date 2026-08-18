@@ -7,27 +7,11 @@ import (
 	"strings"
 )
 
-// identityResult separates real findings from the no-op cases: not a git
-// repo, or only one commit (no HEAD^ to compare against) — silence must
-// never read as a pass.
 type identityResult struct {
 	Findings []Finding
 	NoOp     string
 }
 
-// checkIdentity fires when a rule ID present at HEAD^ is absent at HEAD with
-// no recognized tombstone in its place. Direction: doc-upstream — a rule
-// doc's own convention (append-only, tombstoned in place when retired) is
-// the spec; this checks the doc still conforms to it across the most recent
-// commit. Opt-in: absent rules.tombstone, the check no-ops rather than
-// assuming a convention it was never told — a project that hasn't declared
-// how it tombstones can't have that declaration checked.
-//
-// This is a transition check like coupling, but one step further back: HEAD^
-// vs HEAD rather than the working tree vs HEAD. coupling's window goes dark
-// the moment a change is committed; identity picks up exactly there, at the
-// cost of only ever seeing the single most recent commit — see README §
-// Known limitations.
 func checkIdentity(docsDir, repoRoot string) identityResult {
 	if !isGitRepo(repoRoot) {
 		return identityResult{NoOp: "not a git repository"}
@@ -74,7 +58,7 @@ func checkIdentity(docsDir, repoRoot string) identityResult {
 
 		parentContent, ok := gitShow(repoRoot, "HEAD^:"+path)
 		if !ok {
-			continue // shouldn't happen: ls-tree just listed it at HEAD^
+			continue
 		}
 		parentItems := parseRuleItems(path, parentContent)
 
@@ -109,10 +93,6 @@ func hasParent(root string) bool {
 	return cmd.Run() == nil
 }
 
-// tombstonePattern reads the optional rules.tombstone manifest key. A nil,
-// nil-error return means the key is absent — checkIdentity no-ops in that
-// case, the same opt-in-only contract absent commit.pattern and
-// require.cinch already have.
 func tombstonePattern(root string) (*regexp.Regexp, error) {
 	m, err := loadManifestOptional(root)
 	if err != nil || m == nil {
@@ -125,10 +105,6 @@ func tombstonePattern(root string) (*regexp.Regexp, error) {
 	return regexp.Compile(pattern)
 }
 
-// idIsTombstoned reports whether any of tombstone's matches against content
-// contain id's literal text — cinch supplies the containment check, the
-// project supplies the regexp marking its own tombstone convention in
-// place (bind a value, not a shape).
 func idIsTombstoned(tombstone *regexp.Regexp, content []byte, id string) bool {
 	for _, m := range tombstone.FindAllString(string(content), -1) {
 		if strings.Contains(m, id) {

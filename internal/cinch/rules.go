@@ -17,15 +17,11 @@ var (
 	markerRe   = regexp.MustCompile(`//\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)\b`)
 )
 
-// ruleItem is one rule: a numbered list item with a bolded ID
-// (`1. **ID-NNN** ...`) somewhere under the docs dir.
 type ruleItem struct {
 	ID   string
 	File string
-	Line int // line of the ID
+	Line int
 
-	// Text is the item-scoped rule text — the ID line through the last line
-	// before the next numbered item — whitespace-normalized.
 	Text string
 
 	HasIgnore    bool
@@ -38,10 +34,6 @@ type markerLoc struct {
 	Line int
 }
 
-// parseRuleItems scans content line by line for rule items, stopping each
-// item's text at the next numbered-list line (ID or not) or EOF. Exported as
-// a function of (file, content) rather than just a path so the coupling
-// check can parse both a working-tree file and a `git show HEAD:...` blob.
 func parseRuleItems(file string, content []byte) []ruleItem {
 	var items []ruleItem
 	var cur *ruleItem
@@ -122,8 +114,6 @@ func scanRuleDocs(root string) []ruleItem {
 	return items
 }
 
-// scanRuleMarkers walks the whole repo (skipping .git, the docs dir, and the
-// build output dir) for `// cinch:rule <ID>` comments.
 func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
 	markers := map[string][]markerLoc{}
 	const maxSize = 4 << 20
@@ -173,15 +163,6 @@ func scanRuleMarkers(repoRoot, docsDir string) map[string][]markerLoc {
 	return markers
 }
 
-// checkRules fires on a rule ID with no marker and on a marker with no
-// matching rule ID. Direction: lateral — a doc's authored rule IDs and
-// source's authored markers must agree in both directions (principle 4's own
-// worked example).
-//
-// cinch:ignore is a declaration, not a suppression: a rule marked ignore
-// with a reason is exempt from the missing-marker finding, but a rule that
-// is both ignored and marked is a contradiction and is itself a finding,
-// and an ignore with no reason is malformed and is itself a finding.
 func checkRules(docsDir, repoRoot string) []Finding {
 	items := scanRuleDocs(docsDir)
 	markers := scanRuleMarkers(repoRoot, docsDir)
@@ -230,9 +211,6 @@ func checkRules(docsDir, repoRoot string) []Finding {
 	return findings
 }
 
-// CmdIgnores lists every cinch:ignore declaration under root with its
-// reason. Not a check: it never fails and carries no findings — it exists so
-// the ignore inventory is cheap to read periodically.
 func CmdIgnores(docsDir string) int {
 	items := scanRuleDocs(docsDir)
 	var ignored []ruleItem
