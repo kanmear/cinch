@@ -1,6 +1,6 @@
 # cinch — document a workflow tool-permission convention (data, not code)
 
-Status: **proposed** — not started.
+Status: **complete**.
 
 ## Context
 
