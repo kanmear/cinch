@@ -10,18 +10,17 @@ import (
 var mdLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 
 func checkLinks(root string) []Finding {
-	var findings []Finding
-	_ = walkMarkdownFiles(root, func(path string) error {
-		findings = append(findings, checkLinksInFile(path)...)
-		return nil
-	})
+	findings, err := collectMarkdown(root, checkLinksInFile)
+	if err != nil {
+		return append(findings, scanErrorFinding("links", root, err)...)
+	}
 	return findings
 }
 
-func checkLinksInFile(path string) []Finding {
+func checkLinksInFile(path string) ([]Finding, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	var findings []Finding
@@ -61,7 +60,7 @@ func checkLinksInFile(path string) []Finding {
 		})
 	}
 
-	return findings
+	return findings, nil
 }
 
 func linkTargetIsExempt(target string) bool {

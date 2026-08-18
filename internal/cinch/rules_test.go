@@ -1,7 +1,10 @@
 package cinch
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -92,5 +95,63 @@ func TestParseRuleItemsPlainNumberedItemFlushes(t *testing.T) {
 func TestParseRuleItemsNoRules(t *testing.T) {
 	if got := parseRuleItemsStr(t, "just text\nno rules here\n"); len(got) != 0 {
 		t.Fatalf("parseRuleItems = %v, want none", got)
+	}
+}
+
+func TestParseRuleDocReadError(t *testing.T) {
+	if _, err := parseRuleDoc(filepath.Join(t.TempDir(), "missing.md")); err == nil {
+		t.Fatal("parseRuleDoc = nil error, want error for unreadable file")
+	}
+}
+
+func TestScanRuleDocsPropagatesWalkError(t *testing.T) {
+	root := unreadableTree(t)
+	if _, err := scanRuleDocs(root); err == nil {
+		t.Fatal("scanRuleDocs = nil error, want error for unreadable subdirectory")
+	}
+}
+
+func TestScanRuleMarkersReadError(t *testing.T) {
+	root := t.TempDir()
+	broken := filepath.Join(root, "broken.go")
+	if err := os.Symlink("missing.go", broken); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scanRuleMarkers(root, filepath.Join(root, "docs")); err == nil {
+		t.Fatal("scanRuleMarkers = nil error, want error for unreadable file")
+	}
+}
+
+func TestCheckRulesReportsScanError(t *testing.T) {
+	root := unreadableTree(t)
+	findings := checkRules(root, ".")
+	if len(findings) == 0 {
+		t.Fatal("checkRules = no findings, want error finding for unreadable subdirectory")
+	}
+	ok := false
+	for _, f := range findings {
+		if f.Check == "rules" && f.Level == "error" && strings.Contains(f.Message, "failed to scan") {
+			ok = true
+		}
+	}
+	if !ok {
+		t.Fatalf("checkRules findings %+v do not include a scan error", findings)
+	}
+}
+
+func TestCheckLinksReportsScanError(t *testing.T) {
+	root := unreadableTree(t)
+	findings := checkLinks(root)
+	if len(findings) == 0 {
+		t.Fatal("checkLinks = no findings, want error finding for unreadable subdirectory")
+	}
+	ok := false
+	for _, f := range findings {
+		if f.Check == "links" && f.Level == "error" && strings.Contains(f.Message, "failed to scan") {
+			ok = true
+		}
+	}
+	if !ok {
+		t.Fatalf("checkLinks findings %v do not include a scan error", findings)
 	}
 }

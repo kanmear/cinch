@@ -17,22 +17,25 @@ func indexList(docsRoot string) (string, error) {
 	}
 	var entries []entry
 
-	_ = walkMarkdownFiles(docsRoot, func(path string) error {
+	collected, err := collectMarkdown(docsRoot, func(path string) ([]entry, error) {
 		rel := filepath.ToSlash(relTo(docsRoot, path))
 		if strings.HasPrefix(rel, "plans/") {
-			return nil
+			return nil, nil
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		title, _ := titleAndTrigger(string(data))
 		if title == "" {
-			return nil
+			return nil, nil
 		}
-		entries = append(entries, entry{rel: rel, title: title})
-		return nil
+		return []entry{{rel: rel, title: title}}, nil
 	})
+	if err != nil {
+		return "", err
+	}
+	entries = collected
 
 	if len(entries) == 0 {
 		return "", fmt.Errorf("cinch render has not run — nothing to show")
