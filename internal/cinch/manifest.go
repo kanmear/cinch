@@ -14,6 +14,7 @@ const manifestPath = "cinch.yml"
 
 type Manifest struct {
 	Vars  map[string]string
+	Lists map[string][]string
 	order []string
 }
 
@@ -79,35 +80,39 @@ func parseManifestBytes(data []byte, label string) (*Manifest, error) {
 	}
 
 	vars := map[string]string{}
+	lists := map[string][]string{}
 	var order []string
 	if len(doc.Content) > 0 {
 		root := doc.Content[0]
 		if root.Kind != yaml.MappingNode {
 			return nil, fmt.Errorf("%s: top-level document must be a mapping", label)
 		}
-		if err := flattenMapping(label, root, "", vars, &order); err != nil {
+		if err := flattenMapping(label, root, "", vars, lists, &order); err != nil {
 			return nil, err
 		}
 	}
 
-	return &Manifest{Vars: vars, order: order}, nil
+	return &Manifest{Vars: vars, Lists: lists, order: order}, nil
 }
 
-func flattenMapping(path string, node *yaml.Node, prefix string, vars map[string]string, order *[]string) error {
+func flattenMapping(path string, node *yaml.Node, prefix string, vars map[string]string, lists map[string][]string, order *[]string) error {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		keyNode, valNode := node.Content[i], node.Content[i+1]
 		key := prefix + keyNode.Value
 		switch valNode.Kind {
 		case yaml.MappingNode:
-			if err := flattenMapping(path, valNode, key+".", vars, order); err != nil {
+			if err := flattenMapping(path, valNode, key+".", vars, lists, order); err != nil {
 				return err
 			}
 		case yaml.SequenceNode:
-			val, err := flattenSequence(path, key, valNode)
+			items, err := flattenSequence(path, key, valNode)
 			if err != nil {
 				return err
 			}
-			setVar(vars, order, key, val)
+			if _, seen := lists[key]; !seen {
+				*order = append(*order, key)
+			}
+			lists[key] = items
 		case yaml.ScalarNode:
 			setVar(vars, order, key, valNode.Value)
 		default:
@@ -117,15 +122,15 @@ func flattenMapping(path string, node *yaml.Node, prefix string, vars map[string
 	return nil
 }
 
-func flattenSequence(path, key string, node *yaml.Node) (string, error) {
+func flattenSequence(path, key string, node *yaml.Node) ([]string, error) {
 	items := make([]string, 0, len(node.Content))
 	for _, item := range node.Content {
 		if item.Kind != yaml.ScalarNode {
-			return "", fmt.Errorf("%s:%d: %s: only scalar list items are supported", path, item.Line, key)
+			return nil, fmt.Errorf("%s:%d: %s: only scalar list items are supported", path, item.Line, key)
 		}
 		items = append(items, item.Value)
 	}
-	return strings.Join(items, ", "), nil
+	return items, nil
 }
 
 func setVar(vars map[string]string, order *[]string, key, val string) {
@@ -139,17 +144,12 @@ func (m *Manifest) List(key string) []string {
 	if m == nil {
 		return nil
 	}
-	val, ok := m.Vars[key]
+	items, ok := m.Lists[key]
 	if !ok {
 		return nil
 	}
-	var out []string
-	for _, part := range strings.Split(val, ",") {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
-		}
-	}
+	out := make([]string, len(items))
+	copy(out, items)
 	return out
 }
 
