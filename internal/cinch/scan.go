@@ -1,8 +1,8 @@
 package cinch
 
 import (
-	"bufio"
 	"bytes"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"regexp"
@@ -11,23 +11,61 @@ import (
 
 var fenceRe = regexp.MustCompile("^\\s*```")
 
-// forEachLine calls fn for each line of data (1-indexed line numbers).
-// It returns the scanner error, if any.
-func forEachLine(data []byte, fn func(lineNo int, line string)) error {
-	scanner := bufio.NewScanner(bytes.NewReader(data))
+func forEachLineReader(r io.Reader, fn func(lineNo int, line string)) error {
+	const chunkSize = 64 << 10
+	buf := make([]byte, 0, chunkSize)
+	tmp := make([]byte, chunkSize)
 	lineNo := 0
-	for scanner.Scan() {
+	start := 0
+	empties := 0
+
+	flush := func(end int) {
 		lineNo++
-		fn(lineNo, scanner.Text())
+		line := buf[start:end]
+		if n := len(line); n > 0 && line[n-1] == '\r' {
+			line = line[:n-1]
+		}
+		fn(lineNo, string(line))
+		start = end + 1
 	}
-	return scanner.Err()
+
+	for {
+		n, err := r.Read(tmp)
+		if n > 0 {
+			empties = 0
+			base := len(buf)
+			buf = append(buf, tmp[:n]...)
+			for i := base; i < len(buf); i++ {
+				if buf[i] == '\n' {
+					flush(i)
+				}
+			}
+			if start > 0 {
+				copy(buf, buf[start:])
+				buf = buf[:len(buf)-start]
+				start = 0
+			}
+		} else if err == nil {
+			empties++
+			if empties > 100 {
+				return io.ErrNoProgress
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				if start < len(buf) {
+					flush(len(buf))
+				}
+				return nil
+			}
+			return err
+		}
+	}
 }
 
-// forEachFencedLine calls fn for each line of data that is not inside a
-// fenced code block (``` toggles fence state).
-func forEachFencedLine(data []byte, fn func(lineNo int, line string)) error {
+func forEachFencedLineReader(r io.Reader, fn func(lineNo int, line string)) error {
 	inFence := false
-	return forEachLine(data, func(lineNo int, line string) {
+	return forEachLineReader(r, func(lineNo int, line string) {
 		if fenceRe.MatchString(line) {
 			inFence = !inFence
 			return
@@ -39,8 +77,10 @@ func forEachFencedLine(data []byte, fn func(lineNo int, line string)) error {
 	})
 }
 
-// walkMarkdownFiles calls fn for every *.md file under root, propagating any
-// walk error (e.g. an unreadable directory) instead of swallowing it.
+func forEachFencedLine(data []byte, fn func(lineNo int, line string)) error {
+	return forEachFencedLineReader(bytes.NewReader(data), fn)
+}
+
 func walkMarkdownFiles(root string, fn func(path string) error) error {
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -53,8 +93,6 @@ func walkMarkdownFiles(root string, fn func(path string) error) error {
 	})
 }
 
-// collectMarkdown walks every *.md file under root, collecting fn's output and
-// stopping at the first error so I/O failures surface instead of being dropped.
 func collectMarkdown[T any](root string, fn func(path string) ([]T, error)) ([]T, error) {
 	var out []T
 	err := walkMarkdownFiles(root, func(path string) error {

@@ -29,7 +29,9 @@ func TestHeader(t *testing.T) {
 }
 
 func TestBodyHash(t *testing.T) {
-	if bodyHash("x") != bodyHash("x") {
+	a := bodyHash("x")
+	b := bodyHash("x")
+	if a != b {
 		t.Fatal("bodyHash not deterministic")
 	}
 	if bodyHash("x") == bodyHash("y") {

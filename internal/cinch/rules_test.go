@@ -2,6 +2,7 @@ package cinch
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -136,6 +137,136 @@ func TestCheckRulesReportsScanError(t *testing.T) {
 	}
 	if !ok {
 		t.Fatalf("checkRules findings %+v do not include a scan error", findings)
+	}
+}
+
+func TestCheckRulesScanErrorDoesNotReportUnmarked(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, "docs")
+	if err := os.Mkdir(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docs, "rules.md"), []byte("1. **ABC-1** rule\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A broken symlink makes the marker scan fail after the docs scan
+	// succeeds, isolating the marker-scan error path.
+	if err := os.Symlink(filepath.Join(root, "missing.go"), filepath.Join(root, "broken.go")); err != nil {
+		t.Fatal(err)
+	}
+
+	findings := checkRules(docs, root)
+	scanErr := false
+	unmarked := 0
+	for _, f := range findings {
+		if f.Check == "rules" && strings.Contains(f.Message, "failed to scan") {
+			scanErr = true
+		}
+		if f.Check == "rules" && strings.Contains(f.Message, "no // cinch:rule marker") {
+			unmarked++
+		}
+	}
+	if !scanErr {
+		t.Fatalf("checkRules findings %+v do not include a scan error", findings)
+	}
+	if unmarked > 0 {
+		t.Fatalf("scan failure leaked %d false 'unmarked' findings; want none", unmarked)
+	}
+}
+
+func TestScanRuleMarkersLargeFile(t *testing.T) {
+	root := t.TempDir()
+	line := strings.Repeat("// filler ", 128) + "\n"
+	var b strings.Builder
+	for b.Len() < 5<<20 {
+		b.WriteString(line)
+	}
+	b.WriteString("// cinch:rule ABC-1\n")
+	if err := os.WriteFile(filepath.Join(root, "big.go"), []byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	markers, err := scanRuleMarkers(root, filepath.Join(root, "docs"))
+	if err != nil {
+		t.Fatalf("scanRuleMarkers = %v, want nil (a >4MB file must not abort the scan)", err)
+	}
+	if len(markers["ABC-1"]) != 1 {
+		t.Fatalf("markers[ABC-1] = %v, want 1 loc in the large file", markers["ABC-1"])
+	}
+}
+
+func TestScanMarkersFenceOnlyForMarkdown(t *testing.T) {
+	root := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("note.md", "before\n```\n// cinch:rule ABC-1\n```\nafter\n// cinch:rule DEF-2\n")
+	write("x.go", "```\n// cinch:rule ABC-2\n")
+
+	markers, err := scanRuleMarkers(root, filepath.Join(root, "docs"))
+	if err != nil {
+		t.Fatalf("scanRuleMarkers = %v, want nil", err)
+	}
+	if len(markers["ABC-1"]) != 0 {
+		t.Fatalf("ABC-1 inside a .md fence must be skipped, got %v", markers["ABC-1"])
+	}
+	if len(markers["DEF-2"]) != 1 {
+		t.Fatalf("DEF-2 outside a .md fence must be found, got %v", markers["DEF-2"])
+	}
+	if len(markers["ABC-2"]) != 1 {
+		t.Fatalf("ABC-2 in a .go file after a ``` line must be found, got %v", markers["ABC-2"])
+	}
+}
+
+func TestScanRuleMarkersGitScope(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		cmd.Env = append([]string{
+			"HOME=" + root,
+			"GIT_CONFIG_GLOBAL=/dev/null",
+			"GIT_CONFIG_SYSTEM=/dev/null",
+		}, os.Environ()...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	write := func(name, body string) {
+		t.Helper()
+		p := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	git("init", "-q")
+	write(".gitignore", "vendor/\n")
+	write("a.go", "// cinch:rule ABC-1\n")
+	write("vendor/skip.go", "// cinch:rule ABC-2\n")
+	write("vendor/kept.go", "// cinch:rule ABC-3\n")
+	git("add", "a.go", ".gitignore")
+	git("add", "-f", "vendor/kept.go")
+
+	markers, err := scanRuleMarkers(root, filepath.Join(root, "docs"))
+	if err != nil {
+		t.Fatalf("scanRuleMarkers = %v, want nil", err)
+	}
+	if len(markers["ABC-1"]) != 1 {
+		t.Fatalf("tracked marker ABC-1 = %v, want 1 loc", markers["ABC-1"])
+	}
+	if len(markers["ABC-2"]) != 0 {
+		t.Fatalf("ignored marker ABC-2 = %v, want none (gitignored file is out of scope)", markers["ABC-2"])
+	}
+	if len(markers["ABC-3"]) != 1 {
+		t.Fatalf("force-added marker ABC-3 = %v, want 1 loc (tracked despite ignore)", markers["ABC-3"])
 	}
 }
 

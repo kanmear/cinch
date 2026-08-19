@@ -2,6 +2,7 @@ package cinch
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -34,7 +35,6 @@ type markerLoc struct {
 	Line int
 }
 
-// ruleItemIDs returns the set of rule IDs present in items.
 func ruleItemIDs(items []ruleItem) map[string]bool {
 	ids := make(map[string]bool, len(items))
 	for _, item := range items {
@@ -98,43 +98,94 @@ func scanRuleDocs(root string) ([]ruleItem, error) {
 	return collectMarkdown(root, parseRuleDoc)
 }
 
-func scanRuleMarkers(repoRoot, docsDir string) (map[string][]markerLoc, error) {
-	markers := map[string][]markerLoc{}
-	const maxSize = 4 << 20
+func underPath(path, dir string) bool {
+	if dir == "" {
+		return false
+	}
+	absPath, err1 := filepath.Abs(path)
+	absDir, err2 := filepath.Abs(dir)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absDir, absPath)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
+}
 
-	err := filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
+func markerScanFiles(root, docsDir string) ([]string, error) {
+	if files, err := gitScannableFiles(root); err == nil {
+		var out []string
+		for _, f := range files {
+			if !underPath(f, docsDir) {
+				out = append(out, f)
+			}
+		}
+		return out, nil
+	}
+
+	var out []string
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			switch d.Name() {
-			case ".git", "bin":
-				return filepath.SkipDir
-			}
-			if path == docsDir {
+			if d.Name() == ".git" || underPath(path, docsDir) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		if info.Size() > maxSize {
+		if underPath(path, docsDir) {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		rel, err := filepath.Rel(root, path)
 		if err != nil {
-			return err
+			rel = path
 		}
-		return forEachFencedLine(data, func(lineNo int, line string) {
-			if m := markerRe.FindStringSubmatch(line); m != nil {
-				markers[m[1]] = append(markers[m[1]], markerLoc{File: path, Line: lineNo})
-			}
-		})
+		out = append(out, rel)
+		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	return out, nil
+}
+
+func scanMarkers(r io.Reader, path string, fenced bool, markers map[string][]markerLoc) error {
+	fn := func(lineNo int, line string) {
+		if m := markerRe.FindStringSubmatch(line); m != nil {
+			markers[m[1]] = append(markers[m[1]], markerLoc{File: path, Line: lineNo})
+		}
+	}
+	if fenced {
+		return forEachFencedLineReader(r, fn)
+	}
+	return forEachLineReader(r, fn)
+}
+
+func scanFileMarkers(path string, markers map[string][]markerLoc) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return scanMarkers(f, path, strings.HasSuffix(path, ".md"), markers)
+}
+
+func scanRuleMarkers(repoRoot, docsDir string) (map[string][]markerLoc, error) {
+	markers := map[string][]markerLoc{}
+
+	files, err := markerScanFiles(repoRoot, docsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		path := filepath.Join(repoRoot, file)
+		if err := scanFileMarkers(path, markers); err != nil {
+			return nil, err
+		}
 	}
 
 	return markers, nil
@@ -147,7 +198,7 @@ func checkRules(docsDir, repoRoot string) []Finding {
 	}
 	markers, err := scanRuleMarkers(repoRoot, docsDir)
 	if err != nil {
-		return append(scanErrorFinding("rules", repoRoot, err), checkRulesFrom(items, nil)...)
+		return scanErrorFinding("rules", repoRoot, err)
 	}
 
 	return checkRulesFrom(items, markers)

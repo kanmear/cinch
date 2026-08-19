@@ -51,6 +51,42 @@ func TestForEachFencedLineKeepsLineNumbers(t *testing.T) {
 	}
 }
 
+func TestForEachLineReaderLongLines(t *testing.T) {
+	long := strings.Repeat("x", 200<<10)
+	data := "a\n" + long + "\nz\n"
+	var got []string
+	if err := forEachLineReader(strings.NewReader(data), func(lineNo int, line string) {
+		got = append(got, line)
+	}); err != nil {
+		t.Fatalf("forEachLineReader = %v, want nil (long lines must not abort)", err)
+	}
+	if len(got) != 3 || got[0] != "a" || got[1] != long || got[2] != "z" {
+		t.Fatalf("forEachLineReader returned %d lines, want 3 with the long line intact (len %d)", len(got), len(long))
+	}
+}
+
+func TestForEachLineReaderCRLFAndUnterminated(t *testing.T) {
+	var got []string
+	if err := forEachLineReader(strings.NewReader("one\r\ntwo\nthree"), func(lineNo int, line string) {
+		got = append(got, line)
+	}); err != nil {
+		t.Fatalf("forEachLineReader = %v, want nil", err)
+	}
+	if want := []string{"one", "two", "three"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("forEachLineReader = %v, want %v", got, want)
+	}
+}
+
+func TestForEachLineReaderLineNumbers(t *testing.T) {
+	var nums []int
+	_ = forEachLineReader(strings.NewReader("1\n2\n3"), func(lineNo int, _ string) {
+		nums = append(nums, lineNo)
+	})
+	if want := []int{1, 2, 3}; !reflect.DeepEqual(nums, want) {
+		t.Fatalf("line numbers = %v, want %v", nums, want)
+	}
+}
+
 // unreadableTree returns a temp dir whose sub/ subtree is unreadable,
 // skipping the test when running as root (permission checks are void).
 func unreadableTree(t *testing.T) string {

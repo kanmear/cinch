@@ -6,24 +6,20 @@ import (
 	"strings"
 )
 
-// gitCmd returns a git command run in root's working directory.
 func gitCmd(root string, args ...string) *exec.Cmd {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = root
 	return cmd
 }
 
-// gitRun runs git and returns its exit status.
 func gitRun(root string, args ...string) error {
 	return gitCmd(root, args...).Run()
 }
 
-// gitOutput runs git and returns its stdout.
 func gitOutput(root string, args ...string) ([]byte, error) {
 	return gitCmd(root, args...).Output()
 }
 
-// gitCombinedOutput runs git and returns its combined stdout/stderr.
 func gitCombinedOutput(root string, args ...string) ([]byte, error) {
 	return gitCmd(root, args...).CombinedOutput()
 }
@@ -54,6 +50,10 @@ func gitOutputLines(root string, args ...string) ([]string, error) {
 		}
 	}
 	return lines, nil
+}
+
+func gitScannableFiles(root string) ([]string, error) {
+	return gitOutputLines(root, "ls-files", "--cached", "--others", "--exclude-standard")
 }
 
 func gitShow(root, spec string) (content []byte, ok bool) {
