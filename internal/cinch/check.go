@@ -28,18 +28,28 @@ func scanErrorFinding(check, scope string, err error) []Finding {
 }
 
 func CmdCheck(msgFile string) int {
-	return runChecks(msgFile, true)
+	return runChecks(".", msgFile, true)
 }
 
-func hooksCheck(msgFile string) int {
-	return runChecks(msgFile, false)
+func hooksCheckStatic(root string) int {
+	return runChecks(root, "", false, "links", "rules", "identity", "generated", "core")
 }
 
-func runChecks(msgFile string, includeIdentity bool) int {
-	docsRoot, err := ResolveDocsRoot(".")
+func hooksCheckCommitMsg(root, msgFile string) int {
+	return runChecks(root, msgFile, false, "commit")
+}
+
+func runChecks(root, msgFile string, includeIdentity bool, only ...string) int {
+	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
 		return output.Fail("check", err)
 	}
+
+	onlySet := make(map[string]bool, len(only))
+	for _, n := range only {
+		onlySet[n] = true
+	}
+	run := func(name string) bool { return len(only) == 0 || onlySet[name] }
 
 	type namedResult struct {
 		name string
@@ -47,27 +57,32 @@ func runChecks(msgFile string, includeIdentity bool) int {
 	}
 
 	ch := make(chan namedResult, 6)
+	launched := 0
 	launch := func(name string, fn func() checkResult) {
+		if !run(name) {
+			return
+		}
+		launched++
 		go func() {
 			ch <- namedResult{name: name, res: fn()}
 		}()
 	}
 
 	launch("links", func() checkResult { return checkResult{Findings: checkLinks(docsRoot)} })
-	launch("rules", func() checkResult { return checkResult{Findings: checkRules(docsRoot, ".")} })
+	launch("rules", func() checkResult { return checkResult{Findings: checkRules(docsRoot, root)} })
 	if includeIdentity {
-		launch("identity", func() checkResult { return checkIdentity(docsRoot, ".") })
+		launch("identity", func() checkResult { return checkIdentity(docsRoot, root) })
 	} else {
 		launch("identity", func() checkResult {
 			return checkResult{NoOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
 		})
 	}
-	launch("generated", func() checkResult { return checkGenerated(".") })
-	launch("commit", func() checkResult { return checkCommit(".", msgFile) })
-	launch("core", func() checkResult { return checkPin(".", Version) })
+	launch("generated", func() checkResult { return checkGenerated(root) })
+	launch("commit", func() checkResult { return checkCommit(root, msgFile) })
+	launch("core", func() checkResult { return checkPin(root, Version) })
 
 	var findings []Finding
-	for range 6 {
+	for i := 0; i < launched; i++ {
 		r := <-ch
 		findings = append(findings, r.res.Findings...)
 		output.CheckStatus(r.name, len(r.res.Findings), r.res.NoOp)

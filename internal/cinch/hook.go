@@ -23,12 +23,12 @@ func CmdHook(root, event string, args []string) int {
 }
 
 func cmdHookPreCommit(root string) int {
-	staged, err := gitOutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
+	staged, err := stagedPaths(root)
 	if err != nil {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
-	ok := hooksCheck("") == 0
+	ok := hooksCheckStatic(root) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
@@ -50,7 +50,7 @@ func cmdHookCommitMsg(root string, args []string) int {
 	}
 	msgFile := args[0]
 
-	ok := hooksCheck(msgFile) == 0
+	ok := hooksCheckCommitMsg(root, msgFile) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
@@ -90,6 +90,10 @@ func committedFiles(root string) ([]string, error) {
 		return files, nil
 	}
 	return gitOutputLines(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
+}
+
+func stagedPaths(root string) ([]string, error) {
+	return gitOutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
 }
 
 func dispatchHooks(root string, m *Manifest, event string, staged []string, args ...string) bool {
