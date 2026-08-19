@@ -56,7 +56,7 @@ func CmdInit(root string) int {
 		}
 		output.Step("activated hooks: core.hooksPath = %s", hooksDir)
 	} else {
-		output.Skip("init", "hooks", "not a git repository — hook shims generated but not activated")
+		output.Skip("hooks", "not a git repository — hook shims generated but not activated")
 	}
 
 	return 0

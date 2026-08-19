@@ -50,8 +50,8 @@ func Failf(cmd, format string, args ...any) int {
 	return 1
 }
 
-func Skip(cmd, checker, msg string) {
-	fmt.Fprintf(os.Stderr, "cinch: %s: %s: %s\n", cmd, checker, paint(stderrColor, colorYellow, "skip: "+msg))
+func Skip(checker, msg string) {
+	fmt.Fprintf(os.Stderr, "%s: %s\n", checker, paint(stderrColor, colorYellow, "skip: "+msg))
 }
 
 func Step(format string, args ...any) {
@@ -70,15 +70,15 @@ func ColorizeError(s string) string {
 func CheckStatus(check string, findingCount int, noOp string) {
 	switch {
 	case noOp != "":
-		fmt.Fprintf(os.Stderr, "cinch: check: %s: %s\n", check, paint(stderrColor, colorYellow, "skip: "+noOp))
+		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorYellow, "skip: "+noOp))
 	case findingCount > 0:
 		word := "findings"
 		if findingCount == 1 {
 			word = "finding"
 		}
-		fmt.Fprintf(os.Stderr, "cinch: check: %s: %s\n", check, paint(stderrColor, colorRed, fmt.Sprintf("%d %s", findingCount, word)))
+		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorRed, fmt.Sprintf("%d %s", findingCount, word)))
 	default:
-		fmt.Fprintf(os.Stderr, "cinch: check: %s: %s\n", check, paint(stderrColor, colorGreen, "ok"))
+		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorGreen, "ok"))
 	}
 }
 

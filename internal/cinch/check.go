@@ -60,7 +60,7 @@ func runChecks(msgFile string, includeIdentity bool) int {
 		findings = append(findings, identity.Findings...)
 		output.CheckStatus("identity", len(identity.Findings), identity.NoOp)
 	} else {
-		output.Skip("check", "identity", "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI")
+		output.CheckStatus("identity", 0, "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI")
 	}
 
 	generated := checkGenerated(".")
