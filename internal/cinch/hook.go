@@ -101,7 +101,7 @@ func dispatchHooks(root string, m *Manifest, event string, staged []string, args
 		}
 		when := m.List("hooks." + event + "." + name + ".when")
 		if !hookWhenMatches(staged, when) {
-			output.Skip("hook", event, fmt.Sprintf("%s: no staged path under %v", name, when))
+			output.Skip(event, fmt.Sprintf("%s: no staged path under %v", name, when))
 			continue
 		}
 		if err := runHookCommand(root, command, args...); err != nil {
