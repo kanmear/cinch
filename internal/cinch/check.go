@@ -15,15 +15,11 @@ type Finding struct {
 	Message string
 }
 
-// checkResult is the outcome of a single check: findings to report, or a
-// NoOp reason why the check was skipped.
 type checkResult struct {
 	Findings []Finding
 	NoOp     string
 }
 
-// scanErrorFinding reports a walk or read failure so I/O errors surface as a
-// finding instead of a clean bill of health.
 func scanErrorFinding(check, scope string, err error) []Finding {
 	return []Finding{{
 		Check: check, Level: "error", File: scope, Line: 1,
@@ -45,35 +41,37 @@ func runChecks(msgFile string, includeIdentity bool) int {
 		return output.Fail("check", err)
 	}
 
-	var findings []Finding
-
-	linksFindings := checkLinks(docsRoot)
-	findings = append(findings, linksFindings...)
-	output.CheckStatus("links", len(linksFindings), "")
-
-	rulesFindings := checkRules(docsRoot, ".")
-	findings = append(findings, rulesFindings...)
-	output.CheckStatus("rules", len(rulesFindings), "")
-
-	if includeIdentity {
-		identity := checkIdentity(docsRoot, ".")
-		findings = append(findings, identity.Findings...)
-		output.CheckStatus("identity", len(identity.Findings), identity.NoOp)
-	} else {
-		output.CheckStatus("identity", 0, "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI")
+	type namedResult struct {
+		name string
+		res  checkResult
 	}
 
-	generated := checkGenerated(".")
-	findings = append(findings, generated.Findings...)
-	output.CheckStatus("generated", len(generated.Findings), generated.NoOp)
+	ch := make(chan namedResult, 6)
+	launch := func(name string, fn func() checkResult) {
+		go func() {
+			ch <- namedResult{name: name, res: fn()}
+		}()
+	}
 
-	commit := checkCommit(".", msgFile)
-	findings = append(findings, commit.Findings...)
-	output.CheckStatus("commit", len(commit.Findings), commit.NoOp)
+	launch("links", func() checkResult { return checkResult{Findings: checkLinks(docsRoot)} })
+	launch("rules", func() checkResult { return checkResult{Findings: checkRules(docsRoot, ".")} })
+	if includeIdentity {
+		launch("identity", func() checkResult { return checkIdentity(docsRoot, ".") })
+	} else {
+		launch("identity", func() checkResult {
+			return checkResult{NoOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
+		})
+	}
+	launch("generated", func() checkResult { return checkGenerated(".") })
+	launch("commit", func() checkResult { return checkCommit(".", msgFile) })
+	launch("core", func() checkResult { return checkPin(".", Version) })
 
-	pin := checkPin(".", Version)
-	findings = append(findings, pin.Findings...)
-	output.CheckStatus("core", len(pin.Findings), pin.NoOp)
+	var findings []Finding
+	for range 6 {
+		r := <-ch
+		findings = append(findings, r.res.Findings...)
+		output.CheckStatus(r.name, len(r.res.Findings), r.res.NoOp)
+	}
 
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
