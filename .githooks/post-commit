@@ -1,0 +1,2 @@
+#!/bin/sh
+exec scripts/post-commit-version-bump.sh
