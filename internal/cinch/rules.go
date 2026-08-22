@@ -65,10 +65,10 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		textLines = nil
 	}
 
-	_ = forEachFencedLine(content, func(lineNo int, line string) {
+	_ = forEachFencedLine(content, func(lineNumber int, line string) {
 		if m := ruleItemRe.FindStringSubmatch(line); m != nil {
 			flush()
-			cur = &ruleItem{id: m[1], file: file, line: lineNo}
+			cur = &ruleItem{id: m[1], file: file, line: lineNumber}
 			textLines = []string{line}
 			return
 		}
@@ -84,7 +84,7 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 			if m := ignoreRe.FindStringSubmatch(line); m != nil {
 				cur.hasIgnore = true
 				cur.ignoreReason = strings.TrimSpace(m[1])
-				cur.ignoreLine = lineNo
+				cur.ignoreLine = lineNumber
 			}
 		}
 	})
@@ -105,16 +105,16 @@ func scanRuleDocs(docsRoot string) ([]ruleItem, error) {
 	return collectMarkdown(docsRoot, parseRuleDoc)
 }
 
-func underPath(path, dir string) bool {
-	if dir == "" {
+func underPath(path, directory string) bool {
+	if directory == "" {
 		return false
 	}
 	absPath, err1 := filepath.Abs(path)
-	absDir, err2 := filepath.Abs(dir)
+	absDirectory, err2 := filepath.Abs(directory)
 	if err1 != nil || err2 != nil {
 		return false
 	}
-	rel, err := filepath.Rel(absDir, absPath)
+	rel, err := filepath.Rel(absDirectory, absPath)
 	if err != nil {
 		return false
 	}
@@ -160,9 +160,9 @@ func markerScanFiles(repoRoot, docsRoot string) ([]string, error) {
 }
 
 func scanMarkers(r io.Reader, path string, fenced bool, markers map[string][]markerLoc) error {
-	fn := func(lineNo int, line string) {
+	fn := func(lineNumber int, line string) {
 		if m := markerRe.FindStringSubmatch(line); m != nil {
-			markers[m[1]] = append(markers[m[1]], markerLoc{file: path, line: lineNo})
+			markers[m[1]] = append(markers[m[1]], markerLoc{file: path, line: lineNumber})
 		}
 	}
 	if fenced {
@@ -211,16 +211,16 @@ func checkRules(repoRoot, docsRoot string) rulesReport {
 	return checkRulesFrom(items, markers)
 }
 
-func rulesCheckResult(rep rulesReport) checkResult {
-	if rep.rules == 0 && len(rep.findings) == 0 {
+func rulesCheckResult(report rulesReport) checkResult {
+	if report.rules == 0 && len(report.findings) == 0 {
 		return checkResult{noOp: "no rule IDs found — rules check enforces nothing"}
 	}
 	return checkResult{
-		findings: rep.findings,
+		findings: report.findings,
 		detail: fmt.Sprintf("(%d %s, %d %s, %d %s)",
-			rep.rules, output.Plural(rep.rules, "rule"),
-			rep.docs, output.Plural(rep.docs, "rule doc"),
-			rep.ignores, output.Plural(rep.ignores, "ignore")),
+			report.rules, output.Plural(report.rules, "rule"),
+			report.docs, output.Plural(report.docs, "rule doc"),
+			report.ignores, output.Plural(report.ignores, "ignore")),
 	}
 }
 

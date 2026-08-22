@@ -56,8 +56,8 @@ func gitScannableFiles(root string) ([]string, error) {
 	return gitOutputLines(root, "ls-files", "--cached", "--others", "--exclude-standard")
 }
 
-func gitShow(root, spec string) (content []byte, ok bool) {
-	out, err := gitOutput(root, "show", spec)
+func gitShow(root, revisionSpec string) (content []byte, ok bool) {
+	out, err := gitOutput(root, "show", revisionSpec)
 	if err != nil {
 		return nil, false
 	}

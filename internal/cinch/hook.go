@@ -48,15 +48,15 @@ func cmdHookCommitMsg(root string, args []string) int {
 	if len(args) < 1 {
 		return output.UsageError("hook: commit-msg requires a message-file argument")
 	}
-	msgFile := args[0]
+	messageFile := args[0]
 
-	ok := commitMsgChecks(root, msgFile) == 0
+	ok := commitMsgChecks(root, messageFile) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
-	if m != nil && !dispatchHooks(root, m, "commit-msg", nil, msgFile) {
+	if m != nil && !dispatchHooks(root, m, "commit-msg", nil, messageFile) {
 		ok = false
 	}
 

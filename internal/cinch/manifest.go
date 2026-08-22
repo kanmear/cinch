@@ -46,20 +46,20 @@ func ManifestExists(root string) bool {
 	return err == nil
 }
 
-// manifestVar returns the value of key in m, or def if unset or empty.
-func manifestVar(m *manifest, key, def string) string {
+// manifestVar returns the value of key in m, or defaultValue if unset or empty.
+func manifestVar(m *manifest, key, defaultValue string) string {
 	if m != nil {
 		if v, ok := m.vars[key]; ok && v != "" {
 			return v
 		}
 	}
-	return def
+	return defaultValue
 }
 
 // manifestSetting returns the non-empty value of key from the optional
 // manifest at root. ok is false when the manifest is absent or the key is
 // unset; err is non-nil only when the manifest exists but is malformed.
-func manifestSetting(root, key string) (val string, ok bool, err error) {
+func manifestSetting(root, key string) (value string, ok bool, err error) {
 	m, err := loadManifestOptional(root)
 	if err != nil || m == nil {
 		return "", false, err
@@ -78,12 +78,12 @@ func (m *manifest) validate(path string) error {
 		return nil
 	}
 	for _, key := range repoLocalPathKeys {
-		val, ok := m.vars[key]
-		if !ok || val == "" {
+		value, ok := m.vars[key]
+		if !ok || value == "" {
 			continue
 		}
-		if !filepath.IsLocal(val) {
-			return fmt.Errorf("%s: %s: %q must be inside the repository", path, key, val)
+		if !filepath.IsLocal(value) {
+			return fmt.Errorf("%s: %s: %q must be inside the repository", path, key, value)
 		}
 	}
 	return nil
@@ -157,11 +157,11 @@ func flattenSequence(path, key string, node *yaml.Node) ([]string, error) {
 	return items, nil
 }
 
-func setVar(vars map[string]string, order *[]string, key, val string) {
+func setVar(vars map[string]string, order *[]string, key, value string) {
 	if _, seen := vars[key]; !seen {
 		*order = append(*order, key)
 	}
-	vars[key] = val
+	vars[key] = value
 }
 
 func (m *manifest) list(key string) []string {

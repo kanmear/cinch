@@ -11,38 +11,38 @@ import (
 
 var fenceRe = regexp.MustCompile("^\\s*```")
 
-func forEachLineReader(r io.Reader, fn func(lineNo int, line string)) error {
+func forEachLineReader(r io.Reader, fn func(lineNumber int, line string)) error {
 	const chunkSize = 64 << 10
-	buf := make([]byte, 0, chunkSize)
-	tmp := make([]byte, chunkSize)
-	lineNo := 0
+	buffer := make([]byte, 0, chunkSize)
+	temp := make([]byte, chunkSize)
+	lineNumber := 0
 	start := 0
 	empties := 0
 
 	flush := func(end int) {
-		lineNo++
-		line := buf[start:end]
+		lineNumber++
+		line := buffer[start:end]
 		if n := len(line); n > 0 && line[n-1] == '\r' {
 			line = line[:n-1]
 		}
-		fn(lineNo, string(line))
+		fn(lineNumber, string(line))
 		start = end + 1
 	}
 
 	for {
-		n, err := r.Read(tmp)
+		n, err := r.Read(temp)
 		if n > 0 {
 			empties = 0
-			base := len(buf)
-			buf = append(buf, tmp[:n]...)
-			for i := base; i < len(buf); i++ {
-				if buf[i] == '\n' {
+			base := len(buffer)
+			buffer = append(buffer, temp[:n]...)
+			for i := base; i < len(buffer); i++ {
+				if buffer[i] == '\n' {
 					flush(i)
 				}
 			}
 			if start > 0 {
-				copy(buf, buf[start:])
-				buf = buf[:len(buf)-start]
+				copy(buffer, buffer[start:])
+				buffer = buffer[:len(buffer)-start]
 				start = 0
 			}
 		} else if err == nil {
@@ -53,8 +53,8 @@ func forEachLineReader(r io.Reader, fn func(lineNo int, line string)) error {
 		}
 		if err != nil {
 			if err == io.EOF {
-				if start < len(buf) {
-					flush(len(buf))
+				if start < len(buffer) {
+					flush(len(buffer))
 				}
 				return nil
 			}
@@ -63,9 +63,9 @@ func forEachLineReader(r io.Reader, fn func(lineNo int, line string)) error {
 	}
 }
 
-func forEachFencedLineReader(r io.Reader, fn func(lineNo int, line string)) error {
+func forEachFencedLineReader(r io.Reader, fn func(lineNumber int, line string)) error {
 	inFence := false
-	return forEachLineReader(r, func(lineNo int, line string) {
+	return forEachLineReader(r, func(lineNumber int, line string) {
 		if fenceRe.MatchString(line) {
 			inFence = !inFence
 			return
@@ -73,11 +73,11 @@ func forEachFencedLineReader(r io.Reader, fn func(lineNo int, line string)) erro
 		if inFence {
 			return
 		}
-		fn(lineNo, line)
+		fn(lineNumber, line)
 	})
 }
 
-func forEachFencedLine(data []byte, fn func(lineNo int, line string)) error {
+func forEachFencedLine(data []byte, fn func(lineNumber int, line string)) error {
 	return forEachFencedLineReader(bytes.NewReader(data), fn)
 }
 

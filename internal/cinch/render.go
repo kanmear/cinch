@@ -19,18 +19,18 @@ var philosophySrc string
 //go:embed docs/templates
 var templatesFS embed.FS
 
-const templatesDir = "docs/templates"
+const templatesDirectory = "docs/templates"
 
 var varRe = regexp.MustCompile(`\{\{([a-zA-Z0-9_.-]+)\}\}`)
 
 var hookEvents = []string{"pre-commit", "commit-msg", "post-commit"}
 
 type renderFile struct {
-	source string
-	dest   string
-	body   string
-	mode   os.FileMode
-	style  fileStyle
+	source      string
+	destination string
+	body        string
+	mode        os.FileMode
+	style       fileStyle
 }
 
 func substitute(body string, vars map[string]string) (string, []string) {
@@ -71,59 +71,59 @@ func substitutionVars(m *manifest) map[string]string {
 }
 
 func renderAll(m *manifest) ([]renderFile, error) {
-	entries, err := fs.ReadDir(templatesFS, templatesDir)
+	entries, err := fs.ReadDir(templatesFS, templatesDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("internal: reading embedded templates: %w", err)
 	}
 
 	docsRoot := docsPathValue(m)
-	workflowsDir := docsRoot + "/" + workflowsSubdir
-	hooksDir := hooksPathValue(m)
+	workflowsDirectory := docsRoot + "/" + workflowsSubdir
+	hooksDirectory := hooksPathValue(m)
 
 	vars := substitutionVars(m)
 	vars[pathsDocsKey] = docsRoot
 
 	var files []renderFile
-	var errLines []string
+	var errorLines []string
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
 		name := e.Name()
-		src := templatesDir + "/" + name
-		raw, err := fs.ReadFile(templatesFS, src)
+		source := templatesDirectory + "/" + name
+		raw, err := fs.ReadFile(templatesFS, source)
 		if err != nil {
-			return nil, fmt.Errorf("internal: reading embedded %s: %w", src, err)
+			return nil, fmt.Errorf("internal: reading embedded %s: %w", source, err)
 		}
 		body, missing := substitute(string(raw), vars)
 		if len(missing) > 0 {
-			errLines = append(errLines, fmt.Sprintf("%s: undefined manifest variables: %s", src, strings.Join(missing, ", ")))
+			errorLines = append(errorLines, fmt.Sprintf("%s: undefined manifest variables: %s", source, strings.Join(missing, ", ")))
 			continue
 		}
-		files = append(files, renderFile{source: src, dest: workflowsDir + "/" + name, body: body})
+		files = append(files, renderFile{source: source, destination: workflowsDirectory + "/" + name, body: body})
 	}
-	if len(errLines) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errLines, "\n"))
+	if len(errorLines) > 0 {
+		return nil, fmt.Errorf("%s", strings.Join(errorLines, "\n"))
 	}
 
-	files = append(files, renderFile{source: "docs/docs-philosophy.md", dest: workflowsDir + "/docs-philosophy.md", body: philosophySrc})
+	files = append(files, renderFile{source: "docs/docs-philosophy.md", destination: workflowsDirectory + "/docs-philosophy.md", body: philosophySrc})
 
-	sort.Slice(files, func(i, j int) bool { return files[i].dest < files[j].dest })
+	sort.Slice(files, func(i, j int) bool { return files[i].destination < files[j].destination })
 
-	files = append(files, buildHookShims(hooksDir)...)
+	files = append(files, buildHookShims(hooksDirectory)...)
 
 	return files, nil
 }
 
-func buildHookShims(hooksDir string) []renderFile {
+func buildHookShims(hooksDirectory string) []renderFile {
 	var files []renderFile
 	for _, event := range hookEvents {
 		files = append(files, renderFile{
-			source: "generated",
-			dest:   hooksDir + "/" + event,
-			body:   "exec cinch hook " + event + " \"$@\"\n",
-			mode:   0o755,
-			style:  styleShell,
+			source:      "generated",
+			destination: hooksDirectory + "/" + event,
+			body:        "exec cinch hook " + event + " \"$@\"\n",
+			mode:        0o755,
+			style:       styleShell,
 		})
 	}
 	return files
@@ -141,8 +141,8 @@ func CmdRender(root string) int {
 	}
 
 	for _, f := range files {
-		dst := filepath.Join(root, f.dest)
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		destination := filepath.Join(root, f.destination)
+		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 			return output.Fail("render", err)
 		}
 		content := header(f.source, f.body, f.style) + f.body
@@ -150,10 +150,10 @@ func CmdRender(root string) int {
 		if mode == 0 {
 			mode = 0o644
 		}
-		if err := os.WriteFile(dst, []byte(content), mode); err != nil {
+		if err := os.WriteFile(destination, []byte(content), mode); err != nil {
 			return output.Fail("render", err)
 		}
-		output.Step("rendered %s", f.dest)
+		output.Step("rendered %s", f.destination)
 	}
 	return 0
 }

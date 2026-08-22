@@ -19,29 +19,29 @@ type linksReport struct {
 }
 
 func checkLinks(docsRoot string) linksReport {
-	var rep linksReport
+	var report linksReport
 	err := walkMarkdownFiles(docsRoot, func(path string) error {
-		rep.docs++
+		report.docs++
 		findings, links, ferr := checkLinksInFile(path)
-		rep.links += links
-		rep.findings = append(rep.findings, findings...)
+		report.links += links
+		report.findings = append(report.findings, findings...)
 		return ferr
 	})
 	if err != nil {
-		rep.findings = append(rep.findings, scanErrorFinding("links", docsRoot, err)...)
+		report.findings = append(report.findings, scanErrorFinding("links", docsRoot, err)...)
 	}
-	return rep
+	return report
 }
 
-func linksCheckResult(rep linksReport) checkResult {
-	if rep.docs == 0 && len(rep.findings) == 0 {
+func linksCheckResult(report linksReport) checkResult {
+	if report.docs == 0 && len(report.findings) == 0 {
 		return checkResult{noOp: "no markdown files found — links check enforces nothing"}
 	}
 	return checkResult{
-		findings: rep.findings,
+		findings: report.findings,
 		detail: fmt.Sprintf("(%d %s, %d %s checked)",
-			rep.docs, output.Plural(rep.docs, "doc"),
-			rep.links, output.Plural(rep.links, "link")),
+			report.docs, output.Plural(report.docs, "doc"),
+			report.links, output.Plural(report.links, "link")),
 	}
 }
 
@@ -53,16 +53,16 @@ func checkLinksInFile(path string) ([]finding, int, error) {
 
 	var findings []finding
 	links := 0
-	lineNo := 0
+	lineNumber := 0
 	scanErr := forEachFencedLine(data, func(n int, line string) {
-		lineNo = n
+		lineNumber = n
 		for _, m := range mdLinkRe.FindAllStringSubmatch(line, -1) {
 			target := strings.TrimSpace(m[1])
 			if linkTargetIsExempt(target) {
 				continue
 			}
-			if idx := strings.Index(target, "#"); idx >= 0 {
-				target = target[:idx]
+			if index := strings.Index(target, "#"); index >= 0 {
+				target = target[:index]
 			}
 			if target == "" {
 				continue
@@ -74,7 +74,7 @@ func checkLinksInFile(path string) ([]finding, int, error) {
 					check:   "links",
 					level:   "error",
 					file:    path,
-					line:    lineNo,
+					line:    lineNumber,
 					message: "link target does not resolve: " + target,
 				})
 			}
@@ -85,7 +85,7 @@ func checkLinksInFile(path string) ([]finding, int, error) {
 			check:   "links",
 			level:   "error",
 			file:    path,
-			line:    lineNo,
+			line:    lineNumber,
 			message: "failed to scan file: " + scanErr.Error(),
 		})
 	}
