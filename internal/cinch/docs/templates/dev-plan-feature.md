@@ -23,9 +23,10 @@ pure style changes, dependency bumps, or doc-only edits. Bug work routes through
 ### 1.1 Identify affected domains
 
 From the feature description, identify which domains are involved. The domain list is the set of
-files in `{{paths.docs}}/` minus `overview.md` — list that directory
-to see the current domains; each `<domain>.md` is one domain. (There is deliberately no domain list
-in the manifest to copy out of sync — the filesystem is the source.)
+files in the project's domain-rules directory under `{{paths.docs}}/` minus `overview.md` — run
+`cinch index` (or list that directory directly) to see both the current domains and where that
+directory actually lives for this project. (There is deliberately no domain list in the manifest to
+copy out of sync — the filesystem is the source.)
 
 Read only the relevant files. If uncertain which domains apply, run `cinch index` and read the
 project's orientation doc, if it has one, before going further.

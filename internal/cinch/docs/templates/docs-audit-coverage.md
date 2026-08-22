@@ -19,14 +19,12 @@ git ignore rules) outside `{{paths.docs}}/`. It reports, per rule:
   (a coverage gap) or declared N/A (step 2)
 - **unresolved marker** — a marker that names no real rule: dead syntax, fix it
 
-`cinch ignores` lists every rule declared N/A. The checker's report plus that inventory **are**
-the enumerated list:
-
-```
-[SIG-001] <rule summary>   unmarked — verify coverage
-[SIG-002] <rule summary>   unmarked — verify coverage
-[TAB-005] <rule summary>   cinch:ignore — N/A
-```
+`cinch ignores` lists every rule declared N/A. The checker's findings plus that inventory **are**
+the enumerated list — `cinch check` reports one line per unmarked rule (`<ID>: no // cinch:rule
+marker (or cinch:ignore declaration)`, no rule summary included) and one per unresolved marker
+(`// cinch:rule <ID> does not resolve to any rule ID`); `cinch ignores` separately lists every
+`cinch:ignore`'d ID with its reason. Read the rule's own text from its doc, not from the finding
+line — the finding only carries the ID and location.
 
 Your job starts where the script stops: the semantic half in steps 2–3. Do not re-enumerate the
 rule set by hand — the checkers never miss a rule; a hand extraction can.
@@ -46,8 +44,8 @@ immutable-history rule.
 
 **N/A** — the rule describes display or structural behavior that cannot be tested automatically
 (e.g. "display names are derived from another field"). Declare it in the doc by placing
-`<!-- cinch:ignore <ID> -->` directly under the rule item, so `cinch check` stops warning about
-it as uncovered and `cinch ignores` lists the inventory. Not a test coverage gap.
+`<!-- cinch:ignore: <reason> -->` directly under the rule item, so `cinch check` stops warning
+about it as uncovered and `cinch ignores` lists the inventory. Not a test coverage gap.
 
 ### 3. Find test coverage
 
@@ -137,7 +135,7 @@ Before finishing, confirm:
 
 - [ ] The rule closure came from the harness checkers — no hand re-enumeration of `{{paths.docs}}/`
 - [ ] Every rule was classified by its ID (API / Model / N/A)
-- [ ] N/A rules are declared `<!-- cinch:ignore <ID> -->` in their doc — not just skipped in the report
+- [ ] N/A rules are declared `<!-- cinch:ignore: <reason> -->` in their doc — not just skipped in the report
 - [ ] The test→rule mapping was derived from test assertions **before** markers were consulted
 - [ ] Every marked test was restated against its rule's text, and tensions flagged before deciding
 - [ ] Every row quotes the rule text — and, for ✅/⚠️ TENSION rows, the assertion line —
