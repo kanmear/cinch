@@ -63,14 +63,14 @@ func main() {
 		if len(args) > 1 {
 			os.Exit(output.UsageError("check: too many arguments"))
 		}
-		msgFile := ""
+		messageFile := ""
 		if len(args) == 1 {
-			msgFile = args[0]
-			if _, err := os.Stat(msgFile); err != nil {
-				os.Exit(output.UsageError("check: cannot read message file: " + msgFile))
+			messageFile = args[0]
+			if _, err := os.Stat(messageFile); err != nil {
+				os.Exit(output.UsageError("check: cannot read message file: " + messageFile))
 			}
 		}
-		os.Exit(impl.CmdCheck(msgFile))
+		os.Exit(impl.CmdCheck(messageFile))
 	case "ignores":
 		if len(os.Args) > 2 {
 			os.Exit(output.UsageError("ignores: takes no arguments"))

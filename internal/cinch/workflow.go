@@ -14,8 +14,8 @@ import (
 const workflowsSubdir = "workflows"
 
 func listWorkflowNames(docsRoot string) ([]string, error) {
-	dir := filepath.Join(docsRoot, workflowsSubdir)
-	entries, err := os.ReadDir(dir)
+	directory := filepath.Join(docsRoot, workflowsSubdir)
+	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, err
 	}

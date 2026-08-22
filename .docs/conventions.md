@@ -56,6 +56,25 @@ name the git-hook-event check bundles precisely because `hooksCheck*` would
 collide with `checkHooks` (which checks whether git hooks are *activated*, a
 different concept entirely).
 
+## Variable naming
+
+Spell out an abbreviated local variable, parameter, or struct field to its
+full word — `buffer`/`temp`/`lineNumber`, not `buf`/`tmp`/`lineNo`. If a
+concept already has an established fully-spelled form elsewhere in the
+codebase (`message`, `path`, `pattern`, `result`, `report`, `directory`), a
+clipped local holding the same kind of value matches it rather than
+inventing a shorter alias — e.g. `messageFile` (not `msgFile`) because
+`finding.message` is already spelled out; `commitPattern` (not `commitPat`)
+because `pattern` is already spelled out everywhere else.
+
+Exceptions — the small set of universal Go short-name idioms stay short:
+`err`, `ok`, loop counters (`i`, `j`, `n`), single-letter receivers (`m
+*manifest`), type-initial short-lived params (`r io.Reader`, `w`, `f
+*os.File`, `d` for a `DirEntry`), `fn` for a function-value param, `a`/`b` in
+sort comparators, `re *regexp.Regexp`, `b strings.Builder`. `repo`/`repoRoot`
+are in the same tier — accepted git-tooling vocabulary, not a violation of
+the spell-it-out rule.
+
 ## Imports
 
 One grouped `import (...)` block per file — stdlib first, then a blank line,
