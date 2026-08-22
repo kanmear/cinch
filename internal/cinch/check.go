@@ -57,7 +57,7 @@ func runChecks(root, msgFile string, includeRetirement bool, only ...string) int
 		res  checkResult
 	}
 
-	ch := make(chan namedResult, 6)
+	ch := make(chan namedResult, 7)
 	launched := 0
 	launch := func(name string, fn func() checkResult) {
 		if !run(name) {
@@ -81,6 +81,7 @@ func runChecks(root, msgFile string, includeRetirement bool, only ...string) int
 	launch("generated", func() checkResult { return checkGenerated(root) })
 	launch("commit", func() checkResult { return checkCommit(root, msgFile) })
 	launch("core", func() checkResult { return checkPin(root, Version) })
+	launch("hooks", func() checkResult { return checkHooks(root) })
 
 	var findings []Finding
 	for i := 0; i < launched; i++ {

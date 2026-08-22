@@ -21,7 +21,7 @@ Ordered by estimated value.
   `checkRules`/`checkLinks` now report rule/doc/link/ignore counts as a detail suffix on the ok
   line, and a zero-corpus clean run is an explicit NoOp instead of a silent ok.
 
-## 2. `cinch check` never verifies hooks are active
+## 2. `cinch check` never verifies hooks are active — DONE (b3cb15d)
 
 - **Evidence:** both consumers pass `cinch check` in a clone where `core.hooksPath` is unset —
   i.e. nothing actually enforces anything at commit time. Consumers hand-roll activation
@@ -30,6 +30,12 @@ Ordered by estimated value.
   `paths.hooks`; emit a finding (or at least a NoOp hint) when unset or mismatched, with the
   fix spelled out (`cinch init` or `git config core.hooksPath <paths.hooks>`). Skip cleanly when
   not a git repo or when `paths.hooks` is unset.
+- **Resolved in `b3cb15d`** ("feat: add hooks check to verify core.hooksPath is active"): a new
+  `hooks` check (`internal/cinch/hooks.go`) compares `git config
+  --get core.hooksPath` against the resolved `paths.hooks` value and reports a NoOp
+  (`hooks: skip: ...`) naming both fixes when unset or mismatched; not-a-git-repo and
+  no-`cinch.yml` skip cleanly. Non-blocking (NoOp, not a finding) so existing
+  `cinch check`-gated CI does not start failing on repos that have not wired up hooks yet.
 
 ## 3. post-commit (and pre-commit) dispatch gives scripts no inputs
 
