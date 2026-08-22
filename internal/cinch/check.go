@@ -18,6 +18,7 @@ type Finding struct {
 type checkResult struct {
 	Findings []Finding
 	NoOp     string
+	Detail   string
 }
 
 func scanErrorFinding(check, scope string, err error) []Finding {
@@ -68,8 +69,8 @@ func runChecks(root, msgFile string, includeIdentity bool, only ...string) int {
 		}()
 	}
 
-	launch("links", func() checkResult { return checkResult{Findings: checkLinks(docsRoot)} })
-	launch("rules", func() checkResult { return checkResult{Findings: checkRules(docsRoot, root)} })
+	launch("links", func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })
+	launch("rules", func() checkResult { return rulesCheckResult(checkRules(docsRoot, root)) })
 	if includeIdentity {
 		launch("identity", func() checkResult { return checkIdentity(docsRoot, root) })
 	} else {
@@ -85,7 +86,7 @@ func runChecks(root, msgFile string, includeIdentity bool, only ...string) int {
 	for i := 0; i < launched; i++ {
 		r := <-ch
 		findings = append(findings, r.res.Findings...)
-		output.CheckStatus(r.name, len(r.res.Findings), r.res.NoOp)
+		output.CheckStatus(r.name, len(r.res.Findings), r.res.NoOp, r.res.Detail)
 	}
 
 	sort.Slice(findings, func(i, j int) bool {

@@ -125,18 +125,18 @@ func TestScanRuleMarkersReadError(t *testing.T) {
 
 func TestCheckRulesReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
-	findings := checkRules(root, ".")
-	if len(findings) == 0 {
+	rep := checkRules(root, ".")
+	if len(rep.Findings) == 0 {
 		t.Fatal("checkRules = no findings, want error finding for unreadable subdirectory")
 	}
 	ok := false
-	for _, f := range findings {
+	for _, f := range rep.Findings {
 		if f.Check == "rules" && f.Level == "error" && strings.Contains(f.Message, "failed to scan") {
 			ok = true
 		}
 	}
 	if !ok {
-		t.Fatalf("checkRules findings %+v do not include a scan error", findings)
+		t.Fatalf("checkRules findings %+v do not include a scan error", rep.Findings)
 	}
 }
 
@@ -155,10 +155,10 @@ func TestCheckRulesScanErrorDoesNotReportUnmarked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	findings := checkRules(docs, root)
+	rep := checkRules(docs, root)
 	scanErr := false
 	unmarked := 0
-	for _, f := range findings {
+	for _, f := range rep.Findings {
 		if f.Check == "rules" && strings.Contains(f.Message, "failed to scan") {
 			scanErr = true
 		}
@@ -167,7 +167,7 @@ func TestCheckRulesScanErrorDoesNotReportUnmarked(t *testing.T) {
 		}
 	}
 	if !scanErr {
-		t.Fatalf("checkRules findings %+v do not include a scan error", findings)
+		t.Fatalf("checkRules findings %+v do not include a scan error", rep.Findings)
 	}
 	if unmarked > 0 {
 		t.Fatalf("scan failure leaked %d false 'unmarked' findings; want none", unmarked)
@@ -270,19 +270,60 @@ func TestScanRuleMarkersGitScope(t *testing.T) {
 	}
 }
 
+func TestRulesCheckResultDetailAndNoOp(t *testing.T) {
+	empty := rulesCheckResult(rulesReport{})
+	if empty.NoOp == "" {
+		t.Fatalf("rulesCheckResult(empty) = %+v, want NoOp set for zero rules and zero findings", empty)
+	}
+
+	rep := rulesReport{Rules: 8, Docs: 1, Ignores: 1}
+	res := rulesCheckResult(rep)
+	if res.NoOp != "" {
+		t.Fatalf("rulesCheckResult(%+v).NoOp = %q, want empty", rep, res.NoOp)
+	}
+	if want := "(8 rules, 1 rule doc, 1 ignore)"; res.Detail != want {
+		t.Fatalf("rulesCheckResult(%+v).Detail = %q, want %q", rep, res.Detail, want)
+	}
+
+	strayMarker := rulesReport{Findings: []Finding{{Check: "rules", Message: "stray marker"}}}
+	res = rulesCheckResult(strayMarker)
+	if res.NoOp != "" {
+		t.Fatalf("rulesCheckResult(%+v).NoOp = %q, want empty (findings must not be swallowed into NoOp)", strayMarker, res.NoOp)
+	}
+	if len(res.Findings) != 1 {
+		t.Fatalf("rulesCheckResult(%+v).Findings = %+v, want the stray-marker finding preserved", strayMarker, res.Findings)
+	}
+}
+
+func TestLinksCheckResultDetailAndNoOp(t *testing.T) {
+	empty := linksCheckResult(linksReport{})
+	if empty.NoOp == "" {
+		t.Fatalf("linksCheckResult(empty) = %+v, want NoOp set for zero docs and zero findings", empty)
+	}
+
+	rep := linksReport{Docs: 4, Links: 12}
+	res := linksCheckResult(rep)
+	if res.NoOp != "" {
+		t.Fatalf("linksCheckResult(%+v).NoOp = %q, want empty", rep, res.NoOp)
+	}
+	if want := "(4 docs, 12 links checked)"; res.Detail != want {
+		t.Fatalf("linksCheckResult(%+v).Detail = %q, want %q", rep, res.Detail, want)
+	}
+}
+
 func TestCheckLinksReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
-	findings := checkLinks(root)
-	if len(findings) == 0 {
+	rep := checkLinks(root)
+	if len(rep.Findings) == 0 {
 		t.Fatal("checkLinks = no findings, want error finding for unreadable subdirectory")
 	}
 	ok := false
-	for _, f := range findings {
+	for _, f := range rep.Findings {
 		if f.Check == "links" && f.Level == "error" && strings.Contains(f.Message, "failed to scan") {
 			ok = true
 		}
 	}
 	if !ok {
-		t.Fatalf("checkLinks findings %v do not include a scan error", findings)
+		t.Fatalf("checkLinks findings %v do not include a scan error", rep.Findings)
 	}
 }

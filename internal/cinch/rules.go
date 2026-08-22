@@ -191,20 +191,40 @@ func scanRuleMarkers(repoRoot, docsDir string) (map[string][]markerLoc, error) {
 	return markers, nil
 }
 
-func checkRules(docsDir, repoRoot string) []Finding {
+type rulesReport struct {
+	Findings []Finding
+	Rules    int
+	Docs     int
+	Ignores  int
+}
+
+func checkRules(docsDir, repoRoot string) rulesReport {
 	items, err := scanRuleDocs(docsDir)
 	if err != nil {
-		return scanErrorFinding("rules", docsDir, err)
+		return rulesReport{Findings: scanErrorFinding("rules", docsDir, err)}
 	}
 	markers, err := scanRuleMarkers(repoRoot, docsDir)
 	if err != nil {
-		return scanErrorFinding("rules", repoRoot, err)
+		return rulesReport{Findings: scanErrorFinding("rules", repoRoot, err)}
 	}
 
 	return checkRulesFrom(items, markers)
 }
 
-func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) []Finding {
+func rulesCheckResult(rep rulesReport) checkResult {
+	if rep.Rules == 0 && len(rep.Findings) == 0 {
+		return checkResult{NoOp: "no rule IDs found — rules check enforces nothing"}
+	}
+	return checkResult{
+		Findings: rep.Findings,
+		Detail: fmt.Sprintf("(%d %s, %d %s, %d %s)",
+			rep.Rules, output.Plural(rep.Rules, "rule"),
+			rep.Docs, output.Plural(rep.Docs, "rule doc"),
+			rep.Ignores, output.Plural(rep.Ignores, "ignore")),
+	}
+}
+
+func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesReport {
 	var findings []Finding
 
 	for _, item := range items {
@@ -243,7 +263,21 @@ func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) []Finding 
 		}
 	}
 
-	return findings
+	docs := make(map[string]bool, len(items))
+	ignores := 0
+	for _, item := range items {
+		docs[item.File] = true
+		if item.HasIgnore {
+			ignores++
+		}
+	}
+
+	return rulesReport{
+		Findings: findings,
+		Rules:    len(items),
+		Docs:     len(docs),
+		Ignores:  ignores,
+	}
 }
 
 func CmdIgnores(docsDir string) int {
