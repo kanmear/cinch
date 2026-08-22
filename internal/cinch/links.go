@@ -13,45 +13,45 @@ import (
 var mdLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 
 type linksReport struct {
-	Findings []Finding
-	Docs     int
-	Links    int
+	findings []finding
+	docs     int
+	links    int
 }
 
-func checkLinks(root string) linksReport {
+func checkLinks(docsRoot string) linksReport {
 	var rep linksReport
-	err := walkMarkdownFiles(root, func(path string) error {
-		rep.Docs++
+	err := walkMarkdownFiles(docsRoot, func(path string) error {
+		rep.docs++
 		findings, links, ferr := checkLinksInFile(path)
-		rep.Links += links
-		rep.Findings = append(rep.Findings, findings...)
+		rep.links += links
+		rep.findings = append(rep.findings, findings...)
 		return ferr
 	})
 	if err != nil {
-		rep.Findings = append(rep.Findings, scanErrorFinding("links", root, err)...)
+		rep.findings = append(rep.findings, scanErrorFinding("links", docsRoot, err)...)
 	}
 	return rep
 }
 
 func linksCheckResult(rep linksReport) checkResult {
-	if rep.Docs == 0 && len(rep.Findings) == 0 {
-		return checkResult{NoOp: "no markdown files found — links check enforces nothing"}
+	if rep.docs == 0 && len(rep.findings) == 0 {
+		return checkResult{noOp: "no markdown files found — links check enforces nothing"}
 	}
 	return checkResult{
-		Findings: rep.Findings,
-		Detail: fmt.Sprintf("(%d %s, %d %s checked)",
-			rep.Docs, output.Plural(rep.Docs, "doc"),
-			rep.Links, output.Plural(rep.Links, "link")),
+		findings: rep.findings,
+		detail: fmt.Sprintf("(%d %s, %d %s checked)",
+			rep.docs, output.Plural(rep.docs, "doc"),
+			rep.links, output.Plural(rep.links, "link")),
 	}
 }
 
-func checkLinksInFile(path string) ([]Finding, int, error) {
+func checkLinksInFile(path string) ([]finding, int, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var findings []Finding
+	var findings []finding
 	links := 0
 	lineNo := 0
 	scanErr := forEachFencedLine(data, func(n int, line string) {
@@ -70,23 +70,23 @@ func checkLinksInFile(path string) ([]Finding, int, error) {
 			links++
 			resolved := filepath.Join(filepath.Dir(path), target)
 			if _, err := os.Stat(resolved); err != nil {
-				findings = append(findings, Finding{
-					Check:   "links",
-					Level:   "error",
-					File:    path,
-					Line:    lineNo,
-					Message: "link target does not resolve: " + target,
+				findings = append(findings, finding{
+					check:   "links",
+					level:   "error",
+					file:    path,
+					line:    lineNo,
+					message: "link target does not resolve: " + target,
 				})
 			}
 		}
 	})
 	if scanErr != nil {
-		findings = append(findings, Finding{
-			Check:   "links",
-			Level:   "error",
-			File:    path,
-			Line:    lineNo,
-			Message: "failed to scan file: " + scanErr.Error(),
+		findings = append(findings, finding{
+			check:   "links",
+			level:   "error",
+			file:    path,
+			line:    lineNo,
+			message: "failed to scan file: " + scanErr.Error(),
 		})
 	}
 

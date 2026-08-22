@@ -18,8 +18,10 @@ func TestLinkTargetIsExempt(t *testing.T) {
 		{"./rel/path.md", false},
 	}
 	for _, tc := range cases {
-		if got := linkTargetIsExempt(tc.target); got != tc.want {
-			t.Fatalf("linkTargetIsExempt(%q) = %v, want %v", tc.target, got, tc.want)
-		}
+		t.Run(tc.target, func(t *testing.T) {
+			if got := linkTargetIsExempt(tc.target); got != tc.want {
+				t.Fatalf("linkTargetIsExempt(%q) = %v, want %v", tc.target, got, tc.want)
+			}
+		})
 	}
 }

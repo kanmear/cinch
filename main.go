@@ -49,31 +49,31 @@ func main() {
 		os.Exit(0)
 	case "version":
 		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("version: takes no arguments"))
+			os.Exit(output.UsageError("version: takes no arguments"))
 		}
 		fmt.Println(Version)
 		os.Exit(0)
 	case "init":
 		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("init: takes no arguments"))
+			os.Exit(output.UsageError("init: takes no arguments"))
 		}
 		os.Exit(impl.CmdInit("."))
 	case "check":
 		args := os.Args[2:]
 		if len(args) > 1 {
-			os.Exit(output.UsageErr("check: too many arguments"))
+			os.Exit(output.UsageError("check: too many arguments"))
 		}
 		msgFile := ""
 		if len(args) == 1 {
 			msgFile = args[0]
 			if _, err := os.Stat(msgFile); err != nil {
-				os.Exit(output.UsageErr("check: cannot read message file: " + msgFile))
+				os.Exit(output.UsageError("check: cannot read message file: " + msgFile))
 			}
 		}
 		os.Exit(impl.CmdCheck(msgFile))
 	case "ignores":
 		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("ignores: takes no arguments"))
+			os.Exit(output.UsageError("ignores: takes no arguments"))
 		}
 		docs, err := impl.ResolveDocsRoot(".")
 		if err != nil {
@@ -82,27 +82,27 @@ func main() {
 		os.Exit(impl.CmdIgnores(docs))
 	case "render":
 		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("render: takes no arguments"))
+			os.Exit(output.UsageError("render: takes no arguments"))
 		}
 		os.Exit(impl.CmdRender("."))
 	case "hook":
 		if len(os.Args) < 3 {
-			os.Exit(output.UsageErr("hook: requires an event argument"))
+			os.Exit(output.UsageError("hook: requires an event argument"))
 		}
 		os.Exit(impl.CmdHook(".", os.Args[2], os.Args[3:]))
 	case "workflows":
 		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("workflows: takes no arguments"))
+			os.Exit(output.UsageError("workflows: takes no arguments"))
 		}
 		os.Exit(impl.CmdWorkflows("."))
 	case "workflow":
 		if len(os.Args) != 3 {
-			os.Exit(output.UsageErr("workflow: requires exactly one NAME argument"))
+			os.Exit(output.UsageError("workflow: requires exactly one NAME argument"))
 		}
 		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
 	case "index":
 		if len(os.Args) > 2 {
-			os.Exit(output.UsageErr("index: takes no arguments"))
+			os.Exit(output.UsageError("index: takes no arguments"))
 		}
 		os.Exit(impl.CmdIndex("."))
 	default:
@@ -111,13 +111,11 @@ func main() {
 }
 
 func unknownCommand(name string) int {
-	msg := fmt.Sprintf("cinch: %q is not a command", name)
+	msg := fmt.Sprintf("%q is not a command", name)
 	if guess, dist := closestCommand(name); guess != "" && dist <= 2 {
 		msg += fmt.Sprintf(" (did you mean %q?)", guess)
 	}
-	msg += " — run 'cinch help' for usage."
-	fmt.Fprintln(os.Stderr, output.ColorizeError(msg))
-	return 1
+	return output.UsageError(msg)
 }
 
 func bareInvocation() int {

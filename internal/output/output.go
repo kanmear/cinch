@@ -58,13 +58,9 @@ func Step(format string, args ...any) {
 	fmt.Println(paint(stdoutColor, colorGreen, fmt.Sprintf(format, args...)))
 }
 
-func UsageErr(msg string) int {
+func UsageError(msg string) int {
 	fmt.Fprintln(os.Stderr, paint(stderrColor, colorRed, "cinch: "+msg+" — run 'cinch help' for usage."))
 	return 2
-}
-
-func ColorizeError(s string) string {
-	return paint(stderrColor, colorRed, s)
 }
 
 func CheckStatus(check string, findingCount int, noOp string, detail string) {

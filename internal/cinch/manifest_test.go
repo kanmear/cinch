@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func parseTestManifest(t *testing.T, body string) *Manifest {
+func parseTestManifest(t *testing.T, body string) *manifest {
 	t.Helper()
 	m, err := parseManifestBytes([]byte(body), "test")
 	if err != nil {
@@ -16,34 +16,34 @@ func parseTestManifest(t *testing.T, body string) *Manifest {
 
 func TestManifestListKeepsCommasInItems(t *testing.T) {
 	m := parseTestManifest(t, "hooks:\n  pre-commit:\n    lint:\n      when:\n        - \"src/foo,bar.py\"\n        - src/baz.py\n")
-	got := m.List("hooks.pre-commit.lint.when")
+	got := m.list("hooks.pre-commit.lint.when")
 	want := []string{"src/foo,bar.py", "src/baz.py"}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("List = %v, want %v", got, want)
+		t.Fatalf("list = %v, want %v", got, want)
 	}
 }
 
 func TestManifestListPreservesOrder(t *testing.T) {
 	m := parseTestManifest(t, "hooks:\n  pre-commit:\n    lint:\n      when: [a, b, c]\n")
-	got := m.List("hooks.pre-commit.lint.when")
+	got := m.list("hooks.pre-commit.lint.when")
 	want := []string{"a", "b", "c"}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("List = %v, want %v", got, want)
+		t.Fatalf("list = %v, want %v", got, want)
 	}
 }
 
 func TestManifestListEmptyMissingAndScalar(t *testing.T) {
 	m := parseTestManifest(t, "commit:\n  pattern: 'x, y'\nhooks:\n  pre-commit:\n    lint:\n      when: []\n")
-	if got := m.List("hooks.pre-commit.lint.when"); len(got) != 0 {
+	if got := m.list("hooks.pre-commit.lint.when"); len(got) != 0 {
 		t.Fatalf("empty when list = %v, want length 0", got)
 	}
-	if got := m.List("hooks.pre-commit.missing.when"); got != nil {
+	if got := m.list("hooks.pre-commit.missing.when"); got != nil {
 		t.Fatalf("missing when list = %v, want nil", got)
 	}
-	if got := m.List("commit.pattern"); got != nil {
-		t.Fatalf("scalar key via List = %v, want nil", got)
+	if got := m.list("commit.pattern"); got != nil {
+		t.Fatalf("scalar key via list = %v, want nil", got)
 	}
-	if got, ok := m.Vars["commit.pattern"]; !ok || got != "x, y" {
+	if got, ok := m.vars["commit.pattern"]; !ok || got != "x, y" {
 		t.Fatalf("scalar comma value = %q, want %q intact", got, "x, y")
 	}
 }
@@ -57,10 +57,10 @@ func TestManifestListRejectsNonScalarItems(t *testing.T) {
 
 func TestManifestNamesIncludesListOnlyEntry(t *testing.T) {
 	m := parseTestManifest(t, "hooks:\n  pre-commit:\n    lint:\n      when: [src/a]\n")
-	got := m.Names("hooks.pre-commit")
+	got := m.names("hooks.pre-commit")
 	want := []string{"lint"}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Names = %v, want %v", got, want)
+		t.Fatalf("names = %v, want %v", got, want)
 	}
 }
 

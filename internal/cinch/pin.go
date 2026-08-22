@@ -1,10 +1,6 @@
 package cinch
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-)
+import "fmt"
 
 var Version = "dev"
 
@@ -13,43 +9,16 @@ const requireCinchKey = "require.cinch"
 func checkPin(root, version string) checkResult {
 	want, ok, _ := manifestSetting(root, requireCinchKey)
 	if !ok {
-		return checkResult{NoOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
+		return checkResult{noOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
 	}
 	if version == "dev" {
-		return checkResult{NoOp: "binary is an unreleased (dev) build — require.cinch is not checked"}
+		return checkResult{noOp: "binary is an unreleased (dev) build — require.cinch is not checked"}
 	}
 	if semverEqual(version, want) {
 		return checkResult{}
 	}
-	return checkResult{Findings: []Finding{{
-		Check: "core", Level: "error", File: manifestPath, Line: 1,
-		Message: fmt.Sprintf("installed cinch %s does not match require.cinch %s — reinstall and re-run cinch render", version, want),
+	return checkResult{findings: []finding{{
+		check: "core", level: "error", file: manifestPath, line: 1,
+		message: fmt.Sprintf("installed cinch %s does not match require.cinch %s — reinstall and re-run cinch render", version, want),
 	}}}
-}
-
-type semver struct{ major, minor, patch int }
-
-func parseSemver(s string) (v semver, ok bool) {
-	parts := strings.SplitN(s, ".", 3)
-	nums := [3]int{}
-	for i := range nums {
-		if i >= len(parts) {
-			continue
-		}
-		n, err := strconv.Atoi(parts[i])
-		if err != nil {
-			return semver{}, false
-		}
-		nums[i] = n
-	}
-	return semver{nums[0], nums[1], nums[2]}, true
-}
-
-func semverEqual(a, b string) bool {
-	pa, oka := parseSemver(a)
-	pb, okb := parseSemver(b)
-	if !oka || !okb {
-		return a == b
-	}
-	return pa == pb
 }
