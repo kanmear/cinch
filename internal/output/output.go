@@ -67,7 +67,7 @@ func ColorizeError(s string) string {
 	return paint(stderrColor, colorRed, s)
 }
 
-func CheckStatus(check string, findingCount int, noOp string) {
+func CheckStatus(check string, findingCount int, noOp string, detail string) {
 	switch {
 	case noOp != "":
 		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorYellow, "skip: "+noOp))
@@ -78,7 +78,11 @@ func CheckStatus(check string, findingCount int, noOp string) {
 		}
 		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorRed, fmt.Sprintf("%d %s", findingCount, word)))
 	default:
-		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorGreen, "ok"))
+		ok := "ok"
+		if detail != "" {
+			ok += " " + detail
+		}
+		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorGreen, ok))
 	}
 }
 

@@ -1,29 +1,58 @@
 package cinch
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"cinch/internal/output"
 )
 
 var mdLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 
-func checkLinks(root string) []Finding {
-	findings, err := collectMarkdown(root, checkLinksInFile)
-	if err != nil {
-		return append(findings, scanErrorFinding("links", root, err)...)
-	}
-	return findings
+type linksReport struct {
+	Findings []Finding
+	Docs     int
+	Links    int
 }
 
-func checkLinksInFile(path string) ([]Finding, error) {
+func checkLinks(root string) linksReport {
+	var rep linksReport
+	err := walkMarkdownFiles(root, func(path string) error {
+		rep.Docs++
+		findings, links, ferr := checkLinksInFile(path)
+		rep.Links += links
+		rep.Findings = append(rep.Findings, findings...)
+		return ferr
+	})
+	if err != nil {
+		rep.Findings = append(rep.Findings, scanErrorFinding("links", root, err)...)
+	}
+	return rep
+}
+
+func linksCheckResult(rep linksReport) checkResult {
+	if rep.Docs == 0 && len(rep.Findings) == 0 {
+		return checkResult{NoOp: "no markdown files found — links check enforces nothing"}
+	}
+	return checkResult{
+		Findings: rep.Findings,
+		Detail: fmt.Sprintf("(%d %s, %d %s checked)",
+			rep.Docs, output.Plural(rep.Docs, "doc"),
+			rep.Links, output.Plural(rep.Links, "link")),
+	}
+}
+
+func checkLinksInFile(path string) ([]Finding, int, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var findings []Finding
+	links := 0
 	lineNo := 0
 	scanErr := forEachFencedLine(data, func(n int, line string) {
 		lineNo = n
@@ -38,6 +67,7 @@ func checkLinksInFile(path string) ([]Finding, error) {
 			if target == "" {
 				continue
 			}
+			links++
 			resolved := filepath.Join(filepath.Dir(path), target)
 			if _, err := os.Stat(resolved); err != nil {
 				findings = append(findings, Finding{
@@ -60,7 +90,7 @@ func checkLinksInFile(path string) ([]Finding, error) {
 		})
 	}
 
-	return findings, nil
+	return findings, links, nil
 }
 
 func linkTargetIsExempt(target string) bool {
