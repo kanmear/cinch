@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func checkIdentity(docsDir, repoRoot string) checkResult {
+func checkRetirement(docsDir, repoRoot string) checkResult {
 	if !isGitRepo(repoRoot) {
 		return checkResult{NoOp: "not a git repository"}
 	}
@@ -30,12 +30,12 @@ func checkIdentity(docsDir, repoRoot string) checkResult {
 	tombstone, err := tombstonePattern(repoRoot)
 	if err != nil {
 		return checkResult{Findings: []Finding{{
-			Check: "identity", Level: "error", File: manifestPath, Line: 1,
-			Message: "rules.tombstone is not a valid regexp: " + err.Error(),
+			Check: "retirement", Level: "error", File: manifestPath, Line: 1,
+			Message: "retirement.pattern is not a valid regexp: " + err.Error(),
 		}}}
 	}
 	if tombstone == nil {
-		return checkResult{NoOp: "rules.tombstone is not set in cinch.yml — opt-in, not configured"}
+		return checkResult{NoOp: "retirement.pattern is not set in cinch.yml — opt-in, not configured"}
 	}
 
 	paths, err := gitOutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", relTo(repoRoot, docsDir))
@@ -70,8 +70,8 @@ func checkIdentity(docsDir, repoRoot string) checkResult {
 				continue
 			}
 			result.Findings = append(result.Findings, Finding{
-				Check: "identity", Level: "error", File: item.File, Line: item.Line,
-				Message: item.ID + ": rule ID present at HEAD^ but absent at HEAD with no recognized tombstone (set rules.tombstone in cinch.yml, or restore the ID)",
+				Check: "retirement", Level: "error", File: item.File, Line: item.Line,
+				Message: item.ID + ": rule ID present at HEAD^ but absent at HEAD with no recognized tombstone (set retirement.pattern in cinch.yml, or restore the ID)",
 			})
 		}
 	}
@@ -84,7 +84,7 @@ func hasParent(root string) bool {
 }
 
 func tombstonePattern(root string) (*regexp.Regexp, error) {
-	pattern, ok, _ := manifestSetting(root, "rules.tombstone")
+	pattern, ok, _ := manifestSetting(root, "retirement.pattern")
 	if !ok {
 		return nil, nil
 	}
