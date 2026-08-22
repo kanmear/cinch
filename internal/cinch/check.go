@@ -33,14 +33,14 @@ func CmdCheck(msgFile string) int {
 }
 
 func hooksCheckStatic(root string) int {
-	return runChecks(root, "", false, "links", "rules", "identity", "generated", "core")
+	return runChecks(root, "", false, "links", "rules", "retirement", "generated", "core")
 }
 
 func hooksCheckCommitMsg(root, msgFile string) int {
 	return runChecks(root, msgFile, false, "commit")
 }
 
-func runChecks(root, msgFile string, includeIdentity bool, only ...string) int {
+func runChecks(root, msgFile string, includeRetirement bool, only ...string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
 		return output.Fail("check", err)
@@ -71,10 +71,10 @@ func runChecks(root, msgFile string, includeIdentity bool, only ...string) int {
 
 	launch("links", func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })
 	launch("rules", func() checkResult { return rulesCheckResult(checkRules(docsRoot, root)) })
-	if includeIdentity {
-		launch("identity", func() checkResult { return checkIdentity(docsRoot, root) })
+	if includeRetirement {
+		launch("retirement", func() checkResult { return checkRetirement(docsRoot, root) })
 	} else {
-		launch("identity", func() checkResult {
+		launch("retirement", func() checkResult {
 			return checkResult{NoOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
 		})
 	}
