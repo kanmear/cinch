@@ -75,7 +75,7 @@ func CmdWorkflow(root, name string) int {
 		return output.Failf("workflow", "cinch render has not run — nothing to show")
 	}
 	if !slices.Contains(names, name) {
-		return output.Failf("workflow", "%q is not a known workflow — run `cinch workflows` to see what's available", name)
+		return output.Failf("workflow", "%q is not a known workflow — run 'cinch workflows' to see what's available", name)
 	}
 	data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, name+".md"))
 	if err != nil {

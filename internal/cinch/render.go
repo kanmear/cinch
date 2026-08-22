@@ -23,6 +23,16 @@ const templatesDir = "docs/templates"
 
 var varRe = regexp.MustCompile(`\{\{([a-zA-Z0-9_.-]+)\}\}`)
 
+var hookEvents = []string{"pre-commit", "commit-msg", "post-commit"}
+
+type renderFile struct {
+	source string
+	dest   string
+	body   string
+	mode   os.FileMode
+	style  fileStyle
+}
+
 func substitute(body string, vars map[string]string) (string, []string) {
 	missing := map[string]bool{}
 	out := varRe.ReplaceAllStringFunc(body, func(m string) string {
@@ -46,29 +56,21 @@ func sortedKeys(m map[string]bool) []string {
 	return out
 }
 
-type renderFile struct {
-	Dest   string
-	Source string
-	Body   string
-	Mode   os.FileMode
-	Style  fileStyle
-}
-
-func substitutionVars(m *Manifest) map[string]string {
+func substitutionVars(m *manifest) map[string]string {
 	vars := map[string]string{}
 	if m == nil {
 		return vars
 	}
-	for k, v := range m.Vars {
+	for k, v := range m.vars {
 		vars[k] = v
 	}
-	for k, v := range m.Lists {
+	for k, v := range m.lists {
 		vars[k] = strings.Join(v, ", ")
 	}
 	return vars
 }
 
-func renderAll(m *Manifest) ([]renderFile, error) {
+func renderAll(m *manifest) ([]renderFile, error) {
 	entries, err := fs.ReadDir(templatesFS, templatesDir)
 	if err != nil {
 		return nil, fmt.Errorf("internal: reading embedded templates: %w", err)
@@ -98,32 +100,30 @@ func renderAll(m *Manifest) ([]renderFile, error) {
 			errLines = append(errLines, fmt.Sprintf("%s: undefined manifest variables: %s", src, strings.Join(missing, ", ")))
 			continue
 		}
-		files = append(files, renderFile{Dest: workflowsDir + "/" + name, Source: src, Body: body})
+		files = append(files, renderFile{source: src, dest: workflowsDir + "/" + name, body: body})
 	}
 	if len(errLines) > 0 {
 		return nil, fmt.Errorf("%s", strings.Join(errLines, "\n"))
 	}
 
-	files = append(files, renderFile{Dest: workflowsDir + "/docs-philosophy.md", Source: "docs/docs-philosophy.md", Body: philosophySrc})
+	files = append(files, renderFile{source: "docs/docs-philosophy.md", dest: workflowsDir + "/docs-philosophy.md", body: philosophySrc})
 
-	sort.Slice(files, func(i, j int) bool { return files[i].Dest < files[j].Dest })
+	sort.Slice(files, func(i, j int) bool { return files[i].dest < files[j].dest })
 
 	files = append(files, buildHookShims(hooksDir)...)
 
 	return files, nil
 }
 
-var hookEvents = []string{"pre-commit", "commit-msg", "post-commit"}
-
 func buildHookShims(hooksDir string) []renderFile {
 	var files []renderFile
 	for _, event := range hookEvents {
 		files = append(files, renderFile{
-			Dest:   hooksDir + "/" + event,
-			Source: "generated",
-			Body:   "exec cinch hook " + event + " \"$@\"\n",
-			Mode:   0o755,
-			Style:  styleShell,
+			source: "generated",
+			dest:   hooksDir + "/" + event,
+			body:   "exec cinch hook " + event + " \"$@\"\n",
+			mode:   0o755,
+			style:  styleShell,
 		})
 	}
 	return files
@@ -141,19 +141,19 @@ func CmdRender(root string) int {
 	}
 
 	for _, f := range files {
-		dst := filepath.Join(root, f.Dest)
+		dst := filepath.Join(root, f.dest)
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return output.Fail("render", err)
 		}
-		content := header(f.Source, f.Body, f.Style) + f.Body
-		mode := f.Mode
+		content := header(f.source, f.body, f.style) + f.body
+		mode := f.mode
 		if mode == 0 {
 			mode = 0o644
 		}
 		if err := os.WriteFile(dst, []byte(content), mode); err != nil {
 			return output.Fail("render", err)
 		}
-		output.Step("rendered %s", f.Dest)
+		output.Step("rendered %s", f.dest)
 	}
 	return 0
 }

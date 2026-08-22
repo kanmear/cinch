@@ -11,13 +11,13 @@ import (
 
 const manifestPath = "cinch.yml"
 
-type Manifest struct {
-	Vars  map[string]string
-	Lists map[string][]string
+type manifest struct {
+	vars  map[string]string
+	lists map[string][]string
 	order []string
 }
 
-func loadManifest(root string) (*Manifest, error) {
+func loadManifest(root string) (*manifest, error) {
 	path := filepath.Join(root, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
@@ -29,7 +29,7 @@ func loadManifest(root string) (*Manifest, error) {
 	return m, m.validate(path)
 }
 
-func loadManifestOptional(root string) (*Manifest, error) {
+func loadManifestOptional(root string) (*manifest, error) {
 	path := filepath.Join(root, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
@@ -47,9 +47,9 @@ func ManifestExists(root string) bool {
 }
 
 // manifestVar returns the value of key in m, or def if unset or empty.
-func manifestVar(m *Manifest, key, def string) string {
+func manifestVar(m *manifest, key, def string) string {
 	if m != nil {
-		if v, ok := m.Vars[key]; ok && v != "" {
+		if v, ok := m.vars[key]; ok && v != "" {
 			return v
 		}
 	}
@@ -64,7 +64,7 @@ func manifestSetting(root, key string) (val string, ok bool, err error) {
 	if err != nil || m == nil {
 		return "", false, err
 	}
-	v, present := m.Vars[key]
+	v, present := m.vars[key]
 	if !present || v == "" {
 		return "", false, nil
 	}
@@ -73,12 +73,12 @@ func manifestSetting(root, key string) (val string, ok bool, err error) {
 
 var repoLocalPathKeys = []string{pathsDocsKey, pathsHooksKey}
 
-func (m *Manifest) validate(path string) error {
+func (m *manifest) validate(path string) error {
 	if m == nil {
 		return nil
 	}
 	for _, key := range repoLocalPathKeys {
-		val, ok := m.Vars[key]
+		val, ok := m.vars[key]
 		if !ok || val == "" {
 			continue
 		}
@@ -89,7 +89,7 @@ func (m *Manifest) validate(path string) error {
 	return nil
 }
 
-func parseManifestFile(path string) (*Manifest, error) {
+func parseManifestFile(path string) (*manifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func parseManifestFile(path string) (*Manifest, error) {
 	return parseManifestBytes(data, path)
 }
 
-func parseManifestBytes(data []byte, label string) (*Manifest, error) {
+func parseManifestBytes(data []byte, label string) (*manifest, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("%s: %w", label, err)
@@ -116,7 +116,7 @@ func parseManifestBytes(data []byte, label string) (*Manifest, error) {
 		}
 	}
 
-	return &Manifest{Vars: vars, Lists: lists, order: order}, nil
+	return &manifest{vars: vars, lists: lists, order: order}, nil
 }
 
 func flattenMapping(path string, node *yaml.Node, prefix string, vars map[string]string, lists map[string][]string, order *[]string) error {
@@ -164,11 +164,11 @@ func setVar(vars map[string]string, order *[]string, key, val string) {
 	vars[key] = val
 }
 
-func (m *Manifest) List(key string) []string {
+func (m *manifest) list(key string) []string {
 	if m == nil {
 		return nil
 	}
-	items, ok := m.Lists[key]
+	items, ok := m.lists[key]
 	if !ok {
 		return nil
 	}
@@ -177,7 +177,7 @@ func (m *Manifest) List(key string) []string {
 	return out
 }
 
-func (m *Manifest) Names(prefix string) []string {
+func (m *manifest) names(prefix string) []string {
 	if m == nil {
 		return nil
 	}

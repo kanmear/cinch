@@ -20,8 +20,10 @@ func TestSemverEqual(t *testing.T) {
 		{"", "", true},
 	}
 	for _, tc := range cases {
-		if got := semverEqual(tc.a, tc.b); got != tc.want {
-			t.Fatalf("semverEqual(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
-		}
+		t.Run(tc.a+" vs "+tc.b, func(t *testing.T) {
+			if got := semverEqual(tc.a, tc.b); got != tc.want {
+				t.Fatalf("semverEqual(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+			}
+		})
 	}
 }

@@ -102,3 +102,13 @@ func collectMarkdown[T any](root string, fn func(path string) ([]T, error)) ([]T
 	})
 	return out, err
 }
+
+// relTo returns path relative to base (best-effort: git's own output is
+// always repo-relative, but filesystem walks may produce absolute paths).
+func relTo(base, path string) string {
+	rel, err := filepath.Rel(base, path)
+	if err != nil {
+		return path
+	}
+	return rel
+}
