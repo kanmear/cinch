@@ -1,0 +1,2 @@
+#!/bin/sh
+exec scripts/check-squash-merge-msg.sh "$@"
