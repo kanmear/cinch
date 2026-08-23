@@ -9,10 +9,12 @@ enforces the convention on every commit via git hooks.
 
 - A **rule** is a numbered list item in a doc: `1. **PREFIX-NNN** <text>`
   (the prefix is per-doc). Every rule ID must be bound to a
-  `// cinch:rule PREFIX-NNN` line-comment marker in the code that enforces
-  it, or explicitly declared untestable with a reasoned
-  `<!-- cinch:ignore: <reason> -->`. So "documented" and "enforced" can't
-  silently diverge — a rule with neither a marker nor an ignore is a finding.
+  `cinch:rule PREFIX-NNN` marker in the code that enforces it — leader `//`,
+  `#`, `--`, `<!--`, `/*`, `%`, or `;`, so `#`-comment, SQL-style, and
+  block-comment languages can bind idiomatically too — or explicitly
+  declared untestable with a reasoned `<!-- cinch:ignore: <reason> -->`. So
+  "documented" and "enforced" can't silently diverge — a rule with neither a
+  marker nor an ignore is a finding.
 - Markdown links between docs must resolve on disk; nothing in the corpus is
   allowed to point at a moved or deleted file.
 - A set of embedded **workflow templates** (planning a feature, fixing a bug,
@@ -120,8 +122,6 @@ hooks:
 - **Multi-commit retirement tracking** — `retirement` currently only diffs
   `HEAD^` → `HEAD`, so a removal can be missed if a second commit lands
   before the next check.
-- **Rule markers beyond `//`** — support `#`, `--`, and block-comment marker
-  syntax so `#`-comment languages can bind rules idiomatically.
 - **Index-aware pre-commit checks** — check the staged index rather than the
   working tree, so a partially-staged edit can't slip past pre-commit.
 - **Overridable template packs** — let a project supply its own workflow
