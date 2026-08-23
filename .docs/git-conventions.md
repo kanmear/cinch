@@ -60,12 +60,14 @@ bump resets nothing (it's the lowest field).
 git checkout main
 git merge --no-ff dev -m "merge: dev"   # resolve conflicts if any, then commit
 make release
-git push --follow-tags origin main dev
+make push-release
 ```
 
 `make release` tags `v$(scripts/update-version.sh show)` (skipping if that tag
 already exists — i.e. no version change since the last release) and fast-forwards
-`dev` to `main`.
+`dev` to `main`. `make push-release` runs `git push --follow-tags origin main dev` —
+a separate, deliberate step so nothing publishes until you choose to (and so the
+tag can't be dropped by pushing without `--follow-tags`).
 
 ## Manual version commands
 
