@@ -28,18 +28,31 @@ New clone: `make setup-hooks` (`git config core.hooksPath .githooks`).
 
 ## Version bump table
 
-`internal/version/VERSION` holds `MAJOR.MINOR.PATCH`. `.githooks/post-commit` reads
-the commit subject to decide the bump, then folds the change into the triggering
-commit via `git commit --amend --no-edit --no-verify`.
+`internal/version/{major,minor,patch,hotfix}` each hold one plain integer — the
+version is `x.y.z[letter]`, where the hotfix letter is a bijective base-26 encoding
+of the hotfix integer (`0` → empty, `1` → `a`, `26` → `z`, `27` → `aa`, …), computed
+on demand by `scripts/update-version.sh show`. Kept as four separate files rather
+than one combined file: even edits to *different* fields can conflict when two
+people's direct/squash-merge commits on `dev` are later reconciled (rebase/merge),
+because git's default 3-line diff context overlaps adjacent single-line edits in a
+small file — two different files can never conflict with each other.
+
+`.githooks/post-commit` reads the commit subject to decide the bump, then folds the
+change into the triggering commit via `git commit --amend --no-edit --no-verify`.
 
 | Field | Trigger |
 |---|---|
 | major | manual only — `make version-major` |
-| minor | auto: `merge: feature/…`, `merge: refactor/…`, or `merge: chore/…` squash-merged onto `dev` |
-| patch | auto: `merge: fix/…` squash-merged onto `dev` |
+| minor | auto: `merge: feature/…` squash-merged onto `dev` |
+| patch | auto: `merge: fix/…` or `merge: refactor/…` squash-merged onto `dev` |
+| hotfix (letter) | auto: a direct `fix: …` or `refactor: …` commit landing on `dev` (not a squash-merge) |
 
-A bump only fires for a single-parent (squash-merge) commit that touches `main.go`,
-`internal/`, or `Makefile` — docs/notes-only commits never bump.
+`merge: chore/…` and `merge: docs/…` squash-merges never bump anything. A bump only
+fires for a single-parent commit (squash-merge result, or a direct commit) that
+touches `main.go`, `internal/`, or `Makefile` — docs/notes-only commits never bump.
+
+A minor bump resets patch and hotfix to 0; a patch bump resets hotfix to 0; a hotfix
+bump resets nothing (it's the lowest field).
 
 ## Release
 
