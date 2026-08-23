@@ -6,41 +6,41 @@ import (
 	"strings"
 )
 
-func checkRetirement(docsDir, repoRoot string) checkResult {
+func checkRetirement(repoRoot, docsRoot string) checkResult {
 	if !isGitRepo(repoRoot) {
-		return checkResult{NoOp: "not a git repository"}
+		return checkResult{noOp: "not a git repository"}
 	}
 	if !hasHead(repoRoot) {
-		return checkResult{NoOp: "no commits yet"}
+		return checkResult{noOp: "no commits yet"}
 	}
 	if !hasParent(repoRoot) {
-		return checkResult{NoOp: "only one commit; no HEAD^ to compare"}
+		return checkResult{noOp: "only one commit; no HEAD^ to compare"}
 	}
 
-	absRoot, err := filepath.Abs(repoRoot)
+	absRepoRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
-		return checkResult{NoOp: "could not resolve repo root"}
+		return checkResult{noOp: "could not resolve repo root"}
 	}
-	absDocs, err := filepath.Abs(docsDir)
+	absDocsRoot, err := filepath.Abs(docsRoot)
 	if err != nil {
-		return checkResult{NoOp: "could not resolve paths.docs"}
+		return checkResult{noOp: "could not resolve paths.docs"}
 	}
-	docsDir, repoRoot = absDocs, absRoot
+	docsRoot, repoRoot = absDocsRoot, absRepoRoot
 
 	tombstone, err := tombstonePattern(repoRoot)
 	if err != nil {
-		return checkResult{Findings: []Finding{{
-			Check: "retirement", Level: "error", File: manifestPath, Line: 1,
-			Message: "retirement.pattern is not a valid regexp: " + err.Error(),
+		return checkResult{findings: []finding{{
+			check: "retirement", level: "error", file: manifestPath, line: 1,
+			message: "retirement.pattern is not a valid regexp: " + err.Error(),
 		}}}
 	}
 	if tombstone == nil {
-		return checkResult{NoOp: "retirement.pattern is not set in cinch.yml — opt-in, not configured"}
+		return checkResult{noOp: "retirement.pattern is not set in cinch.yml — opt-in, not configured"}
 	}
 
-	paths, err := gitOutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", relTo(repoRoot, docsDir))
+	paths, err := gitOutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", relTo(repoRoot, docsRoot))
 	if err != nil {
-		return checkResult{NoOp: "git ls-tree failed"}
+		return checkResult{noOp: "git ls-tree failed"}
 	}
 
 	var result checkResult
@@ -63,15 +63,15 @@ func checkRetirement(docsDir, repoRoot string) checkResult {
 		}
 
 		for _, item := range parentItems {
-			if headIDs[item.ID] {
+			if headIDs[item.id] {
 				continue
 			}
-			if headOK && idIsTombstoned(tombstone, headContent, item.ID) {
+			if headOK && idIsTombstoned(tombstone, headContent, item.id) {
 				continue
 			}
-			result.Findings = append(result.Findings, Finding{
-				Check: "retirement", Level: "error", File: item.File, Line: item.Line,
-				Message: item.ID + ": rule ID present at HEAD^ but absent at HEAD with no recognized tombstone (set retirement.pattern in cinch.yml, or restore the ID)",
+			result.findings = append(result.findings, finding{
+				check: "retirement", level: "error", file: item.file, line: item.line,
+				message: item.id + ": rule ID present at HEAD^ but absent at HEAD with no recognized tombstone (set retirement.pattern in cinch.yml, or restore the ID)",
 			})
 		}
 	}

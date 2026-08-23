@@ -13,56 +13,56 @@ import (
 var mdLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 
 type linksReport struct {
-	Findings []Finding
-	Docs     int
-	Links    int
+	findings []finding
+	docs     int
+	links    int
 }
 
-func checkLinks(root string) linksReport {
-	var rep linksReport
-	err := walkMarkdownFiles(root, func(path string) error {
-		rep.Docs++
+func checkLinks(docsRoot string) linksReport {
+	var report linksReport
+	err := walkMarkdownFiles(docsRoot, func(path string) error {
+		report.docs++
 		findings, links, ferr := checkLinksInFile(path)
-		rep.Links += links
-		rep.Findings = append(rep.Findings, findings...)
+		report.links += links
+		report.findings = append(report.findings, findings...)
 		return ferr
 	})
 	if err != nil {
-		rep.Findings = append(rep.Findings, scanErrorFinding("links", root, err)...)
+		report.findings = append(report.findings, scanErrorFinding("links", docsRoot, err)...)
 	}
-	return rep
+	return report
 }
 
-func linksCheckResult(rep linksReport) checkResult {
-	if rep.Docs == 0 && len(rep.Findings) == 0 {
-		return checkResult{NoOp: "no markdown files found — links check enforces nothing"}
+func linksCheckResult(report linksReport) checkResult {
+	if report.docs == 0 && len(report.findings) == 0 {
+		return checkResult{noOp: "no markdown files found — links check enforces nothing"}
 	}
 	return checkResult{
-		Findings: rep.Findings,
-		Detail: fmt.Sprintf("(%d %s, %d %s checked)",
-			rep.Docs, output.Plural(rep.Docs, "doc"),
-			rep.Links, output.Plural(rep.Links, "link")),
+		findings: report.findings,
+		detail: fmt.Sprintf("(%d %s, %d %s checked)",
+			report.docs, output.Plural(report.docs, "doc"),
+			report.links, output.Plural(report.links, "link")),
 	}
 }
 
-func checkLinksInFile(path string) ([]Finding, int, error) {
+func checkLinksInFile(path string) ([]finding, int, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var findings []Finding
+	var findings []finding
 	links := 0
-	lineNo := 0
+	lineNumber := 0
 	scanErr := forEachFencedLine(data, func(n int, line string) {
-		lineNo = n
+		lineNumber = n
 		for _, m := range mdLinkRe.FindAllStringSubmatch(line, -1) {
 			target := strings.TrimSpace(m[1])
 			if linkTargetIsExempt(target) {
 				continue
 			}
-			if idx := strings.Index(target, "#"); idx >= 0 {
-				target = target[:idx]
+			if index := strings.Index(target, "#"); index >= 0 {
+				target = target[:index]
 			}
 			if target == "" {
 				continue
@@ -70,23 +70,23 @@ func checkLinksInFile(path string) ([]Finding, int, error) {
 			links++
 			resolved := filepath.Join(filepath.Dir(path), target)
 			if _, err := os.Stat(resolved); err != nil {
-				findings = append(findings, Finding{
-					Check:   "links",
-					Level:   "error",
-					File:    path,
-					Line:    lineNo,
-					Message: "link target does not resolve: " + target,
+				findings = append(findings, finding{
+					check:   "links",
+					level:   "error",
+					file:    path,
+					line:    lineNumber,
+					message: "link target does not resolve: " + target,
 				})
 			}
 		}
 	})
 	if scanErr != nil {
-		findings = append(findings, Finding{
-			Check:   "links",
-			Level:   "error",
-			File:    path,
-			Line:    lineNo,
-			Message: "failed to scan file: " + scanErr.Error(),
+		findings = append(findings, finding{
+			check:   "links",
+			level:   "error",
+			file:    path,
+			line:    lineNumber,
+			message: "failed to scan file: " + scanErr.Error(),
 		})
 	}
 

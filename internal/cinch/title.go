@@ -1,7 +1,9 @@
 package cinch
 
-import "strconv"
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 func titleAndTrigger(body string) (title, trigger string) {
 	lines := strings.Split(body, "\n")

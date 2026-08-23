@@ -2,7 +2,6 @@ package cinch
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -33,19 +32,7 @@ func TestHookWhenMatches(t *testing.T) {
 // every path-scoped hook on changes it has no information about.
 func TestStagedPathsIncludesDeletions(t *testing.T) {
 	root := t.TempDir()
-	git := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", args...)
-		cmd.Dir = root
-		cmd.Env = append([]string{
-			"HOME=" + root,
-			"GIT_CONFIG_GLOBAL=/dev/null",
-			"GIT_CONFIG_SYSTEM=/dev/null",
-		}, os.Environ()...)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
-	}
+	git := gitTestHelper(t, root)
 	write := func(name, body string) {
 		t.Helper()
 		p := filepath.Join(root, name)

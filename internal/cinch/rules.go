@@ -19,26 +19,33 @@ var (
 )
 
 type ruleItem struct {
-	ID   string
-	File string
-	Line int
+	id   string
+	file string
+	line int
 
-	Text string
+	text string
 
-	HasIgnore    bool
-	IgnoreReason string
-	IgnoreLine   int
+	hasIgnore    bool
+	ignoreReason string
+	ignoreLine   int
 }
 
 type markerLoc struct {
-	File string
-	Line int
+	file string
+	line int
+}
+
+type rulesReport struct {
+	findings []finding
+	rules    int
+	docs     int
+	ignores  int
 }
 
 func ruleItemIDs(items []ruleItem) map[string]bool {
 	ids := make(map[string]bool, len(items))
 	for _, item := range items {
-		ids[item.ID] = true
+		ids[item.id] = true
 	}
 	return ids
 }
@@ -52,16 +59,16 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		if cur == nil {
 			return
 		}
-		cur.Text = strings.Join(strings.Fields(strings.Join(textLines, " ")), " ")
+		cur.text = strings.Join(strings.Fields(strings.Join(textLines, " ")), " ")
 		items = append(items, *cur)
 		cur = nil
 		textLines = nil
 	}
 
-	_ = forEachFencedLine(content, func(lineNo int, line string) {
+	_ = forEachFencedLine(content, func(lineNumber int, line string) {
 		if m := ruleItemRe.FindStringSubmatch(line); m != nil {
 			flush()
-			cur = &ruleItem{ID: m[1], File: file, Line: lineNo}
+			cur = &ruleItem{id: m[1], file: file, line: lineNumber}
 			textLines = []string{line}
 			return
 		}
@@ -73,11 +80,11 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 			return
 		}
 		textLines = append(textLines, line)
-		if !cur.HasIgnore {
+		if !cur.hasIgnore {
 			if m := ignoreRe.FindStringSubmatch(line); m != nil {
-				cur.HasIgnore = true
-				cur.IgnoreReason = strings.TrimSpace(m[1])
-				cur.IgnoreLine = lineNo
+				cur.hasIgnore = true
+				cur.ignoreReason = strings.TrimSpace(m[1])
+				cur.ignoreLine = lineNumber
 			}
 		}
 	})
@@ -94,31 +101,31 @@ func parseRuleDoc(path string) ([]ruleItem, error) {
 	return parseRuleItems(path, data), nil
 }
 
-func scanRuleDocs(root string) ([]ruleItem, error) {
-	return collectMarkdown(root, parseRuleDoc)
+func scanRuleDocs(docsRoot string) ([]ruleItem, error) {
+	return collectMarkdown(docsRoot, parseRuleDoc)
 }
 
-func underPath(path, dir string) bool {
-	if dir == "" {
+func underPath(path, directory string) bool {
+	if directory == "" {
 		return false
 	}
 	absPath, err1 := filepath.Abs(path)
-	absDir, err2 := filepath.Abs(dir)
+	absDirectory, err2 := filepath.Abs(directory)
 	if err1 != nil || err2 != nil {
 		return false
 	}
-	rel, err := filepath.Rel(absDir, absPath)
+	rel, err := filepath.Rel(absDirectory, absPath)
 	if err != nil {
 		return false
 	}
 	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
 }
 
-func markerScanFiles(root, docsDir string) ([]string, error) {
-	if files, err := gitScannableFiles(root); err == nil {
+func markerScanFiles(repoRoot, docsRoot string) ([]string, error) {
+	if files, err := gitScannableFiles(repoRoot); err == nil {
 		var out []string
 		for _, f := range files {
-			if !underPath(f, docsDir) {
+			if !underPath(f, docsRoot) {
 				out = append(out, f)
 			}
 		}
@@ -126,20 +133,20 @@ func markerScanFiles(root, docsDir string) ([]string, error) {
 	}
 
 	var out []string
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" || underPath(path, docsDir) {
+			if d.Name() == ".git" || underPath(path, docsRoot) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if underPath(path, docsDir) {
+		if underPath(path, docsRoot) {
 			return nil
 		}
-		rel, err := filepath.Rel(root, path)
+		rel, err := filepath.Rel(repoRoot, path)
 		if err != nil {
 			rel = path
 		}
@@ -153,9 +160,9 @@ func markerScanFiles(root, docsDir string) ([]string, error) {
 }
 
 func scanMarkers(r io.Reader, path string, fenced bool, markers map[string][]markerLoc) error {
-	fn := func(lineNo int, line string) {
+	fn := func(lineNumber int, line string) {
 		if m := markerRe.FindStringSubmatch(line); m != nil {
-			markers[m[1]] = append(markers[m[1]], markerLoc{File: path, Line: lineNo})
+			markers[m[1]] = append(markers[m[1]], markerLoc{file: path, line: lineNumber})
 		}
 	}
 	if fenced {
@@ -173,10 +180,10 @@ func scanFileMarkers(path string, markers map[string][]markerLoc) error {
 	return scanMarkers(f, path, strings.HasSuffix(path, ".md"), markers)
 }
 
-func scanRuleMarkers(repoRoot, docsDir string) (map[string][]markerLoc, error) {
+func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) {
 	markers := map[string][]markerLoc{}
 
-	files, err := markerScanFiles(repoRoot, docsDir)
+	files, err := markerScanFiles(repoRoot, docsRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -191,61 +198,54 @@ func scanRuleMarkers(repoRoot, docsDir string) (map[string][]markerLoc, error) {
 	return markers, nil
 }
 
-type rulesReport struct {
-	Findings []Finding
-	Rules    int
-	Docs     int
-	Ignores  int
-}
-
-func checkRules(docsDir, repoRoot string) rulesReport {
-	items, err := scanRuleDocs(docsDir)
+func checkRules(repoRoot, docsRoot string) rulesReport {
+	items, err := scanRuleDocs(docsRoot)
 	if err != nil {
-		return rulesReport{Findings: scanErrorFinding("rules", docsDir, err)}
+		return rulesReport{findings: scanErrorFinding("rules", docsRoot, err)}
 	}
-	markers, err := scanRuleMarkers(repoRoot, docsDir)
+	markers, err := scanRuleMarkers(repoRoot, docsRoot)
 	if err != nil {
-		return rulesReport{Findings: scanErrorFinding("rules", repoRoot, err)}
+		return rulesReport{findings: scanErrorFinding("rules", repoRoot, err)}
 	}
 
 	return checkRulesFrom(items, markers)
 }
 
-func rulesCheckResult(rep rulesReport) checkResult {
-	if rep.Rules == 0 && len(rep.Findings) == 0 {
-		return checkResult{NoOp: "no rule IDs found — rules check enforces nothing"}
+func rulesCheckResult(report rulesReport) checkResult {
+	if report.rules == 0 && len(report.findings) == 0 {
+		return checkResult{noOp: "no rule IDs found — rules check enforces nothing"}
 	}
 	return checkResult{
-		Findings: rep.Findings,
-		Detail: fmt.Sprintf("(%d %s, %d %s, %d %s)",
-			rep.Rules, output.Plural(rep.Rules, "rule"),
-			rep.Docs, output.Plural(rep.Docs, "rule doc"),
-			rep.Ignores, output.Plural(rep.Ignores, "ignore")),
+		findings: report.findings,
+		detail: fmt.Sprintf("(%d %s, %d %s, %d %s)",
+			report.rules, output.Plural(report.rules, "rule"),
+			report.docs, output.Plural(report.docs, "rule doc"),
+			report.ignores, output.Plural(report.ignores, "ignore")),
 	}
 }
 
 func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesReport {
-	var findings []Finding
+	var findings []finding
 
 	for _, item := range items {
-		_, marked := markers[item.ID]
+		_, marked := markers[item.id]
 
-		if item.HasIgnore && item.IgnoreReason == "" {
-			findings = append(findings, Finding{
-				Check: "rules", Level: "error", File: item.File, Line: item.IgnoreLine,
-				Message: item.ID + ": cinch:ignore has no reason",
+		if item.hasIgnore && item.ignoreReason == "" {
+			findings = append(findings, finding{
+				check: "rules", level: "error", file: item.file, line: item.ignoreLine,
+				message: item.id + ": cinch:ignore has no reason",
 			})
 		}
-		if item.HasIgnore && item.IgnoreReason != "" && marked {
-			findings = append(findings, Finding{
-				Check: "rules", Level: "error", File: item.File, Line: item.Line,
-				Message: item.ID + ": declared cinch:ignore but also has a // cinch:rule marker — pick one",
+		if item.hasIgnore && item.ignoreReason != "" && marked {
+			findings = append(findings, finding{
+				check: "rules", level: "error", file: item.file, line: item.line,
+				message: item.id + ": declared cinch:ignore but also has a // cinch:rule marker — pick one",
 			})
 		}
-		if !item.HasIgnore && !marked {
-			findings = append(findings, Finding{
-				Check: "rules", Level: "error", File: item.File, Line: item.Line,
-				Message: item.ID + ": no // cinch:rule marker (or cinch:ignore declaration)",
+		if !item.hasIgnore && !marked {
+			findings = append(findings, finding{
+				check: "rules", level: "error", file: item.file, line: item.line,
+				message: item.id + ": no // cinch:rule marker (or cinch:ignore declaration)",
 			})
 		}
 	}
@@ -256,9 +256,9 @@ func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesRepor
 			continue
 		}
 		for _, loc := range locs {
-			findings = append(findings, Finding{
-				Check: "rules", Level: "error", File: loc.File, Line: loc.Line,
-				Message: "// cinch:rule " + id + " does not resolve to any rule ID",
+			findings = append(findings, finding{
+				check: "rules", level: "error", file: loc.file, line: loc.line,
+				message: "// cinch:rule " + id + " does not resolve to any rule ID",
 			})
 		}
 	}
@@ -266,28 +266,28 @@ func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesRepor
 	docs := make(map[string]bool, len(items))
 	ignores := 0
 	for _, item := range items {
-		docs[item.File] = true
-		if item.HasIgnore {
+		docs[item.file] = true
+		if item.hasIgnore {
 			ignores++
 		}
 	}
 
 	return rulesReport{
-		Findings: findings,
-		Rules:    len(items),
-		Docs:     len(docs),
-		Ignores:  ignores,
+		findings: findings,
+		rules:    len(items),
+		docs:     len(docs),
+		ignores:  ignores,
 	}
 }
 
-func CmdIgnores(docsDir string) int {
-	items, err := scanRuleDocs(docsDir)
+func CmdIgnores(docsRoot string) int {
+	items, err := scanRuleDocs(docsRoot)
 	if err != nil {
 		return output.Fail("ignores", err)
 	}
 	var ignored []ruleItem
 	for _, item := range items {
-		if item.HasIgnore {
+		if item.hasIgnore {
 			ignored = append(ignored, item)
 		}
 	}
@@ -297,11 +297,11 @@ func CmdIgnores(docsDir string) int {
 	}
 	fmt.Printf("%d cinch:ignore declarations:\n\n", len(ignored))
 	for _, item := range ignored {
-		reason := item.IgnoreReason
+		reason := item.ignoreReason
 		if reason == "" {
 			reason = "(no reason — malformed, see cinch check)"
 		}
-		fmt.Printf("%s %s: %s\n", item.ID, item.File, reason)
+		fmt.Printf("%s %s: %s\n", item.id, item.file, reason)
 	}
 	return 0
 }

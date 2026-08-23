@@ -21,13 +21,13 @@ func TestHookChecksSeparate(t *testing.T) {
 	good := writeTestFile(t, root, "msg-good.txt", "docs: remove completed plan\n")
 	bad := writeTestFile(t, root, "msg-bad.txt", "oops: not matching\n")
 
-	if got := hooksCheckStatic(root); got != 1 {
-		t.Fatalf("hooksCheckStatic = %d, want 1 (broken doc link)", got)
+	if got := preCommitChecks(root); got != 1 {
+		t.Fatalf("preCommitChecks = %d, want 1 (broken doc link)", got)
 	}
-	if got := hooksCheckCommitMsg(root, good); got != 0 {
-		t.Fatalf("hooksCheckCommitMsg(matching) = %d, want 0 (broken docs must not leak in)", got)
+	if got := commitMsgChecks(root, good); got != 0 {
+		t.Fatalf("commitMsgChecks(matching) = %d, want 0 (broken docs must not leak in)", got)
 	}
-	if got := hooksCheckCommitMsg(root, bad); got != 1 {
-		t.Fatalf("hooksCheckCommitMsg(non-matching) = %d, want 1", got)
+	if got := commitMsgChecks(root, bad); got != 1 {
+		t.Fatalf("commitMsgChecks(non-matching) = %d, want 1", got)
 	}
 }

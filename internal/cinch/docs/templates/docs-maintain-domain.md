@@ -27,11 +27,12 @@ Determine the nature of the change:
 
 ### 2. Locate the right file
 
-Domain files mirror `api/` files 1:1: `api/<resource>.md` → `{{paths.docs}}/<resource>.md`.
-If the project keeps an orientation doc (find it via `cinch index`), its structure-convention
-section is where the exact rule lives, along with the current list of API resources that have no
-domain-file counterpart (read-only/aggregation endpoints with no independent domain rules of
-their own).
+Domain files mirror `api/` files 1:1: `api/<resource>.md` → `<resource>.md` under the project's
+domain-rules directory (found via `cinch index` — its name and depth under `{{paths.docs}}/` vary
+per project; not necessarily `{{paths.docs}}/` itself). If the project keeps an orientation doc
+(find it via `cinch index`), its structure-convention section is where the exact rule lives, along
+with the current list of API resources that have no domain-file counterpart (read-only/aggregation
+endpoints with no independent domain rules of their own).
 
 Rules:
 - One file per API resource — do not consolidate multiple resources

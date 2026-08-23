@@ -11,7 +11,7 @@ import (
 func fencedLines(t *testing.T, data string) []string {
 	t.Helper()
 	var got []string
-	_ = forEachFencedLine([]byte(data), func(lineNo int, line string) {
+	_ = forEachFencedLine([]byte(data), func(lineNumber int, line string) {
 		got = append(got, line)
 	})
 	return got
@@ -42,8 +42,8 @@ func TestForEachFencedLineSkipsCodeBlocks(t *testing.T) {
 
 func TestForEachFencedLineKeepsLineNumbers(t *testing.T) {
 	var lines []int
-	_ = forEachFencedLine([]byte("1\n2\n```\n3\n4\n```\n7\n"), func(lineNo int, line string) {
-		lines = append(lines, lineNo)
+	_ = forEachFencedLine([]byte("1\n2\n```\n3\n4\n```\n7\n"), func(lineNumber int, line string) {
+		lines = append(lines, lineNumber)
 	})
 	want := []int{1, 2, 7}
 	if !reflect.DeepEqual(lines, want) {
@@ -55,7 +55,7 @@ func TestForEachLineReaderLongLines(t *testing.T) {
 	long := strings.Repeat("x", 200<<10)
 	data := "a\n" + long + "\nz\n"
 	var got []string
-	if err := forEachLineReader(strings.NewReader(data), func(lineNo int, line string) {
+	if err := forEachLineReader(strings.NewReader(data), func(lineNumber int, line string) {
 		got = append(got, line)
 	}); err != nil {
 		t.Fatalf("forEachLineReader = %v, want nil (long lines must not abort)", err)
@@ -67,7 +67,7 @@ func TestForEachLineReaderLongLines(t *testing.T) {
 
 func TestForEachLineReaderCRLFAndUnterminated(t *testing.T) {
 	var got []string
-	if err := forEachLineReader(strings.NewReader("one\r\ntwo\nthree"), func(lineNo int, line string) {
+	if err := forEachLineReader(strings.NewReader("one\r\ntwo\nthree"), func(lineNumber int, line string) {
 		got = append(got, line)
 	}); err != nil {
 		t.Fatalf("forEachLineReader = %v, want nil", err)
@@ -79,8 +79,8 @@ func TestForEachLineReaderCRLFAndUnterminated(t *testing.T) {
 
 func TestForEachLineReaderLineNumbers(t *testing.T) {
 	var nums []int
-	_ = forEachLineReader(strings.NewReader("1\n2\n3"), func(lineNo int, _ string) {
-		nums = append(nums, lineNo)
+	_ = forEachLineReader(strings.NewReader("1\n2\n3"), func(lineNumber int, _ string) {
+		nums = append(nums, lineNumber)
 	})
 	if want := []int{1, 2, 3}; !reflect.DeepEqual(nums, want) {
 		t.Fatalf("line numbers = %v, want %v", nums, want)
@@ -94,8 +94,8 @@ func unreadableTree(t *testing.T) string {
 	if os.Geteuid() == 0 {
 		t.Skip("running as root; permission checks are void")
 	}
-	dir := t.TempDir()
-	sub := filepath.Join(dir, "sub")
+	directory := t.TempDir()
+	sub := filepath.Join(directory, "sub")
 	if err := os.Mkdir(sub, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func unreadableTree(t *testing.T) string {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chmod(sub, 0o755) })
-	return dir
+	return directory
 }
 
 func TestCollectMarkdownPropagatesWalkError(t *testing.T) {

@@ -1,6 +1,8 @@
 # Documentation Sync
 
-Update `{{paths.docs}}/` documentation to reflect recent code changes.
+Update `{{paths.docs}}/` documentation — everything the routing table below covers (api/models/
+architecture/conventions/troubleshooting docs, `manifest.yml`) — to reflect recent code changes.
+Domain rule docs are a different workflow; see § Out of scope below.
 - **Note:** `cinch index` reflects the doc structure live — nothing to regenerate or stage when a
   doc is added, removed, renamed, or retitled.
 
@@ -117,8 +119,9 @@ Keep it brief; reference the source file for full implementation.
 **For Common Issues:** format **Symptom** → **Root Cause** → **Fix** → **Prevention**. Include just
 enough detail to diagnose and fix.
 
-**Out of scope:** `{{paths.docs}}/` docs are not updated by this workflow. Domain rule changes are
-managed separately via `{{paths.docs}}/workflows/docs-maintain-domain.md`.
+**Out of scope:** domain rule docs (the numbered-rule files a project keeps under `{{paths.docs}}/`)
+are not updated by this workflow, even though they also live under `{{paths.docs}}/` — domain rule
+changes are managed separately via `{{paths.docs}}/workflows/docs-maintain-domain.md`.
 
 **When to Create a New Doc File:**
 
