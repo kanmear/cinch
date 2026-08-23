@@ -1,0 +1,54 @@
+version: 2
+
+project_name: cinch
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: cinch
+    main: .
+    binary: cinch
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: cinch
+    ids: [cinch]
+    name_template: >-
+      cinch_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^chore:'
+      - '^test:'
+
+release:
+  github:
+    owner: kanmear
+    name: cinch
