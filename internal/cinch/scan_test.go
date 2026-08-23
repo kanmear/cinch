@@ -105,7 +105,11 @@ func unreadableTree(t *testing.T) string {
 	if err := os.Chmod(sub, 0); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.Chmod(sub, 0o755) })
+	t.Cleanup(func() {
+		if err := os.Chmod(sub, 0o755); err != nil {
+			t.Logf("restoring permissions on %s: %v", sub, err)
+		}
+	})
 	return directory
 }
 
