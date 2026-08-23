@@ -27,6 +27,16 @@ A CLI that verifies the operational docs in a repository (rules, workflows, conv
 ## Install
 
 ```
+curl -fsS https://raw.githubusercontent.com/kanmear/cinch/main/install.sh | bash
+```
+
+Pin a version: `CINCH_VERSION=v0.2.0 curl -fsS https://raw.githubusercontent.com/kanmear/cinch/main/install.sh | bash`
+
+Installs a prebuilt binary from [GitHub Releases](https://github.com/kanmear/cinch/releases) to `/usr/local/bin` (or `~/.local/bin` if that isn't writable). Windows: download the `.zip` from Releases directly.
+
+Building from source (contributors / Go users):
+
+```
 make install   # go install with version ldflags → cinch on PATH
 ```
 
