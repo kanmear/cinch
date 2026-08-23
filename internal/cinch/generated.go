@@ -6,9 +6,8 @@ import (
 	"sort"
 )
 
-func checkGenerated(root string) checkResult {
-	m, err := loadManifestOptional(root)
-	if err != nil || m == nil {
+func checkGenerated(root string, m *manifest, mErr error) checkResult {
+	if mErr != nil || m == nil {
 		return checkResult{noOp: "cinch render has not run — nothing to verify"}
 	}
 

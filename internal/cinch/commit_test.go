@@ -15,16 +15,27 @@ func writeTestFile(t *testing.T, directory, name, content string) string {
 	return path
 }
 
+func loadTestManifest(t *testing.T, directory string) *manifest {
+	t.Helper()
+	m, err := loadManifestOptional(directory)
+	if err != nil {
+		t.Fatalf("loadManifestOptional(%s) = %v", directory, err)
+	}
+	return m
+}
+
 func TestCheckCommit(t *testing.T) {
 	t.Run("no message file", func(t *testing.T) {
-		r := checkCommit(t.TempDir(), "")
+		directory := t.TempDir()
+		r := checkCommit("", loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
 	})
 
 	t.Run("pattern not configured", func(t *testing.T) {
-		r := checkCommit(t.TempDir(), "msg.txt")
+		directory := t.TempDir()
+		r := checkCommit("msg.txt", loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -33,7 +44,7 @@ func TestCheckCommit(t *testing.T) {
 	t.Run("invalid pattern", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '['\n")
-		r := checkCommit(directory, "msg.txt")
+		r := checkCommit("msg.txt", loadTestManifest(t, directory))
 		if len(r.findings) != 1 || r.findings[0].check != "commit" {
 			t.Fatalf("result = %+v, want commit finding", r)
 		}
@@ -42,7 +53,7 @@ func TestCheckCommit(t *testing.T) {
 	t.Run("unreadable message file", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^feat'\n")
-		r := checkCommit(directory, filepath.Join(directory, "missing.txt"))
+		r := checkCommit(filepath.Join(directory, "missing.txt"), loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -52,7 +63,7 @@ func TestCheckCommit(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^feat: .+'\n")
 		msg := writeTestFile(t, directory, "msg.txt", "feat: add things\n\nbody line\n")
-		r := checkCommit(directory, msg)
+		r := checkCommit(msg, loadTestManifest(t, directory))
 		if len(r.findings) != 0 || r.noOp != "" {
 			t.Fatalf("result = %+v, want ok", r)
 		}
@@ -62,7 +73,7 @@ func TestCheckCommit(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^feat: .+'\n")
 		msg := writeTestFile(t, directory, "msg.txt", "fix: nope\n")
-		r := checkCommit(directory, msg)
+		r := checkCommit(msg, loadTestManifest(t, directory))
 		if len(r.findings) != 1 {
 			t.Fatalf("result = %+v, want one finding", r)
 		}

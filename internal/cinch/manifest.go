@@ -56,19 +56,17 @@ func manifestVar(m *manifest, key, defaultValue string) string {
 	return defaultValue
 }
 
-// manifestSetting returns the non-empty value of key from the optional
-// manifest at root. ok is false when the manifest is absent or the key is
-// unset; err is non-nil only when the manifest exists but is malformed.
-func manifestSetting(root, key string) (value string, ok bool, err error) {
-	m, err := loadManifestOptional(root)
-	if err != nil || m == nil {
-		return "", false, err
+// manifestSetting returns the non-empty value of key from m. ok is false
+// when m is nil or the key is unset.
+func manifestSetting(m *manifest, key string) (value string, ok bool) {
+	if m == nil {
+		return "", false
 	}
 	v, present := m.vars[key]
 	if !present || v == "" {
-		return "", false, nil
+		return "", false
 	}
-	return v, true, nil
+	return v, true
 }
 
 var repoLocalPathKeys = []string{pathsDocsKey, pathsHooksKey}

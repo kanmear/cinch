@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"cinch/internal/output"
 )
@@ -15,7 +16,7 @@ var (
 	ruleItemRe = regexp.MustCompile(`^\s*\d+\.\s+\*\*([A-Z0-9]+-[0-9]+)\*\*`)
 	anyItemRe  = regexp.MustCompile(`^\s*\d+\.\s`)
 	ignoreRe   = regexp.MustCompile(`<!--\s*cinch:ignore\s*(?::\s*(.*?))?\s*-->`)
-	markerRe   = regexp.MustCompile(`//\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)\b`)
+	markerRe   = regexp.MustCompile(`(?://|#|--|<!--|/\*|%|;)\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)\b`)
 )
 
 type ruleItem struct {
@@ -159,42 +160,91 @@ func markerScanFiles(repoRoot, docsRoot string) ([]string, error) {
 	return out, nil
 }
 
-func scanMarkers(r io.Reader, path string, fenced bool, markers map[string][]markerLoc) error {
+func scanMarkers(r io.Reader, path string, fenced bool) (map[string][]markerLoc, error) {
+	markers := map[string][]markerLoc{}
 	fn := func(lineNumber int, line string) {
 		if m := markerRe.FindStringSubmatch(line); m != nil {
 			markers[m[1]] = append(markers[m[1]], markerLoc{file: path, line: lineNumber})
 		}
 	}
+	var err error
 	if fenced {
-		return forEachFencedLineReader(r, fn)
+		err = forEachFencedLineReader(r, fn)
+	} else {
+		err = forEachLineReader(r, fn)
 	}
-	return forEachLineReader(r, fn)
+	return markers, err
 }
 
-func scanFileMarkers(path string, markers map[string][]markerLoc) error {
+func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return scanMarkers(f, path, strings.HasSuffix(path, ".md"), markers)
+	return scanMarkers(f, path, strings.HasSuffix(path, ".md"))
 }
 
+// scanRuleMarkers reads every in-scope file looking for // cinch:rule
+// markers, using a bounded worker pool since each file is an independent
+// os.Open + scan. The merge order across files is not guaranteed, so the
+// location order within markers[id] is not stable run-to-run when the same
+// ID appears in more than one file.
 func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) {
-	markers := map[string][]markerLoc{}
-
 	files, err := markerScanFiles(repoRoot, docsRoot)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, file := range files {
-		path := filepath.Join(repoRoot, file)
-		if err := scanFileMarkers(path, markers); err != nil {
-			return nil, err
-		}
+	if len(files) == 0 {
+		return map[string][]markerLoc{}, nil
 	}
 
+	type fileResult struct {
+		markers map[string][]markerLoc
+		err     error
+	}
+
+	jobs := make(chan string)
+	results := make(chan fileResult)
+
+	var wg sync.WaitGroup
+	for i := 0; i < boundedWorkers(len(files)); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for file := range jobs {
+				m, err := scanFileMarkers(filepath.Join(repoRoot, file))
+				results <- fileResult{markers: m, err: err}
+			}
+		}()
+	}
+	go func() {
+		for _, f := range files {
+			jobs <- f
+		}
+		close(jobs)
+	}()
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	markers := map[string][]markerLoc{}
+	var firstErr error
+	for r := range results {
+		if r.err != nil {
+			if firstErr == nil {
+				firstErr = r.err
+			}
+			continue
+		}
+		for id, locs := range r.markers {
+			markers[id] = append(markers[id], locs...)
+		}
+	}
+	if firstErr != nil {
+		return nil, firstErr
+	}
 	return markers, nil
 }
 

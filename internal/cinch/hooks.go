@@ -6,13 +6,12 @@ import (
 	"strings"
 )
 
-func checkHooks(root string) checkResult {
+func checkHooks(root string, m *manifest, mErr error) checkResult {
 	if !isGitRepo(root) {
 		return checkResult{noOp: "not a git repository"}
 	}
 
-	m, err := loadManifestOptional(root)
-	if err != nil || m == nil {
+	if mErr != nil || m == nil {
 		return checkResult{noOp: "cinch.yml not found — hooks activation not checked"}
 	}
 
