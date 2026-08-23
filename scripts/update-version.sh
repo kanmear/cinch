@@ -45,7 +45,12 @@ hotfix_letter() {
 }
 
 format() {
-	printf '%s.%s.%s%s' "$1" "$2" "$3" "$(hotfix_letter "$4")"
+	letter="$(hotfix_letter "$4")"
+	if [ -n "$letter" ]; then
+		printf '%s.%s.%s+%s' "$1" "$2" "$3" "$letter"
+	else
+		printf '%s.%s.%s' "$1" "$2" "$3"
+	fi
 }
 
 current="$(format "$major" "$minor" "$patch" "$hotfix")"

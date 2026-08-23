@@ -29,9 +29,19 @@ New clone: `make setup-hooks` (`git config core.hooksPath .githooks`).
 ## Version bump table
 
 `internal/version/{major,minor,patch,hotfix}` each hold one plain integer — the
-version is `x.y.z[letter]`, where the hotfix letter is a bijective base-26 encoding
-of the hotfix integer (`0` → empty, `1` → `a`, `26` → `z`, `27` → `aa`, …), computed
-on demand by `scripts/update-version.sh show`. Kept as four separate files rather
+version is `x.y.z[+letter]`, where the hotfix letter is a bijective base-26
+encoding of the hotfix integer (`0` → no `+letter` suffix at all, `1` → `+a`,
+`26` → `+z`, `27` → `+aa`, …), computed on demand by
+`scripts/update-version.sh show`. The letter is attached as semver *build
+metadata* (`+a`), not a pre-release (`-a`): a bare suffix (`0.2.3a`) isn't valid
+semver at all and breaks goreleaser's tag parsing, and a `-a` pre-release segment
+would parse but gets flagged as a pre-release release on GitHub, which isn't the
+intent — these are real bumps, not release candidates. Build metadata is ignored
+for semver *precedence* (`0.2.3+a` and `0.2.3+b` compare equal), but nothing here
+relies on semver-precedence ordering — git tags are distinct strings and release
+order follows tag/push order.
+
+Kept as four separate files rather
 than one combined file: even edits to *different* fields can conflict when two
 people's direct/squash-merge commits on `dev` are later reconciled (rebase/merge),
 because git's default 3-line diff context overlaps adjacent single-line edits in a
