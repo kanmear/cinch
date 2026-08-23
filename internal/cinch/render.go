@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"cinch/internal/output"
+
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed docs/docs-philosophy.md
@@ -155,5 +157,147 @@ func CmdRender(root string) int {
 		}
 		output.Step("rendered %s", f.destination)
 	}
+
+	if err := syncRequireCinch(root); err != nil {
+		return output.Fail("render", err)
+	}
+
 	return 0
+}
+
+// syncRequireCinch keeps checkPin's "reinstall and re-run cinch render"
+// remediation true: it updates an exact require.cinch pin to match the
+// installed version, leaving unset pins, ">=" ranges, and dev builds alone.
+func syncRequireCinch(root string) error {
+	if Version == "dev" {
+		return nil
+	}
+
+	path := filepath.Join(root, manifestPath)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+
+	node := findRequireCinchNode(&doc)
+	if node == nil {
+		return nil
+	}
+	if strings.HasPrefix(strings.TrimSpace(node.Value), ">=") {
+		return nil
+	}
+	if node.Value == Version {
+		return nil
+	}
+
+	old := node.Value
+	patched, err := patchScalarLine(string(data), node, Version)
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
+		return err
+	}
+	output.Step("synced require.cinch: %s -> %s", old, Version)
+	return nil
+}
+
+func patchScalarLine(content string, node *yaml.Node, newValue string) (string, error) {
+	lines := strings.SplitAfter(content, "\n")
+	idx := node.Line - 1
+	if idx < 0 || idx >= len(lines) {
+		return "", fmt.Errorf("line %d: out of range", node.Line)
+	}
+	line := lines[idx]
+	col := node.Column - 1
+	if col < 0 || col > len(line) {
+		return "", fmt.Errorf("line %d: column %d out of range", node.Line, node.Column)
+	}
+	prefix, rest := line[:col], line[col:]
+
+	var end int
+	switch {
+	case node.Style&yaml.SingleQuotedStyle != 0:
+		end = scanQuotedScalar(rest, '\'')
+	case node.Style&yaml.DoubleQuotedStyle != 0:
+		end = scanQuotedScalar(rest, '"')
+	default:
+		end = scanPlainScalar(rest)
+	}
+	if end < 0 {
+		return "", fmt.Errorf("line %d: could not locate scalar value", node.Line)
+	}
+
+	lines[idx] = prefix + formatScalar(newValue, node.Style) + rest[end:]
+	return strings.Join(lines, ""), nil
+}
+
+// s[0] must be the opening quote. A doubled quote (two apostrophes) is
+// YAML's escape for a literal quote inside a single-quoted scalar, not the
+// closing delimiter.
+func scanQuotedScalar(s string, quote byte) int {
+	for i := 1; i < len(s); i++ {
+		if s[i] != quote {
+			continue
+		}
+		if quote == '\'' && i+1 < len(s) && s[i+1] == '\'' {
+			i++
+			continue
+		}
+		return i + 1
+	}
+	return -1
+}
+
+func scanPlainScalar(s string) int {
+	i := 0
+	for i < len(s) && s[i] != ' ' && s[i] != '\t' && s[i] != '#' && s[i] != '\r' && s[i] != '\n' {
+		i++
+	}
+	return i
+}
+
+func formatScalar(value string, style yaml.Style) string {
+	switch {
+	case style&yaml.SingleQuotedStyle != 0:
+		return "'" + strings.ReplaceAll(value, "'", "''") + "'"
+	case style&yaml.DoubleQuotedStyle != 0:
+		return `"` + value + `"`
+	default:
+		return value
+	}
+}
+
+func findRequireCinchNode(doc *yaml.Node) *yaml.Node {
+	if len(doc.Content) == 0 {
+		return nil
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value != "require" {
+			continue
+		}
+		requireNode := root.Content[i+1]
+		if requireNode.Kind != yaml.MappingNode {
+			return nil
+		}
+		for j := 0; j+1 < len(requireNode.Content); j += 2 {
+			if requireNode.Content[j].Value == "cinch" {
+				return requireNode.Content[j+1]
+			}
+		}
+		return nil
+	}
+	return nil
 }
