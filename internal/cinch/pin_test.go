@@ -7,7 +7,8 @@ import (
 
 func TestCheckPin(t *testing.T) {
 	t.Run("not configured", func(t *testing.T) {
-		r := checkPin(t.TempDir(), "1.0.0")
+		directory := t.TempDir()
+		r := checkPin("1.0.0", loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -16,7 +17,7 @@ func TestCheckPin(t *testing.T) {
 	t.Run("dev build skips the check", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: 1.0.0\n")
-		r := checkPin(directory, "dev")
+		r := checkPin("dev", loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -25,7 +26,7 @@ func TestCheckPin(t *testing.T) {
 	t.Run("exact match", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: 1.2.3\n")
-		r := checkPin(directory, "1.2.3")
+		r := checkPin("1.2.3", loadTestManifest(t, directory))
 		if len(r.findings) != 0 || r.noOp != "" {
 			t.Fatalf("result = %+v, want ok", r)
 		}
@@ -34,7 +35,7 @@ func TestCheckPin(t *testing.T) {
 	t.Run("exact mismatch", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: 1.2.3\n")
-		r := checkPin(directory, "1.2.4")
+		r := checkPin("1.2.4", loadTestManifest(t, directory))
 		if len(r.findings) != 1 || r.findings[0].check != "core" {
 			t.Fatalf("result = %+v, want one core finding", r)
 		}
@@ -43,7 +44,7 @@ func TestCheckPin(t *testing.T) {
 	t.Run("minimum satisfied", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
-		r := checkPin(directory, "1.2.3")
+		r := checkPin("1.2.3", loadTestManifest(t, directory))
 		if len(r.findings) != 0 || r.noOp != "" {
 			t.Fatalf("result = %+v, want ok", r)
 		}
@@ -52,7 +53,7 @@ func TestCheckPin(t *testing.T) {
 	t.Run("minimum satisfied exactly", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: '>=1.2.3'\n")
-		r := checkPin(directory, "1.2.3")
+		r := checkPin("1.2.3", loadTestManifest(t, directory))
 		if len(r.findings) != 0 || r.noOp != "" {
 			t.Fatalf("result = %+v, want ok", r)
 		}
@@ -61,7 +62,7 @@ func TestCheckPin(t *testing.T) {
 	t.Run("minimum not satisfied", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: '>=2.0.0'\n")
-		r := checkPin(directory, "1.9.9")
+		r := checkPin("1.9.9", loadTestManifest(t, directory))
 		if len(r.findings) != 1 || r.findings[0].check != "core" {
 			t.Fatalf("result = %+v, want one core finding", r)
 		}

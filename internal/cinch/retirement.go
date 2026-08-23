@@ -4,9 +4,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
-func checkRetirement(repoRoot, docsRoot string) checkResult {
+func checkRetirement(repoRoot, docsRoot string, m *manifest) checkResult {
 	if !isGitRepo(repoRoot) {
 		return checkResult{noOp: "not a git repository"}
 	}
@@ -27,7 +28,7 @@ func checkRetirement(repoRoot, docsRoot string) checkResult {
 	}
 	docsRoot, repoRoot = absDocsRoot, absRepoRoot
 
-	tombstone, err := tombstonePattern(repoRoot)
+	tombstone, err := tombstonePattern(m)
 	if err != nil {
 		return checkResult{findings: []finding{{
 			check: "retirement", level: "error", file: manifestPath, line: 1,
@@ -43,48 +44,95 @@ func checkRetirement(repoRoot, docsRoot string) checkResult {
 		return checkResult{noOp: "git ls-tree failed"}
 	}
 
-	var result checkResult
-
+	var mdPaths []string
 	for _, path := range paths {
-		if !strings.HasSuffix(path, ".md") {
-			continue
-		}
-
-		parentContent, ok := gitShow(repoRoot, "HEAD^:"+path)
-		if !ok {
-			continue
-		}
-		parentItems := parseRuleItems(path, parentContent)
-
-		headContent, headOK := gitShow(repoRoot, "HEAD:"+path)
-		var headIDs map[string]bool
-		if headOK {
-			headIDs = ruleItemIDs(parseRuleItems(path, headContent))
-		}
-
-		for _, item := range parentItems {
-			if headIDs[item.id] {
-				continue
-			}
-			if headOK && idIsTombstoned(tombstone, headContent, item.id) {
-				continue
-			}
-			result.findings = append(result.findings, finding{
-				check: "retirement", level: "error", file: item.file, line: item.line,
-				message: item.id + ": rule ID present at HEAD^ but absent at HEAD with no recognized tombstone (set retirement.pattern in cinch.yml, or restore the ID)",
-			})
+		if strings.HasSuffix(path, ".md") {
+			mdPaths = append(mdPaths, path)
 		}
 	}
 
-	return result
+	return checkResult{findings: retirementFindings(repoRoot, mdPaths, tombstone)}
+}
+
+// retirementFindingsForFile compares one markdown file's rule items between
+// HEAD^ and HEAD, reporting IDs that disappeared without a recognized
+// tombstone.
+func retirementFindingsForFile(repoRoot, path string, tombstone *regexp.Regexp) []finding {
+	parentContent, ok := gitShow(repoRoot, "HEAD^:"+path)
+	if !ok {
+		return nil
+	}
+	parentItems := parseRuleItems(path, parentContent)
+
+	headContent, headOK := gitShow(repoRoot, "HEAD:"+path)
+	var headIDs map[string]bool
+	if headOK {
+		headIDs = ruleItemIDs(parseRuleItems(path, headContent))
+	}
+
+	var findings []finding
+	for _, item := range parentItems {
+		if headIDs[item.id] {
+			continue
+		}
+		if headOK && idIsTombstoned(tombstone, headContent, item.id) {
+			continue
+		}
+		findings = append(findings, finding{
+			check: "retirement", level: "error", file: item.file, line: item.line,
+			message: item.id + ": rule ID present at HEAD^ but absent at HEAD with no recognized tombstone (set retirement.pattern in cinch.yml, or restore the ID)",
+		})
+	}
+	return findings
+}
+
+// retirementFindings fans checkRetirement's per-file git-show work across a
+// bounded worker pool — each file spawns up to two `git show` subprocesses,
+// so a large doc set is fork/exec-bound rather than CPU-bound. Result order
+// is irrelevant: runChecks sorts all findings by (check, file, line) before
+// printing.
+func retirementFindings(repoRoot string, paths []string, tombstone *regexp.Regexp) []finding {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	jobs := make(chan string)
+	results := make(chan []finding)
+
+	var wg sync.WaitGroup
+	for i := 0; i < boundedWorkers(len(paths)); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for path := range jobs {
+				results <- retirementFindingsForFile(repoRoot, path, tombstone)
+			}
+		}()
+	}
+	go func() {
+		for _, p := range paths {
+			jobs <- p
+		}
+		close(jobs)
+	}()
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var findings []finding
+	for fs := range results {
+		findings = append(findings, fs...)
+	}
+	return findings
 }
 
 func hasParent(root string) bool {
 	return gitRun(root, "rev-parse", "--verify", "-q", "HEAD^") == nil
 }
 
-func tombstonePattern(root string) (*regexp.Regexp, error) {
-	pattern, ok, _ := manifestSetting(root, "retirement.pattern")
+func tombstonePattern(m *manifest) (*regexp.Regexp, error) {
+	pattern, ok := manifestSetting(m, "retirement.pattern")
 	if !ok {
 		return nil, nil
 	}

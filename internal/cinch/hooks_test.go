@@ -8,9 +8,15 @@ import (
 	"testing"
 )
 
+func checkHooksTest(t *testing.T, root string) checkResult {
+	t.Helper()
+	m, mErr := loadManifestOptional(root)
+	return checkHooks(root, m, mErr)
+}
+
 func TestCheckHooksNotGitRepo(t *testing.T) {
 	root := t.TempDir()
-	res := checkHooks(root)
+	res := checkHooksTest(t, root)
 	if res.noOp != "not a git repository" {
 		t.Fatalf("noOp = %q, want %q", res.noOp, "not a git repository")
 	}
@@ -21,7 +27,7 @@ func TestCheckHooksNoManifest(t *testing.T) {
 	git := gitTestHelper(t, root)
 	git("init", "-q")
 
-	res := checkHooks(root)
+	res := checkHooksTest(t, root)
 	if !strings.Contains(res.noOp, "cinch.yml not found") {
 		t.Fatalf("noOp = %q, want it to contain %q", res.noOp, "cinch.yml not found")
 	}
@@ -33,7 +39,7 @@ func TestCheckHooksUnset(t *testing.T) {
 	git("init", "-q")
 	writeTestFile(t, root, "cinch.yml", "paths:\n  hooks: .githooks\n")
 
-	res := checkHooks(root)
+	res := checkHooksTest(t, root)
 	if !strings.Contains(res.noOp, "not set") {
 		t.Fatalf("noOp = %q, want it to contain %q", res.noOp, "not set")
 	}
@@ -46,7 +52,7 @@ func TestCheckHooksMismatch(t *testing.T) {
 	writeTestFile(t, root, "cinch.yml", "paths:\n  hooks: .githooks\n")
 	git("config", "core.hooksPath", "other-hooks")
 
-	res := checkHooks(root)
+	res := checkHooksTest(t, root)
 	if !strings.Contains(res.noOp, "expected") {
 		t.Fatalf("noOp = %q, want it to contain %q", res.noOp, "expected")
 	}
@@ -59,7 +65,7 @@ func TestCheckHooksMatch(t *testing.T) {
 	writeTestFile(t, root, "cinch.yml", "paths:\n  hooks: .githooks\n")
 	git("config", "core.hooksPath", ".githooks")
 
-	res := checkHooks(root)
+	res := checkHooksTest(t, root)
 	if res.noOp != "" || len(res.findings) != 0 {
 		t.Fatalf("checkHooks = %+v, want clean result", res)
 	}
@@ -72,7 +78,7 @@ func TestCheckHooksDefaultPath(t *testing.T) {
 	writeTestFile(t, root, "cinch.yml", "commit:\n  pattern: '^docs: .+'\n")
 	git("config", "core.hooksPath", filepath.Clean(defaultHooksPath))
 
-	res := checkHooks(root)
+	res := checkHooksTest(t, root)
 	if res.noOp != "" || len(res.findings) != 0 {
 		t.Fatalf("checkHooks = %+v, want clean result using default paths.hooks", res)
 	}
