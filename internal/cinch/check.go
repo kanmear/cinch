@@ -46,6 +46,8 @@ func runChecks(root, messageFile string, includeRetirement bool, only ...string)
 		return output.Fail("check", err)
 	}
 
+	m, mErr := loadManifestOptional(root)
+
 	onlySet := make(map[string]bool, len(only))
 	for _, n := range only {
 		onlySet[n] = true
@@ -72,16 +74,16 @@ func runChecks(root, messageFile string, includeRetirement bool, only ...string)
 	launch("links", func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })
 	launch("rules", func() checkResult { return rulesCheckResult(checkRules(root, docsRoot)) })
 	if includeRetirement {
-		launch("retirement", func() checkResult { return checkRetirement(root, docsRoot) })
+		launch("retirement", func() checkResult { return checkRetirement(root, docsRoot, m) })
 	} else {
 		launch("retirement", func() checkResult {
 			return checkResult{noOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
 		})
 	}
-	launch("generated", func() checkResult { return checkGenerated(root) })
-	launch("commit", func() checkResult { return checkCommit(root, messageFile) })
-	launch("core", func() checkResult { return checkPin(root, Version) })
-	launch("hooks", func() checkResult { return checkHooks(root) })
+	launch("generated", func() checkResult { return checkGenerated(root, m, mErr) })
+	launch("commit", func() checkResult { return checkCommit(messageFile, m) })
+	launch("core", func() checkResult { return checkPin(Version, m) })
+	launch("hooks", func() checkResult { return checkHooks(root, m, mErr) })
 
 	var findings []finding
 	for i := 0; i < launched; i++ {

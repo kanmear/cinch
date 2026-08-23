@@ -9,8 +9,8 @@ var Version = "dev"
 
 const requireCinchKey = "require.cinch"
 
-func checkPin(root, version string) checkResult {
-	want, ok, _ := manifestSetting(root, requireCinchKey)
+func checkPin(version string, m *manifest) checkResult {
+	want, ok := manifestSetting(m, requireCinchKey)
 	if !ok {
 		return checkResult{noOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
 	}

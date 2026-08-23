@@ -220,6 +220,38 @@ func TestScanMarkersFenceOnlyForMarkdown(t *testing.T) {
 	}
 }
 
+func TestMarkerReCommentLeaders(t *testing.T) {
+	cases := []struct {
+		name string
+		line string
+		want string
+	}{
+		{"double slash", "// cinch:rule ABC-1", "ABC-1"},
+		{"hash", "# cinch:rule ABC-1", "ABC-1"},
+		{"double dash", "-- cinch:rule ABC-1", "ABC-1"},
+		{"html comment", "<!-- cinch:rule ABC-1 -->", "ABC-1"},
+		{"block comment", "/* cinch:rule ABC-1 */", "ABC-1"},
+		{"percent", "% cinch:rule ABC-1", "ABC-1"},
+		{"semicolon", "; cinch:rule ABC-1", "ABC-1"},
+		{"decrement, no false positive", "i--;", ""},
+		{"markdown rule, no false positive", "---", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := markerRe.FindStringSubmatch(tc.line)
+			if tc.want == "" {
+				if m != nil {
+					t.Fatalf("markerRe matched %q, want no match", tc.line)
+				}
+				return
+			}
+			if m == nil || m[1] != tc.want {
+				t.Fatalf("markerRe.FindStringSubmatch(%q) = %v, want ID %q", tc.line, m, tc.want)
+			}
+		})
+	}
+}
+
 func TestScanRuleMarkersGitScope(t *testing.T) {
 	root := t.TempDir()
 	git := gitTestHelper(t, root)
