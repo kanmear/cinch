@@ -21,13 +21,17 @@ msg=$(git log -1 --pretty=%s)
 
 bump=""
 case "$msg" in
-"merge: fix/"*)
+"merge: fix/"* | "merge: refactor/"*)
 	bump="patch"
 	;;
-"merge: feature/"* | "merge: refactor/"* | "merge: chore/"*)
+"merge: feature/"*)
 	bump="minor"
 	;;
 esac
+
+if [ -z "$bump" ] && printf '%s\n' "$msg" | grep -Eq '^(fix|refactor)( \[[^]]+\])?: .+'; then
+	bump="hotfix"
+fi
 
 if [ -z "$bump" ]; then
 	exit 0
@@ -52,7 +56,7 @@ if [ "$relevant" != true ]; then
 fi
 
 scripts/update-version.sh "$bump"
-git add internal/version/VERSION
+git add internal/version/major internal/version/minor internal/version/patch internal/version/hotfix
 
 touch "$lock_file"
 git commit --amend --no-edit --no-verify
