@@ -49,4 +49,4 @@ git branch -f dev main
 echo "dev fast-forwarded to main ($(git rev-parse --short main))"
 
 echo
-echo "Push with: git push --follow-tags origin main dev"
+echo "Push with: make push-release"
