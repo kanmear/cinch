@@ -19,7 +19,7 @@ version-major:
 	@scripts/update-version.sh major
 
 release:
-	@./scripts/release.sh
+	@scripts/release.sh
 
 push-release:
 	git push --follow-tags origin main dev
