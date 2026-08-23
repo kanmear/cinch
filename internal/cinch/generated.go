@@ -9,61 +9,61 @@ import (
 func checkGenerated(root string) checkResult {
 	m, err := loadManifestOptional(root)
 	if err != nil || m == nil {
-		return checkResult{NoOp: "cinch render has not run — nothing to verify"}
+		return checkResult{noOp: "cinch render has not run — nothing to verify"}
 	}
 
 	files, err := renderAll(m)
 	if err != nil {
-		return checkResult{Findings: []Finding{{
-			Check: "generated", Level: "error", File: manifestPath, Line: 1,
-			Message: err.Error() + " — cinch render fails here, so no generated output can be verified",
+		return checkResult{findings: []finding{{
+			check: "generated", level: "error", file: manifestPath, line: 1,
+			message: err.Error() + " — cinch render fails here, so no generated output can be verified",
 		}}}
 	}
 
 	rendered := false
 	for _, f := range files {
-		if _, err := os.Stat(filepath.Join(root, f.Dest)); err == nil {
+		if _, err := os.Stat(filepath.Join(root, f.destination)); err == nil {
 			rendered = true
 			break
 		}
 	}
 	if !rendered {
-		return checkResult{NoOp: "cinch render has not run — nothing to verify"}
+		return checkResult{noOp: "cinch render has not run — nothing to verify"}
 	}
 
 	expected := map[string]bool{}
-	renderDirs := map[string]bool{}
-	var findings []Finding
+	renderDirectories := map[string]bool{}
+	var findings []finding
 	for _, f := range files {
-		dst := filepath.Join(root, f.Dest)
-		expected[dst] = true
-		renderDirs[filepath.Dir(dst)] = true
+		destination := filepath.Join(root, f.destination)
+		expected[destination] = true
+		renderDirectories[filepath.Dir(destination)] = true
 
-		want := header(f.Source, f.Body, f.Style) + f.Body
-		got, err := os.ReadFile(dst)
+		want := header(f.source, f.body, f.style) + f.body
+		got, err := os.ReadFile(destination)
 		switch {
 		case err != nil:
-			findings = append(findings, Finding{
-				Check: "generated", Level: "error", File: f.Dest, Line: 1,
-				Message: "missing — run `cinch render` (or revert the edit)",
+			findings = append(findings, finding{
+				check: "generated", level: "error", file: f.destination, line: 1,
+				message: "missing — run 'cinch render' (or revert the edit)",
 			})
 		case string(got) != want:
-			findings = append(findings, Finding{
-				Check: "generated", Level: "error", File: f.Dest, Line: 1,
-				Message: "does not match a fresh render — run `cinch render` (or revert the edit)",
+			findings = append(findings, finding{
+				check: "generated", level: "error", file: f.destination, line: 1,
+				message: "does not match a fresh render — run 'cinch render' (or revert the edit)",
 			})
 		}
 	}
 
-	if prevData, ok := gitShow(root, "HEAD:"+manifestPath); ok {
-		if prevM, err := parseManifestBytes(prevData, manifestPath+"@HEAD"); err == nil {
-			renderDirs[filepath.Join(root, docsPathValue(prevM), workflowsSubdir)] = true
-			renderDirs[filepath.Join(root, hooksPathValue(prevM))] = true
+	if previousData, ok := gitShow(root, "HEAD:"+manifestPath); ok {
+		if previousManifest, err := parseManifestBytes(previousData, manifestPath+"@HEAD"); err == nil {
+			renderDirectories[filepath.Join(root, docsPathValue(previousManifest), workflowsSubdir)] = true
+			renderDirectories[filepath.Join(root, hooksPathValue(previousManifest))] = true
 		}
 	}
 
-	for dir := range renderDirs {
-		entries, err := os.ReadDir(dir)
+	for directory := range renderDirectories {
+		entries, err := os.ReadDir(directory)
 		if err != nil {
 			continue
 		}
@@ -71,22 +71,22 @@ func checkGenerated(root string) checkResult {
 			if e.IsDir() {
 				continue
 			}
-			p := filepath.Join(dir, e.Name())
-			if expected[p] {
+			path := filepath.Join(directory, e.Name())
+			if expected[path] {
 				continue
 			}
-			data, err := os.ReadFile(p)
+			data, err := os.ReadFile(path)
 			if err != nil || !hasGeneratedHeader(string(data)) {
 				continue
 			}
-			rel := relTo(root, p)
-			findings = append(findings, Finding{
-				Check: "generated", Level: "error", File: rel, Line: 1,
-				Message: "orphaned generated file, no longer produced by cinch render — delete it (cinch render never removes files)",
+			rel := relTo(root, path)
+			findings = append(findings, finding{
+				check: "generated", level: "error", file: rel, line: 1,
+				message: "orphaned generated file, no longer produced by cinch render — delete it (cinch render never removes files)",
 			})
 		}
 	}
 
-	sort.Slice(findings, func(i, j int) bool { return findings[i].File < findings[j].File })
-	return checkResult{Findings: findings}
+	sort.Slice(findings, func(i, j int) bool { return findings[i].file < findings[j].file })
+	return checkResult{findings: findings}
 }

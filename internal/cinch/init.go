@@ -11,11 +11,11 @@ import (
 )
 
 type initAnswers struct {
-	docsPath   string
-	hooksPath  string
-	commitPat  string
-	require    string
-	preCommits []hookEntry
+	docsPath      string
+	hooksPath     string
+	commitPattern string
+	require       string
+	preCommits    []hookEntry
 }
 
 type hookEntry struct {
@@ -50,11 +50,16 @@ func CmdInit(root string) int {
 	}
 
 	if isGitRepo(root) {
-		hooksDir := hooksPathValue(m)
-		if out, err := gitCombinedOutput(root, "config", "core.hooksPath", hooksDir); err != nil {
+		hooksDirectory := hooksPathValue(m)
+		if existing, err := gitOutput(root, "config", "--get", "core.hooksPath"); err == nil {
+			if got := strings.TrimSpace(string(existing)); got != "" && filepath.Clean(got) != filepath.Clean(hooksDirectory) {
+				return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
+			}
+		}
+		if out, err := gitCombinedOutput(root, "config", "core.hooksPath", hooksDirectory); err != nil {
 			return output.Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
-		output.Step("activated hooks: core.hooksPath = %s", hooksDir)
+		output.Step("activated hooks: core.hooksPath = %s", hooksDirectory)
 	} else {
 		output.Skip("hooks", "not a git repository — hook shims generated but not activated")
 	}
@@ -69,7 +74,7 @@ func askInit() initAnswers {
 	answers.hooksPath = askLine("paths.hooks (default .githooks)", defaultHooksPath)
 
 	if askYesNo("enforce a commit message pattern?") {
-		answers.commitPat = askLine("commit.pattern", "")
+		answers.commitPattern = askLine("commit.pattern", "")
 	}
 
 	if Version != "dev" && askYesNo(fmt.Sprintf("require cinch %s?", Version)) {
@@ -95,15 +100,15 @@ func askInit() initAnswers {
 	return answers
 }
 
-func askLine(prompt, def string) string {
-	if def != "" {
-		fmt.Printf("%s [%s]: ", prompt, def)
+func askLine(prompt, defaultValue string) string {
+	if defaultValue != "" {
+		fmt.Printf("%s [%s]: ", prompt, defaultValue)
 	} else {
 		fmt.Printf("%s: ", prompt)
 	}
 	line := readLine()
 	if strings.TrimSpace(line) == "" {
-		return def
+		return defaultValue
 	}
 	return strings.TrimSpace(line)
 }
@@ -134,8 +139,8 @@ func writeInitManifest(root string, a initAnswers) error {
 	fmt.Fprintf(&b, "  docs: %s\n", a.docsPath)
 	fmt.Fprintf(&b, "  hooks: %s\n", a.hooksPath)
 
-	if a.commitPat != "" {
-		fmt.Fprintf(&b, "\ncommit:\n  pattern: '%s'\n", a.commitPat)
+	if a.commitPattern != "" {
+		fmt.Fprintf(&b, "\ncommit:\n  pattern: '%s'\n", a.commitPattern)
 	}
 	if a.require != "" {
 		fmt.Fprintf(&b, "\nrequire:\n  cinch: %s\n", a.require)

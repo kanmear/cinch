@@ -18,7 +18,7 @@ func CmdHook(root, event string, args []string) int {
 	case "post-commit":
 		return cmdHookPostCommit(root)
 	default:
-		return output.UsageErr(fmt.Sprintf("hook: unknown event %q", event))
+		return output.UsageError(fmt.Sprintf("hook: unknown event %q", event))
 	}
 }
 
@@ -28,7 +28,7 @@ func cmdHookPreCommit(root string) int {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
-	ok := hooksCheckStatic(root) == 0
+	ok := preCommitChecks(root) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
@@ -46,17 +46,17 @@ func cmdHookPreCommit(root string) int {
 
 func cmdHookCommitMsg(root string, args []string) int {
 	if len(args) < 1 {
-		return output.UsageErr("hook: commit-msg requires a message-file argument")
+		return output.UsageError("hook: commit-msg requires a message-file argument")
 	}
-	msgFile := args[0]
+	messageFile := args[0]
 
-	ok := hooksCheckCommitMsg(root, msgFile) == 0
+	ok := commitMsgChecks(root, messageFile) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
-	if m != nil && !dispatchHooks(root, m, "commit-msg", nil, msgFile) {
+	if m != nil && !dispatchHooks(root, m, "commit-msg", nil, messageFile) {
 		ok = false
 	}
 
@@ -96,14 +96,14 @@ func stagedPaths(root string) ([]string, error) {
 	return gitOutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
 }
 
-func dispatchHooks(root string, m *Manifest, event string, staged []string, args ...string) bool {
+func dispatchHooks(root string, m *manifest, event string, staged []string, args ...string) bool {
 	ok := true
-	for _, name := range m.Names("hooks." + event) {
-		command := m.Vars["hooks."+event+"."+name+".run"]
+	for _, name := range m.names("hooks." + event) {
+		command := m.vars["hooks."+event+"."+name+".run"]
 		if command == "" {
 			continue
 		}
-		when := m.List("hooks." + event + "." + name + ".when")
+		when := m.list("hooks." + event + "." + name + ".when")
 		if !hookWhenMatches(staged, when) {
 			output.Skip(event, fmt.Sprintf("%s: no staged path under %v", name, when))
 			continue

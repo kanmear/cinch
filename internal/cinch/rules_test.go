@@ -2,7 +2,6 @@ package cinch
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -17,8 +16,8 @@ func parseRuleItemsStr(t *testing.T, body string) []ruleItem {
 func TestParseRuleItemsBasic(t *testing.T) {
 	got := parseRuleItemsStr(t, "1. **ABC-1** first rule\n2. **DEF-2** second rule\n")
 	want := []ruleItem{
-		{ID: "ABC-1", File: "test.md", Line: 1, Text: "1. **ABC-1** first rule"},
-		{ID: "DEF-2", File: "test.md", Line: 2, Text: "2. **DEF-2** second rule"},
+		{id: "ABC-1", file: "test.md", line: 1, text: "1. **ABC-1** first rule"},
+		{id: "DEF-2", file: "test.md", line: 2, text: "2. **DEF-2** second rule"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("parseRuleItems = %v, want %v", got, want)
@@ -31,15 +30,15 @@ func TestParseRuleItemsMultiParagraphText(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 	wantText := "1. **ABC-1** first line continuation second paragraph"
-	if got[0].Text != wantText {
-		t.Fatalf("Text = %q, want %q", got[0].Text, wantText)
+	if got[0].text != wantText {
+		t.Fatalf("text = %q, want %q", got[0].text, wantText)
 	}
 }
 
 func TestParseRuleItemsSkipsFencedCode(t *testing.T) {
 	body := "1. **ABC-1** visible\n```\n1. **FAKE-9** hidden\n```\n"
 	got := parseRuleItemsStr(t, body)
-	if len(got) != 1 || got[0].ID != "ABC-1" {
+	if len(got) != 1 || got[0].id != "ABC-1" {
 		t.Fatalf("parseRuleItems = %v, want only ABC-1", got)
 	}
 }
@@ -49,33 +48,33 @@ func TestParseRuleItemsCRLF(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("len = %d, want 2", len(got))
 	}
-	if got[0].Line != 1 || got[1].Line != 2 {
-		t.Fatalf("line numbers = %d,%d, want 1,2", got[0].Line, got[1].Line)
+	if got[0].line != 1 || got[1].line != 2 {
+		t.Fatalf("line numbers = %d,%d, want 1,2", got[0].line, got[1].line)
 	}
-	if got[0].Text != "1. **ABC-1** rule" {
-		t.Fatalf("Text = %q, want no carriage returns", got[0].Text)
+	if got[0].text != "1. **ABC-1** rule" {
+		t.Fatalf("text = %q, want no carriage returns", got[0].text)
 	}
 }
 
 func TestParseRuleItemsIgnore(t *testing.T) {
 	t.Run("no reason", func(t *testing.T) {
 		got := parseRuleItemsStr(t, "1. **ABC-1** rule\n<!-- cinch:ignore -->\n")
-		if len(got) != 1 || !got[0].HasIgnore || got[0].IgnoreReason != "" || got[0].IgnoreLine != 2 {
-			t.Fatalf("item = %+v, want HasIgnore with empty reason at line 2", got[0])
+		if len(got) != 1 || !got[0].hasIgnore || got[0].ignoreReason != "" || got[0].ignoreLine != 2 {
+			t.Fatalf("item = %+v, want hasIgnore with empty reason at line 2", got[0])
 		}
 	})
 
 	t.Run("with reason", func(t *testing.T) {
 		got := parseRuleItemsStr(t, "1. **ABC-1** rule\n<!-- cinch:ignore: historical debt -->\n")
-		if len(got) != 1 || !got[0].HasIgnore || got[0].IgnoreReason != "historical debt" {
-			t.Fatalf("item = %+v, want HasIgnore with reason", got[0])
+		if len(got) != 1 || !got[0].hasIgnore || got[0].ignoreReason != "historical debt" {
+			t.Fatalf("item = %+v, want hasIgnore with reason", got[0])
 		}
 	})
 
 	t.Run("inside fence ignored", func(t *testing.T) {
 		got := parseRuleItemsStr(t, "1. **ABC-1** rule\n```\n<!-- cinch:ignore -->\n```\n")
-		if len(got) != 1 || got[0].HasIgnore {
-			t.Fatalf("item = %+v, want HasIgnore false", got[0])
+		if len(got) != 1 || got[0].hasIgnore {
+			t.Fatalf("item = %+v, want hasIgnore false", got[0])
 		}
 	})
 }
@@ -85,10 +84,10 @@ func TestParseRuleItemsPlainNumberedItemFlushes(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("len = %d, want 2", len(got))
 	}
-	if got[0].ID != "ABC-1" || got[0].Text != "1. **ABC-1** rule" {
+	if got[0].id != "ABC-1" || got[0].text != "1. **ABC-1** rule" {
 		t.Fatalf("first item = %+v, want ABC-1 without trailing plain item text", got[0])
 	}
-	if got[1].ID != "DEF-2" {
+	if got[1].id != "DEF-2" {
 		t.Fatalf("second item = %+v, want DEF-2", got[1])
 	}
 }
@@ -124,50 +123,50 @@ func TestScanRuleMarkersReadError(t *testing.T) {
 }
 
 func TestCheckRulesReportsScanError(t *testing.T) {
-	root := unreadableTree(t)
-	rep := checkRules(root, ".")
-	if len(rep.Findings) == 0 {
+	docsRoot := unreadableTree(t)
+	report := checkRules(".", docsRoot)
+	if len(report.findings) == 0 {
 		t.Fatal("checkRules = no findings, want error finding for unreadable subdirectory")
 	}
 	ok := false
-	for _, f := range rep.Findings {
-		if f.Check == "rules" && f.Level == "error" && strings.Contains(f.Message, "failed to scan") {
+	for _, f := range report.findings {
+		if f.check == "rules" && f.level == "error" && strings.Contains(f.message, "failed to scan") {
 			ok = true
 		}
 	}
 	if !ok {
-		t.Fatalf("checkRules findings %+v do not include a scan error", rep.Findings)
+		t.Fatalf("checkRules findings %+v do not include a scan error", report.findings)
 	}
 }
 
 func TestCheckRulesScanErrorDoesNotReportUnmarked(t *testing.T) {
-	root := t.TempDir()
-	docs := filepath.Join(root, "docs")
-	if err := os.Mkdir(docs, 0o755); err != nil {
+	repoRoot := t.TempDir()
+	docsRoot := filepath.Join(repoRoot, "docs")
+	if err := os.Mkdir(docsRoot, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(docs, "rules.md"), []byte("1. **ABC-1** rule\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **ABC-1** rule\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// A broken symlink makes the marker scan fail after the docs scan
 	// succeeds, isolating the marker-scan error path.
-	if err := os.Symlink(filepath.Join(root, "missing.go"), filepath.Join(root, "broken.go")); err != nil {
+	if err := os.Symlink(filepath.Join(repoRoot, "missing.go"), filepath.Join(repoRoot, "broken.go")); err != nil {
 		t.Fatal(err)
 	}
 
-	rep := checkRules(docs, root)
+	report := checkRules(repoRoot, docsRoot)
 	scanErr := false
 	unmarked := 0
-	for _, f := range rep.Findings {
-		if f.Check == "rules" && strings.Contains(f.Message, "failed to scan") {
+	for _, f := range report.findings {
+		if f.check == "rules" && strings.Contains(f.message, "failed to scan") {
 			scanErr = true
 		}
-		if f.Check == "rules" && strings.Contains(f.Message, "no // cinch:rule marker") {
+		if f.check == "rules" && strings.Contains(f.message, "no // cinch:rule marker") {
 			unmarked++
 		}
 	}
 	if !scanErr {
-		t.Fatalf("checkRules findings %+v do not include a scan error", rep.Findings)
+		t.Fatalf("checkRules findings %+v do not include a scan error", report.findings)
 	}
 	if unmarked > 0 {
 		t.Fatalf("scan failure leaked %d false 'unmarked' findings; want none", unmarked)
@@ -223,19 +222,7 @@ func TestScanMarkersFenceOnlyForMarkdown(t *testing.T) {
 
 func TestScanRuleMarkersGitScope(t *testing.T) {
 	root := t.TempDir()
-	git := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", args...)
-		cmd.Dir = root
-		cmd.Env = append([]string{
-			"HOME=" + root,
-			"GIT_CONFIG_GLOBAL=/dev/null",
-			"GIT_CONFIG_SYSTEM=/dev/null",
-		}, os.Environ()...)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
-	}
+	git := gitTestHelper(t, root)
 	write := func(name, body string) {
 		t.Helper()
 		p := filepath.Join(root, name)
@@ -272,58 +259,58 @@ func TestScanRuleMarkersGitScope(t *testing.T) {
 
 func TestRulesCheckResultDetailAndNoOp(t *testing.T) {
 	empty := rulesCheckResult(rulesReport{})
-	if empty.NoOp == "" {
-		t.Fatalf("rulesCheckResult(empty) = %+v, want NoOp set for zero rules and zero findings", empty)
+	if empty.noOp == "" {
+		t.Fatalf("rulesCheckResult(empty) = %+v, want noOp set for zero rules and zero findings", empty)
 	}
 
-	rep := rulesReport{Rules: 8, Docs: 1, Ignores: 1}
-	res := rulesCheckResult(rep)
-	if res.NoOp != "" {
-		t.Fatalf("rulesCheckResult(%+v).NoOp = %q, want empty", rep, res.NoOp)
+	report := rulesReport{rules: 8, docs: 1, ignores: 1}
+	result := rulesCheckResult(report)
+	if result.noOp != "" {
+		t.Fatalf("rulesCheckResult(%+v).noOp = %q, want empty", report, result.noOp)
 	}
-	if want := "(8 rules, 1 rule doc, 1 ignore)"; res.Detail != want {
-		t.Fatalf("rulesCheckResult(%+v).Detail = %q, want %q", rep, res.Detail, want)
+	if want := "(8 rules, 1 rule doc, 1 ignore)"; result.detail != want {
+		t.Fatalf("rulesCheckResult(%+v).detail = %q, want %q", report, result.detail, want)
 	}
 
-	strayMarker := rulesReport{Findings: []Finding{{Check: "rules", Message: "stray marker"}}}
-	res = rulesCheckResult(strayMarker)
-	if res.NoOp != "" {
-		t.Fatalf("rulesCheckResult(%+v).NoOp = %q, want empty (findings must not be swallowed into NoOp)", strayMarker, res.NoOp)
+	strayMarker := rulesReport{findings: []finding{{check: "rules", message: "stray marker"}}}
+	result = rulesCheckResult(strayMarker)
+	if result.noOp != "" {
+		t.Fatalf("rulesCheckResult(%+v).noOp = %q, want empty (findings must not be swallowed into noOp)", strayMarker, result.noOp)
 	}
-	if len(res.Findings) != 1 {
-		t.Fatalf("rulesCheckResult(%+v).Findings = %+v, want the stray-marker finding preserved", strayMarker, res.Findings)
+	if len(result.findings) != 1 {
+		t.Fatalf("rulesCheckResult(%+v).findings = %+v, want the stray-marker finding preserved", strayMarker, result.findings)
 	}
 }
 
 func TestLinksCheckResultDetailAndNoOp(t *testing.T) {
 	empty := linksCheckResult(linksReport{})
-	if empty.NoOp == "" {
-		t.Fatalf("linksCheckResult(empty) = %+v, want NoOp set for zero docs and zero findings", empty)
+	if empty.noOp == "" {
+		t.Fatalf("linksCheckResult(empty) = %+v, want noOp set for zero docs and zero findings", empty)
 	}
 
-	rep := linksReport{Docs: 4, Links: 12}
-	res := linksCheckResult(rep)
-	if res.NoOp != "" {
-		t.Fatalf("linksCheckResult(%+v).NoOp = %q, want empty", rep, res.NoOp)
+	report := linksReport{docs: 4, links: 12}
+	result := linksCheckResult(report)
+	if result.noOp != "" {
+		t.Fatalf("linksCheckResult(%+v).noOp = %q, want empty", report, result.noOp)
 	}
-	if want := "(4 docs, 12 links checked)"; res.Detail != want {
-		t.Fatalf("linksCheckResult(%+v).Detail = %q, want %q", rep, res.Detail, want)
+	if want := "(4 docs, 12 links checked)"; result.detail != want {
+		t.Fatalf("linksCheckResult(%+v).detail = %q, want %q", report, result.detail, want)
 	}
 }
 
 func TestCheckLinksReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
-	rep := checkLinks(root)
-	if len(rep.Findings) == 0 {
+	report := checkLinks(root)
+	if len(report.findings) == 0 {
 		t.Fatal("checkLinks = no findings, want error finding for unreadable subdirectory")
 	}
 	ok := false
-	for _, f := range rep.Findings {
-		if f.Check == "links" && f.Level == "error" && strings.Contains(f.Message, "failed to scan") {
+	for _, f := range report.findings {
+		if f.check == "links" && f.level == "error" && strings.Contains(f.message, "failed to scan") {
 			ok = true
 		}
 	}
 	if !ok {
-		t.Fatalf("checkLinks findings %v do not include a scan error", rep.Findings)
+		t.Fatalf("checkLinks findings %v do not include a scan error", report.findings)
 	}
 }

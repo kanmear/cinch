@@ -7,40 +7,40 @@ import (
 	"cinch/internal/output"
 )
 
-type Finding struct {
-	Check   string
-	Level   string
-	File    string
-	Line    int
-	Message string
+type finding struct {
+	check   string
+	level   string
+	file    string
+	line    int
+	message string
 }
 
 type checkResult struct {
-	Findings []Finding
-	NoOp     string
-	Detail   string
+	findings []finding
+	noOp     string
+	detail   string
 }
 
-func scanErrorFinding(check, scope string, err error) []Finding {
-	return []Finding{{
-		Check: check, Level: "error", File: scope, Line: 1,
-		Message: "failed to scan: " + err.Error(),
+func scanErrorFinding(check, scope string, err error) []finding {
+	return []finding{{
+		check: check, level: "error", file: scope, line: 1,
+		message: "failed to scan: " + err.Error(),
 	}}
 }
 
-func CmdCheck(msgFile string) int {
-	return runChecks(".", msgFile, true)
+func CmdCheck(messageFile string) int {
+	return runChecks(".", messageFile, true)
 }
 
-func hooksCheckStatic(root string) int {
+func preCommitChecks(root string) int {
 	return runChecks(root, "", false, "links", "rules", "retirement", "generated", "core")
 }
 
-func hooksCheckCommitMsg(root, msgFile string) int {
-	return runChecks(root, msgFile, false, "commit")
+func commitMsgChecks(root, messageFile string) int {
+	return runChecks(root, messageFile, false, "commit")
 }
 
-func runChecks(root, msgFile string, includeRetirement bool, only ...string) int {
+func runChecks(root, messageFile string, includeRetirement bool, only ...string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
 		return output.Fail("check", err)
@@ -53,11 +53,11 @@ func runChecks(root, msgFile string, includeRetirement bool, only ...string) int
 	run := func(name string) bool { return len(only) == 0 || onlySet[name] }
 
 	type namedResult struct {
-		name string
-		res  checkResult
+		name   string
+		result checkResult
 	}
 
-	ch := make(chan namedResult, 7)
+	results := make(chan namedResult, 7)
 	launched := 0
 	launch := func(name string, fn func() checkResult) {
 		if !run(name) {
@@ -65,44 +65,44 @@ func runChecks(root, msgFile string, includeRetirement bool, only ...string) int
 		}
 		launched++
 		go func() {
-			ch <- namedResult{name: name, res: fn()}
+			results <- namedResult{name: name, result: fn()}
 		}()
 	}
 
 	launch("links", func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })
-	launch("rules", func() checkResult { return rulesCheckResult(checkRules(docsRoot, root)) })
+	launch("rules", func() checkResult { return rulesCheckResult(checkRules(root, docsRoot)) })
 	if includeRetirement {
-		launch("retirement", func() checkResult { return checkRetirement(docsRoot, root) })
+		launch("retirement", func() checkResult { return checkRetirement(root, docsRoot) })
 	} else {
 		launch("retirement", func() checkResult {
-			return checkResult{NoOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
+			return checkResult{noOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
 		})
 	}
 	launch("generated", func() checkResult { return checkGenerated(root) })
-	launch("commit", func() checkResult { return checkCommit(root, msgFile) })
+	launch("commit", func() checkResult { return checkCommit(root, messageFile) })
 	launch("core", func() checkResult { return checkPin(root, Version) })
 	launch("hooks", func() checkResult { return checkHooks(root) })
 
-	var findings []Finding
+	var findings []finding
 	for i := 0; i < launched; i++ {
-		r := <-ch
-		findings = append(findings, r.res.Findings...)
-		output.CheckStatus(r.name, len(r.res.Findings), r.res.NoOp, r.res.Detail)
+		r := <-results
+		findings = append(findings, r.result.findings...)
+		output.CheckStatus(r.name, len(r.result.findings), r.result.noOp, r.result.detail)
 	}
 
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
-		if a.Check != b.Check {
-			return a.Check < b.Check
+		if a.check != b.check {
+			return a.check < b.check
 		}
-		if a.File != b.File {
-			return a.File < b.File
+		if a.file != b.file {
+			return a.file < b.file
 		}
-		return a.Line < b.Line
+		return a.line < b.line
 	})
 
 	for _, f := range findings {
-		fmt.Printf("%s %s %s:%d: %s\n", f.Check, output.Level(f.Level), f.File, f.Line, f.Message)
+		fmt.Printf("%s %s %s:%d: %s\n", f.check, output.Level(f.level), f.file, f.line, f.message)
 	}
 
 	if len(findings) > 0 {
