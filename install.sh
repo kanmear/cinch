@@ -10,8 +10,8 @@ info() { printf 'install: %s\n' "$1"; }
 VERSION="${CINCH_VERSION:-}"
 if [ -z "$VERSION" ]; then
   info "resolving latest release..."
-  VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
+  LATEST_JSON="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")"
+  VERSION="$(printf '%s\n' "$LATEST_JSON" | grep '"tag_name"' | head -n1 | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
   [ -n "$VERSION" ] || err "could not resolve latest version; set CINCH_VERSION=vX.Y.Z"
 fi
 VERSION="${VERSION#v}"
