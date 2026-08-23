@@ -6,11 +6,11 @@ import (
 	"strings"
 )
 
-func checkCommit(root, messageFile string) checkResult {
+func checkCommit(messageFile string, m *manifest) checkResult {
 	if messageFile == "" {
 		return checkResult{noOp: "no commit message file given"}
 	}
-	pattern, ok, _ := manifestSetting(root, "commit.pattern")
+	pattern, ok := manifestSetting(m, "commit.pattern")
 	if !ok {
 		return checkResult{noOp: "commit.pattern is not set in cinch.yml — opt-in, not configured"}
 	}
