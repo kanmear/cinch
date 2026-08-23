@@ -1,4 +1,4 @@
-.PHONY: build install setup-hooks version-show version-major release
+.PHONY: build install setup-hooks version-show version-major release push-release
 VERSION ?= $(shell scripts/update-version.sh show 2>/dev/null || echo 0.1.0)
 LDFLAGS := -X main.Version=$(VERSION)
 
@@ -20,3 +20,6 @@ version-major:
 
 release:
 	@./scripts/release.sh
+
+push-release:
+	git push --follow-tags origin main dev
