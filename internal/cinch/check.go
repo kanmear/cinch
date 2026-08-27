@@ -33,7 +33,7 @@ func CmdCheck(messageFile string) int {
 }
 
 func preCommitChecks(root string) int {
-	return runChecks(root, "", false, "links", "rules", "retirement", "generated", "core")
+	return runChecks(root, "", false, "links", "rules", "index", "retirement", "generated", "core")
 }
 
 func commitMsgChecks(root, messageFile string) int {
@@ -59,7 +59,7 @@ func runChecks(root, messageFile string, includeRetirement bool, only ...string)
 		result checkResult
 	}
 
-	results := make(chan namedResult, 7)
+	results := make(chan namedResult, 8)
 	launched := 0
 	launch := func(name string, fn func() checkResult) {
 		if !run(name) {
@@ -73,6 +73,7 @@ func runChecks(root, messageFile string, includeRetirement bool, only ...string)
 
 	launch("links", func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })
 	launch("rules", func() checkResult { return rulesCheckResult(checkRules(root, docsRoot)) })
+	launch("index", func() checkResult { return indexCheckResult(checkIndex(docsRoot)) })
 	if includeRetirement {
 		launch("retirement", func() checkResult { return checkRetirement(root, docsRoot, m) })
 	} else {

@@ -50,6 +50,48 @@ func indexList(docsRoot string) (string, error) {
 	return b.String(), nil
 }
 
+type indexReport struct {
+	findings []finding
+	docs     int
+}
+
+func checkIndex(docsRoot string) indexReport {
+	var report indexReport
+	err := walkMarkdownFiles(docsRoot, func(path string) error {
+		rel := filepath.ToSlash(relTo(docsRoot, path))
+		if strings.HasPrefix(rel, "plans/") {
+			return nil
+		}
+		report.docs++
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		title, _ := titleAndTrigger(string(data))
+		if title == "" {
+			report.findings = append(report.findings, finding{
+				check: "index", level: "error", file: path, line: 1,
+				message: "doc has no title (no '# ' heading) — silently dropped from cinch index",
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		report.findings = append(report.findings, scanErrorFinding("index", docsRoot, err)...)
+	}
+	return report
+}
+
+func indexCheckResult(report indexReport) checkResult {
+	if report.docs == 0 && len(report.findings) == 0 {
+		return checkResult{noOp: "no markdown files found — index check enforces nothing"}
+	}
+	return checkResult{
+		findings: report.findings,
+		detail:   fmt.Sprintf("(%d %s checked)", report.docs, output.Plural(report.docs, "doc")),
+	}
+}
+
 func CmdIndex(root string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
