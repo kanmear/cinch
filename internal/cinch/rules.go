@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -49,6 +50,90 @@ func ruleItemIDs(items []ruleItem) map[string]bool {
 		ids[item.id] = true
 	}
 	return ids
+}
+
+// levenshtein returns the edit distance between a and b (insertions,
+// deletions, substitutions each cost 1).
+func levenshtein(a, b string) int {
+	if a == b {
+		return 0
+	}
+	ra, rb := []rune(a), []rune(b)
+	prev := make([]int, len(rb)+1)
+	curr := make([]int, len(rb)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ra); i++ {
+		curr[0] = i
+		for j := 1; j <= len(rb); j++ {
+			cost := 1
+			if ra[i-1] == rb[j-1] {
+				cost = 0
+			}
+			del := prev[j] + 1
+			ins := curr[j-1] + 1
+			sub := prev[j-1] + cost
+			min := del
+			if ins < min {
+				min = ins
+			}
+			if sub < min {
+				min = sub
+			}
+			curr[j] = min
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(rb)]
+}
+
+// nearMissRuleIDs returns up to 2 candidate IDs from ruleIDs that are
+// plausible typos of id (edit distance <= 2), sorted by (distance, id) for
+// determinism across runs despite ruleIDs being an unordered map. Callers
+// only invoke this on an id that is not itself present in ruleIDs.
+func nearMissRuleIDs(id string, ruleIDs map[string]bool) []string {
+	type candidate struct {
+		id       string
+		distance int
+	}
+	var candidates []candidate
+	for other := range ruleIDs {
+		if d := levenshtein(id, other); d <= 2 {
+			candidates = append(candidates, candidate{id: other, distance: d})
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].distance != candidates[j].distance {
+			return candidates[i].distance < candidates[j].distance
+		}
+		return candidates[i].id < candidates[j].id
+	})
+	if len(candidates) == 0 {
+		return nil
+	}
+	if len(candidates) > 2 {
+		candidates = candidates[:2]
+	}
+	out := make([]string, len(candidates))
+	for i, c := range candidates {
+		out[i] = c.id
+	}
+	return out
+}
+
+// duplicateLocsMessage describes every location that declared the same rule
+// ID, for a "declared in N places" finding. locs must have at least 2
+// elements.
+func duplicateLocsMessage(locs []ruleItem) string {
+	pairs := make([]string, len(locs))
+	for i, loc := range locs {
+		pairs[i] = fmt.Sprintf("%s:%d", loc.file, loc.line)
+	}
+	if len(pairs) == 2 {
+		return "declared in two places (" + pairs[0] + " and " + pairs[1] + ") — rule IDs must be unique"
+	}
+	return fmt.Sprintf("declared in %d places (%s) — rule IDs must be unique", len(pairs), strings.Join(pairs, ", "))
 }
 
 func parseRuleItems(file string, content []byte) []ruleItem {
@@ -305,21 +390,43 @@ func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesRepor
 		if ruleIDs[id] {
 			continue
 		}
+		message := "// cinch:rule " + id + " does not resolve to any rule ID"
+		if suggestions := nearMissRuleIDs(id, ruleIDs); len(suggestions) > 0 {
+			message += " (did you mean " + strings.Join(suggestions, " or ") + "?)"
+		}
 		for _, loc := range locs {
 			findings = append(findings, finding{
 				check: "rules", level: "error", file: loc.file, line: loc.line,
-				message: "// cinch:rule " + id + " does not resolve to any rule ID",
+				message: message,
 			})
 		}
 	}
 
 	docs := make(map[string]bool, len(items))
+	byID := make(map[string][]ruleItem, len(items))
 	ignores := 0
 	for _, item := range items {
 		docs[item.file] = true
+		byID[item.id] = append(byID[item.id], item)
 		if item.hasIgnore {
 			ignores++
 		}
+	}
+
+	dupIDs := make([]string, 0, len(byID))
+	for id := range byID {
+		dupIDs = append(dupIDs, id)
+	}
+	sort.Strings(dupIDs)
+	for _, id := range dupIDs {
+		locs := byID[id]
+		if len(locs) <= 1 {
+			continue
+		}
+		findings = append(findings, finding{
+			check: "rules", level: "error", file: locs[0].file, line: locs[0].line,
+			message: id + ": " + duplicateLocsMessage(locs),
+		})
 	}
 
 	return rulesReport{
