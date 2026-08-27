@@ -142,20 +142,8 @@ func CmdRender(root string) int {
 		return output.Fail("render", err)
 	}
 
-	for _, f := range files {
-		destination := filepath.Join(root, f.destination)
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return output.Fail("render", err)
-		}
-		content := header(f.source, f.body, f.style) + f.body
-		mode := f.mode
-		if mode == 0 {
-			mode = 0o644
-		}
-		if err := os.WriteFile(destination, []byte(content), mode); err != nil {
-			return output.Fail("render", err)
-		}
-		output.Step("rendered %s", f.destination)
+	if err := writeRenderedFiles(root, files); err != nil {
+		return output.Fail("render", err)
 	}
 
 	if err := syncRequireCinch(root); err != nil {
@@ -163,6 +151,25 @@ func CmdRender(root string) int {
 	}
 
 	return 0
+}
+
+func writeRenderedFiles(root string, files []renderFile) error {
+	for _, f := range files {
+		destination := filepath.Join(root, f.destination)
+		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+			return err
+		}
+		content := header(f.source, f.body, f.style) + f.body
+		mode := f.mode
+		if mode == 0 {
+			mode = 0o644
+		}
+		if err := os.WriteFile(destination, []byte(content), mode); err != nil {
+			return err
+		}
+		output.Step("rendered %s", f.destination)
+	}
+	return nil
 }
 
 // syncRequireCinch keeps checkPin's "reinstall and re-run cinch render"

@@ -21,6 +21,7 @@ usage:
   cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
   cinch ignores           list every cinch:ignore declaration
   cinch render            render docs/templates and git hook shims from cinch.yml
+  cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
   cinch workflows         print the workflow trigger table
   cinch workflow NAME     print one rendered workflow
@@ -34,7 +35,7 @@ const bareSynopsis = `cinch — check the operational docs that govern a reposit
 run 'cinch help' for the full command list.
 `
 
-var commands = []string{"help", "version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
+var commands = []string{"help", "version", "init", "check", "ignores", "render", "upgrade", "hook", "workflows", "workflow", "index"}
 
 func main() {
 	impl.Version = Version
@@ -85,6 +86,11 @@ func main() {
 			os.Exit(output.UsageError("render: takes no arguments"))
 		}
 		os.Exit(impl.CmdRender("."))
+	case "upgrade":
+		if len(os.Args) > 2 {
+			os.Exit(output.UsageError("upgrade: takes no arguments"))
+		}
+		os.Exit(impl.CmdUpgrade("."))
 	case "hook":
 		if len(os.Args) < 3 {
 			os.Exit(output.UsageError("hook: requires an event argument"))
