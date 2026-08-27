@@ -109,3 +109,27 @@ reachable in the first place.
 - Feed into item 3's seeded-defect battery: add "link exists but is unreachable from any root"
   as a battery case, and flip its expected-result from "not caught" to "caught" once this
   ships.
+
+## Resolution: 5a dropped, 5b shipped as `index` check
+
+Scoping this for implementation surfaced a problem with 5a: the reachability graph needs
+a declared root to walk from, and the natural candidate (`AGENTS.md`) turned out to be
+outside cinch's authority — cinch doesn't own it, doesn't require it to use markdown-link
+syntax, and in `project_deltadocs` (the one real corpus checked) it doesn't: its doc
+references are backtick-quoted prose paths, not `[text](path)` links, so a link-graph BFS
+rooted there would find zero outbound edges and flag its entire corpus as unreachable on
+day one — not a signal worth having.
+
+Once `AGENTS.md`-as-root is off the table, cinch's own canonical entry point is `cinch
+index` (and eventually `cinch context`), which already walks every doc under `paths.docs`
+and lists every titled one. Under that definition, "reachable" collapses to "has a
+title" — there's no independent link-graph-reachability property left to enforce once 5b
+is fixed. A titled doc with zero inbound links (like `orphan/c.md` in
+`TestSeededDefectLinksTargetUnreachableFromRoot`, `links_test.go`) is intentionally *not*
+a defect: it's discoverable via `cinch index` regardless of what links to it.
+
+5b shipped as its own `index` check (`checkIndex`/`indexReport`/`indexCheckResult` in
+`index.go`, registered in `check.go`'s `launch(...)` list) rather than folding into
+`links` or a new `navigability` name — title-presence isn't a link-graph property, so it
+doesn't belong under `links`, and there's no `navigability` check left to bundle it under
+now that 5a is gone.

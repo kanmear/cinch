@@ -96,13 +96,15 @@ func TestSeededDefectLinksTargetUnreachableFromRoot(t *testing.T) {
 
 	report := checkLinks(docsRoot)
 
-	// GAP: checkLinksInFile only performs os.Stat-based existence
-	// resolution on each file's own outbound links — it has no
-	// reachability-graph analysis, so a page that exists but is linked to
-	// by nothing goes unnoticed. This fixture becomes the acceptance test
-	// for the navigability check class described in
-	// .docs/plans/05-navigability-check-class.md once it ships.
+	// Resolved (not a gap): .docs/plans/05-navigability-check-class.md
+	// originally proposed a link-graph reachability pass rooted at a
+	// declared entry doc (e.g. AGENTS.md). That was dropped — cinch doesn't
+	// own AGENTS.md, and cinch's own entry point is `cinch index`, which
+	// already lists every titled doc regardless of inbound links. So
+	// orphan/c.md here is titled and correctly *not* a defect: it's
+	// discoverable via `cinch index`. checkLinks only ever checks link
+	// *existence*; index-completeness is checkIndex's job (index.go).
 	if len(report.findings) != 0 {
-		t.Fatalf("findings = %+v, want none (unreachable-but-existing pages are not detected)", report.findings)
+		t.Fatalf("findings = %+v, want none (a titled doc with no inbound links is not a links-check defect)", report.findings)
 	}
 }
