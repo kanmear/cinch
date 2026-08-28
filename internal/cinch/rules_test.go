@@ -330,6 +330,287 @@ func TestLinksCheckResultDetailAndNoOp(t *testing.T) {
 	}
 }
 
+func TestNearMissRuleIDs(t *testing.T) {
+	cases := []struct {
+		name    string
+		id      string
+		ruleIDs map[string]bool
+		want    []string
+	}{
+		{"transposition", "SIG-091", map[string]bool{"SIG-019": true}, []string{"SIG-019"}},
+		{"truncation", "SIG-01", map[string]bool{"SIG-019": true}, []string{"SIG-019"}},
+		{"different prefix, no false positive", "TAB-019", map[string]bool{"SIG-019": true}, nil},
+		{
+			"caps at 2 closest candidates", "SIG-01",
+			map[string]bool{"SIG-010": true, "SIG-011": true, "SIG-012": true},
+			[]string{"SIG-010", "SIG-011"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := nearMissRuleIDs(tc.id, tc.ruleIDs)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("nearMissRuleIDs(%q, %v) = %v, want %v", tc.id, tc.ruleIDs, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCheckRulesFromNearMissSuggestion(t *testing.T) {
+	items := parseRuleItemsStr(t, "1. **SIG-019** real rule\n")
+	markers := map[string][]markerLoc{"SIG-091": {{file: "a.go", line: 5}}}
+
+	report := checkRulesFrom(items, markers)
+
+	if len(report.findings) != 2 {
+		t.Fatalf("findings = %+v, want 2 (unmarked SIG-019 + unresolved SIG-091)", report.findings)
+	}
+	wantSuggestion := "// cinch:rule SIG-091 does not resolve to any rule ID (did you mean SIG-019?)"
+	found := false
+	for _, f := range report.findings {
+		if f.file == "a.go" && f.line == 5 {
+			if f.message != wantSuggestion {
+				t.Fatalf("message = %q, want %q", f.message, wantSuggestion)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("findings %+v do not include the unresolved-marker finding", report.findings)
+	}
+}
+
+func TestCheckRulesFromDuplicateID(t *testing.T) {
+	items := []ruleItem{
+		{id: "SIG-019", file: "domain/signatures.md", line: 12},
+		{id: "SIG-019", file: "domain/tabs.md", line: 44},
+	}
+	markers := map[string][]markerLoc{"SIG-019": {{file: "a.go", line: 1}}}
+
+	report := checkRulesFrom(items, markers)
+
+	want := "SIG-019: declared in two places (domain/signatures.md:12 and domain/tabs.md:44) — rule IDs must be unique"
+	if len(report.findings) != 1 || report.findings[0].message != want {
+		t.Fatalf("findings = %+v, want single finding %q", report.findings, want)
+	}
+}
+
+func TestCheckRulesFromNoDuplicateForDistinctIDs(t *testing.T) {
+	items := []ruleItem{
+		{id: "SIG-001", file: "a.md", line: 1},
+		{id: "SIG-002", file: "b.md", line: 2},
+	}
+	markers := map[string][]markerLoc{
+		"SIG-001": {{file: "a.go", line: 1}},
+		"SIG-002": {{file: "b.go", line: 2}},
+	}
+
+	report := checkRulesFrom(items, markers)
+
+	for _, f := range report.findings {
+		if strings.Contains(f.message, "declared in") {
+			t.Fatalf("findings = %+v, want no duplicate-ID finding for distinct IDs", report.findings)
+		}
+	}
+}
+
+func TestCheckRulesFromTripleDuplicate(t *testing.T) {
+	items := []ruleItem{
+		{id: "SIG-005", file: "a.md", line: 1},
+		{id: "SIG-005", file: "b.md", line: 2},
+		{id: "SIG-005", file: "c.md", line: 3},
+	}
+	markers := map[string][]markerLoc{"SIG-005": {{file: "x.go", line: 1}}}
+
+	report := checkRulesFrom(items, markers)
+
+	want := "SIG-005: declared in 3 places (a.md:1, b.md:2, c.md:3) — rule IDs must be unique"
+	if len(report.findings) != 1 || report.findings[0].message != want {
+		t.Fatalf("findings = %+v, want single finding %q", report.findings, want)
+	}
+}
+
+// --- Seeded defect battery: rules.go ---
+//
+// Each test below pairs a minimal fixture with the finding(s) cinch check
+// should (or, for documented gaps, currently does not) report. Together
+// with the links/retirement/generated battery cases in their own files,
+// this is the checker's own regression suite — see
+// .docs/plans/03-rule-grammar-holes-and-seed-defects.md.
+
+func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-001** some rule\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	if len(report.findings) != 1 || !strings.Contains(report.findings[0].message, "no // cinch:rule marker") {
+		t.Fatalf("findings = %+v, want single 'no marker' finding", report.findings)
+	}
+}
+
+func TestSeededDefectRulesHollowedTest(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-001** some rule\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body := "// cinch:rule SIG-001\nfunc TestX(t *testing.T) {}\n"
+	if err := os.WriteFile(filepath.Join(root, "a_test.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	// GAP: the marker resolves to a real rule ID, so the grammar check
+	// passes even though the test body it sits next to has been gutted.
+	// cinch has no structural way to detect this (it's the T3 construction
+	// from the benchmark); documented here as a known, deliberate gap.
+	if len(report.findings) != 0 {
+		t.Fatalf("findings = %+v, want none (hollowed test bodies are not structurally detectable)", report.findings)
+	}
+}
+
+func TestSeededDefectRulesContradictingNeighbor(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	doc := "1. **SIG-001** applies to all files under src/\n2. **SIG-002** applies to all files under src/\n"
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte("// cinch:rule SIG-001\n// cinch:rule SIG-002\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	// GAP: rules.go only checks marker presence, ID resolution, and ignore
+	// hygiene — it has no prose-semantics analysis, so two rules that
+	// claim overlapping/contradicting scope go unnoticed.
+	if len(report.findings) != 0 {
+		t.Fatalf("findings = %+v, want none (prose contradictions are not checked)", report.findings)
+	}
+}
+
+func TestSeededDefectRulesDuplicateID(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(filepath.Join(docsRoot, "domain"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "domain", "signatures.md"), []byte("1. **SIG-019** rule text\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "domain", "tabs.md"), []byte("1. **SIG-019** other rule text\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte("// cinch:rule SIG-019\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	ok := false
+	for _, f := range report.findings {
+		if strings.Contains(f.message, "declared in two places") &&
+			strings.Contains(f.message, "signatures.md") && strings.Contains(f.message, "tabs.md") {
+			ok = true
+		}
+	}
+	if !ok {
+		t.Fatalf("findings = %+v, want a duplicate-ID finding naming both files", report.findings)
+	}
+}
+
+func TestSeededDefectRulesNearMissID(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-019** rule\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte("// cinch:rule SIG-091\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	ok := false
+	for _, f := range report.findings {
+		if strings.Contains(f.message, "does not resolve to any rule ID (did you mean SIG-019?)") {
+			ok = true
+		}
+	}
+	if !ok {
+		t.Fatalf("findings = %+v, want a near-miss suggestion for SIG-091", report.findings)
+	}
+}
+
+func TestSeededDefectRulesIgnoreNoReason(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	doc := "1. **SIG-001** rule\n<!-- cinch:ignore -->\n"
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	ok := false
+	for _, f := range report.findings {
+		if strings.Contains(f.message, "cinch:ignore has no reason") {
+			ok = true
+		}
+	}
+	if !ok {
+		t.Fatalf("findings = %+v, want a 'no reason' finding", report.findings)
+	}
+}
+
+func TestSeededDefectRulesIgnoreWithMarker(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	doc := "1. **SIG-001** rule\n<!-- cinch:ignore: reason -->\n"
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte("// cinch:rule SIG-001\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(root, docsRoot)
+
+	ok := false
+	for _, f := range report.findings {
+		if strings.Contains(f.message, "declared cinch:ignore but also has a // cinch:rule marker") {
+			ok = true
+		}
+	}
+	if !ok {
+		t.Fatalf("findings = %+v, want a 'pick one' finding", report.findings)
+	}
+}
+
 func TestCheckLinksReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
 	report := checkLinks(root)

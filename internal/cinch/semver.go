@@ -8,6 +8,9 @@ import (
 type semver struct{ major, minor, patch int }
 
 func parseSemver(s string) (v semver, ok bool) {
+	if i := strings.IndexByte(s, '+'); i >= 0 {
+		s = s[:i]
+	}
 	parts := strings.SplitN(s, ".", 3)
 	nums := [3]int{}
 	for i := range nums {
@@ -43,8 +46,9 @@ func semverLess(a, b semver) bool {
 }
 
 // semverAtLeast reports whether version satisfies a >= minimum constraint.
-// Falls back to string equality when either side doesn't parse, matching
-// semverEqual's behavior for non-numeric versions like "dev".
+// Build metadata ("1.2.3+a") is ignored; anything else that doesn't parse
+// (e.g. "dev", or pre-releases like "1.2.3-dev") falls back to string
+// equality, matching semverEqual's behavior.
 func semverAtLeast(version, minimum string) bool {
 	pv, okv := parseSemver(version)
 	pm, okm := parseSemver(minimum)

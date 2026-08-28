@@ -69,3 +69,69 @@ func TestStagedPathsIncludesDeletions(t *testing.T) {
 		t.Fatalf("stagedPaths=%v should match .agent/ gate", staged)
 	}
 }
+
+// TestCmdHookPreCommitImpactNeverBlocks guards the core impact design
+// constraint: an advisory with something to say must never flip a
+// pre-commit hook that would otherwise pass into a failing one.
+func TestCmdHookPreCommitImpactNeverBlocks(t *testing.T) {
+	root := t.TempDir()
+	git := gitTestHelper(t, root)
+	git("init", "-q")
+	git("config", "user.email", "cinch@test")
+	git("config", "user.name", "cinch test")
+
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "a.md", "# Title\n\n1. **RUL-1** some rule\n")
+	src := filepath.Join(root, "internal", "pkg")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, src, "impl.go", "package pkg\n\n// cinch:rule RUL-1\nfunc F() {}\n")
+
+	git("add", "-A")
+
+	if got := preCommitChecks(root); got != 0 {
+		t.Fatalf("preCommitChecks = %d, want 0 (clean corpus)", got)
+	}
+	hits, err := buildImpact(root, filepath.Join(root, ".docs"), []string{"internal/pkg/impl.go"})
+	if err != nil || len(hits) == 0 {
+		t.Fatalf("buildImpact = %v, %v, want a nonempty marker hit to make this test meaningful", hits, err)
+	}
+
+	if got := cmdHookPreCommit(root); got != 0 {
+		t.Fatalf("cmdHookPreCommit = %d, want 0 — a nonempty impact advisory must not block the commit", got)
+	}
+}
+
+// TestCmdHookPreCommitImpactErrorSwallowed guards the stricter half of the
+// same constraint: even a buildImpact scan error (malformed owns:
+// frontmatter, here — checks never look at frontmatter, so this doesn't
+// touch them) must not surface as a failure inside the hook path.
+func TestCmdHookPreCommitImpactErrorSwallowed(t *testing.T) {
+	root := t.TempDir()
+	git := gitTestHelper(t, root)
+	git("init", "-q")
+	git("config", "user.email", "cinch@test")
+	git("config", "user.name", "cinch test")
+
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "malformed.md", "---\nowns: \"not-a-list\"\n---\n# Malformed\n\nno rules here\n")
+	git("add", "-A")
+
+	if got := preCommitChecks(root); got != 0 {
+		t.Fatalf("preCommitChecks = %d, want 0 (malformed frontmatter is invisible to the checks)", got)
+	}
+	if _, err := buildImpact(root, filepath.Join(root, ".docs"), nil); err == nil {
+		t.Fatal("buildImpact = nil error, want an error to make this test meaningful")
+	}
+
+	if got := cmdHookPreCommit(root); got != 0 {
+		t.Fatalf("cmdHookPreCommit = %d, want 0 — a buildImpact scan error must be swallowed, not surfaced", got)
+	}
+}
