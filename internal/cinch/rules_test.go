@@ -460,8 +460,8 @@ func TestCheckRulesFromTripleDuplicate(t *testing.T) {
 //
 // Each test below pairs a minimal fixture with the finding(s) cinch check
 // should (or, for documented gaps, currently does not) report. Together
-// with the links/retirement/generated battery cases in their own files,
-// this is the checker's own regression suite — see
+// with the links/generated battery cases in their own files, this is the
+// checker's own regression suite — see
 // .docs/plans/03-rule-grammar-holes-and-seed-defects.md.
 
 func TestSeededDefectRulesMarkerDeleted(t *testing.T) {

@@ -31,12 +31,24 @@ func captureStderr(t *testing.T, fn func()) string {
 	return buf.String()
 }
 
+// initTestGitRepo initializes a git repo with a committer identity set, so
+// callers can immediately `git commit` without hitting user.email/user.name
+// errors.
+func initTestGitRepo(t *testing.T, root string) func(args ...string) {
+	t.Helper()
+	git := gitTestHelper(t, root)
+	git("init", "-q")
+	git("config", "user.email", "cinch@test")
+	git("config", "user.name", "cinch test")
+	return git
+}
+
 // changedTestRepo commits an initial state, then leaves the working tree
 // dirty with unstaged edits made by dirty — mirroring how a developer running
 // `cinch check --changed` would find their tree.
 func changedTestRepo(t *testing.T, root string, seed, dirty func()) {
 	t.Helper()
-	git := retirementGitRepo(t, root)
+	git := initTestGitRepo(t, root)
 	seed()
 	git("add", "-A")
 	git("commit", "-q", "-m", "seed")
@@ -90,12 +102,12 @@ func TestCheckChangedFiltersLinksToChangedFiles(t *testing.T) {
 		},
 	)
 
-	if got := runChecks(root, "", false, true); got != 0 {
+	if got := runChecks(root, "", true); got != 0 {
 		t.Fatalf("runChecks(changed) = %d, want 0 (broken.md wasn't touched)", got)
 	}
 
 	writeTestFile(t, docs, "broken.md", "# Broken\n\n[dead](nowhere.md)\nedited too\n")
-	if got := runChecks(root, "", false, true); got != 1 {
+	if got := runChecks(root, "", true); got != 1 {
 		t.Fatalf("runChecks(changed) = %d, want 1 (broken.md is now the changed file)", got)
 	}
 }
@@ -121,7 +133,7 @@ func TestCheckChangedSuppressesIrrelevantCheckStatus(t *testing.T) {
 	)
 
 	out := captureStderr(t, func() {
-		if got := runChecks(root, "", false, true); got != 0 {
+		if got := runChecks(root, "", true); got != 0 {
 			t.Fatalf("runChecks(changed) = %d, want 0", got)
 		}
 	})
@@ -154,7 +166,7 @@ func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
 	)
 
 	for _, changed := range []bool{false, true} {
-		out := captureStderr(t, func() { runChecks(root, "", false, changed) })
+		out := captureStderr(t, func() { runChecks(root, "", changed) })
 		if bytes.Contains([]byte(out), []byte("commit:")) {
 			t.Fatalf("changed=%v: stderr contains %q, want commit suppressed with no MSGFILE; stderr=%q", changed, "commit:", out)
 		}
@@ -162,7 +174,7 @@ func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
 
 	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
 	for _, changed := range []bool{false, true} {
-		out := captureStderr(t, func() { runChecks(root, msg, false, changed) })
+		out := captureStderr(t, func() { runChecks(root, msg, changed) })
 		if !bytes.Contains([]byte(out), []byte("commit:")) {
 			t.Fatalf("changed=%v: stderr missing %q, want commit to run when a MSGFILE is given; stderr=%q", changed, "commit:", out)
 		}
@@ -191,7 +203,7 @@ func TestCheckChangedGeneratedCoarseGate(t *testing.T) {
 	)
 
 	out := captureStderr(t, func() {
-		runChecks(root, "", false, true)
+		runChecks(root, "", true)
 	})
 	if bytes.Contains([]byte(out), []byte("generated:")) {
 		t.Fatalf("stderr contains %q, want generated suppressed (cinch.yml untouched); stderr=%q", "generated:", out)
@@ -199,42 +211,10 @@ func TestCheckChangedGeneratedCoarseGate(t *testing.T) {
 
 	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
 	out = captureStderr(t, func() {
-		runChecks(root, "", false, true)
+		runChecks(root, "", true)
 	})
 	if !bytes.Contains([]byte(out), []byte("generated:")) {
 		t.Fatalf("stderr missing %q, want generated relevant (cinch.yml changed); stderr=%q", "generated:", out)
-	}
-}
-
-// TestCheckChangedLeavesFileAgnosticChecksAlone regression-guards that
-// --changed never affects the checks that have no notion of "which file
-// changed": retirement (already scoped to HEAD^ vs HEAD), commit, core, and
-// hooks all must behave identically with changed=true and changed=false.
-func TestCheckChangedLeavesFileAgnosticChecksAlone(t *testing.T) {
-	root := t.TempDir()
-	docs := filepath.Join(root, ".docs")
-	if err := os.MkdirAll(docs, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	changedTestRepo(t, root,
-		func() {
-			writeTestFile(t, root, "cinch.yml", "retirement:\n  pattern: \"RETIRED: [A-Z0-9]+-[0-9]+\"\n")
-			writeTestFile(t, docs, "rules.md", "1. **SIG-001** rule text\n")
-		},
-		func() {
-			writeTestFile(t, docs, "rules.md", "no rules here\n")
-		},
-	)
-	git := gitTestHelper(t, root)
-	git("add", "-A")
-	git("commit", "-q", "-m", "remove SIG-001 without a tombstone")
-
-	for _, changed := range []bool{false, true} {
-		got := runChecks(root, "", true, changed, "retirement")
-		if got != 1 {
-			t.Fatalf("runChecks(changed=%v, only=retirement) = %d, want 1 (missing tombstone, unaffected by --changed)", changed, got)
-		}
 	}
 }
 
@@ -254,9 +234,9 @@ func TestCheckOnlyRestrictsCheckerSet(t *testing.T) {
 	)
 
 	out := captureStderr(t, func() {
-		runChecks(root, "", false, true, "links", "index")
+		runChecks(root, "", true, "links", "index")
 	})
-	for _, name := range []string{"rules:", "generated:", "commit:", "core:", "hooks:", "retirement:"} {
+	for _, name := range []string{"rules:", "generated:", "commit:", "core:", "hooks:"} {
 		if bytes.Contains([]byte(out), []byte(name)) {
 			t.Fatalf("stderr contains %q, want only links/index to run; stderr=%q", name, out)
 		}

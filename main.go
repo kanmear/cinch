@@ -21,7 +21,7 @@ usage:
   cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
   cinch check --changed [--only NAMES] [MSGFILE]
                           scope checks to unstaged files; --only restricts which checks run
-                          (NAMES: links,rules,index,retirement,generated,commit,core,hooks)
+                          (NAMES: links,rules,index,generated,commit,core,hooks)
   cinch ignores           list every cinch:ignore declaration
   cinch render            render docs/templates and git hook shims from cinch.yml
   cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
@@ -118,7 +118,7 @@ func main() {
 // checkNames is the set of check names runChecks knows how to run, used to
 // validate --only so a typo fails loudly instead of silently running nothing.
 var checkNames = map[string]bool{
-	"links": true, "rules": true, "index": true, "retirement": true,
+	"links": true, "rules": true, "index": true,
 	"generated": true, "commit": true, "core": true, "hooks": true,
 }
 
