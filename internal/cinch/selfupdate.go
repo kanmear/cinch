@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cinch/internal/output"
+	"cinch/internal/semver"
 )
 
 const (
@@ -136,12 +137,12 @@ func latestReleaseTag() (string, bool) {
 // malformed tag) are treated as "not newer" rather than erroring — the
 // caller falls back to the local-only flow either way.
 func isNewerRelease(installed, remote string) bool {
-	pi, oki := parseSemver(installed)
-	pr, okr := parseSemver(remote)
+	pi, oki := semver.Parse(installed)
+	pr, okr := semver.Parse(remote)
 	if !oki || !okr {
 		return false
 	}
-	return semverLess(pi, pr)
+	return semver.Less(pi, pr)
 }
 
 // runInstallScript fetches the current install.sh from the repo and runs it

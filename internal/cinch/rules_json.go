@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -74,7 +75,7 @@ func buildRulesInventory(repoRoot, docsRoot string) (rulesInventoryJSON, error) 
 // scanDocFrontmatter returns an entry only for docs that declare owns:
 // and/or rule_prefix: — most docs have neither and are silently excluded.
 func scanDocFrontmatter(docsRoot string) ([]docFrontmatterJSON, error) {
-	return collectMarkdown(docsRoot, func(path string) ([]docFrontmatterJSON, error) {
+	return mdscan.Collect(docsRoot, func(path string) ([]docFrontmatterJSON, error) {
 		fm, err := parseFrontmatterFile(path)
 		if err != nil {
 			return nil, err

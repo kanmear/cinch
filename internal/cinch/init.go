@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"cinch/internal/gitutil"
 	"cinch/internal/output"
 )
 
@@ -49,14 +50,14 @@ func CmdInit(root string) int {
 		return code
 	}
 
-	if isGitRepo(root) {
+	if gitutil.IsRepo(root) {
 		hooksDirectory := hooksPathValue(m)
-		if existing, err := gitOutput(root, "config", "--get", "core.hooksPath"); err == nil {
+		if existing, err := gitutil.Output(root, "config", "--get", "core.hooksPath"); err == nil {
 			if got := strings.TrimSpace(string(existing)); got != "" && filepath.Clean(got) != filepath.Clean(hooksDirectory) {
 				return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
 			}
 		}
-		if out, err := gitCombinedOutput(root, "config", "core.hooksPath", hooksDirectory); err != nil {
+		if out, err := gitutil.CombinedOutput(root, "config", "core.hooksPath", hooksDirectory); err != nil {
 			return output.Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
 		output.Step("activated hooks: core.hooksPath = %s", hooksDirectory)

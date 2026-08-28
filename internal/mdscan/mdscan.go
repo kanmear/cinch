@@ -1,4 +1,4 @@
-package cinch
+package mdscan
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 
 var fenceRe = regexp.MustCompile("^\\s*```")
 
-func forEachLineReader(r io.Reader, fn func(lineNumber int, line string)) error {
+func ForEachLine(r io.Reader, fn func(lineNumber int, line string)) error {
 	const chunkSize = 64 << 10
 	buffer := make([]byte, 0, chunkSize)
 	temp := make([]byte, chunkSize)
@@ -63,9 +63,9 @@ func forEachLineReader(r io.Reader, fn func(lineNumber int, line string)) error 
 	}
 }
 
-func forEachFencedLineReader(r io.Reader, fn func(lineNumber int, line string)) error {
+func ForEachFencedLine(r io.Reader, fn func(lineNumber int, line string)) error {
 	inFence := false
-	return forEachLineReader(r, func(lineNumber int, line string) {
+	return ForEachLine(r, func(lineNumber int, line string) {
 		if fenceRe.MatchString(line) {
 			inFence = !inFence
 			return
@@ -77,11 +77,11 @@ func forEachFencedLineReader(r io.Reader, fn func(lineNumber int, line string)) 
 	})
 }
 
-func forEachFencedLine(data []byte, fn func(lineNumber int, line string)) error {
-	return forEachFencedLineReader(bytes.NewReader(data), fn)
+func ForEachFencedLineBytes(data []byte, fn func(lineNumber int, line string)) error {
+	return ForEachFencedLine(bytes.NewReader(data), fn)
 }
 
-func walkMarkdownFiles(root string, fn func(path string) error) error {
+func WalkMarkdownFiles(root string, fn func(path string) error) error {
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -93,9 +93,9 @@ func walkMarkdownFiles(root string, fn func(path string) error) error {
 	})
 }
 
-func collectMarkdown[T any](root string, fn func(path string) ([]T, error)) ([]T, error) {
+func Collect[T any](root string, fn func(path string) ([]T, error)) ([]T, error) {
 	var out []T
-	err := walkMarkdownFiles(root, func(path string) error {
+	err := WalkMarkdownFiles(root, func(path string) error {
 		more, err := fn(path)
 		out = append(out, more...)
 		return err
@@ -103,9 +103,9 @@ func collectMarkdown[T any](root string, fn func(path string) ([]T, error)) ([]T
 	return out, err
 }
 
-// relTo returns path relative to base (best-effort: git's own output is
+// RelTo returns path relative to base (best-effort: git's own output is
 // always repo-relative, but filesystem walks may produce absolute paths).
-func relTo(base, path string) string {
+func RelTo(base, path string) string {
 	rel, err := filepath.Rel(base, path)
 	if err != nil {
 		return path
