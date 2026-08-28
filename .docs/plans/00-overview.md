@@ -105,6 +105,19 @@ condition is ever met.
   (rule-ID disappearance) and the `rules` check (unmarked rules). Its git helpers
   survive in `git.go`. **Reopen only if** a measured false-negative shows up that
   neither of those two catches.
+- **The `retirement` check** — HEAD^-vs-HEAD diffing of rule IDs against an opt-in
+  tombstone pattern, with a bounded worker pool fanning `git show` across doc files.
+  294 lines total (153 production, 141 test) for a check `retirement.pattern` never
+  turned on in either consumer's `cinch.yml`. Its own `idIsTombstoned` had a known,
+  seeded-and-never-fixed substring bug (a tombstone naming `SIG-020` falsely covered
+  the retirement of `SIG-02`). The one failure mode it uniquely caught — a doc rule
+  entry and its marker disappearing together, cleanly, in one commit — is exactly the
+  case a diff review already catches on a repo this small; the other half of "silent
+  rule disappearance" (an orphaned marker or an orphaned doc entry) was already a loud,
+  unconditional `rules` finding with no opt-in required. **Reopen only if** a
+  consumer's rule corpus grows large enough that reviewers stop reliably catching a
+  clean same-commit removal in diff review — and fix the substring match before
+  reopening it.
 
 ### On the no-retrieval-tool rule
 

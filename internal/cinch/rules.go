@@ -10,6 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	"cinch/internal/concurrency"
+	"cinch/internal/gitutil"
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -151,7 +154,7 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		textLines = nil
 	}
 
-	_ = forEachFencedLine(content, func(lineNumber int, line string) {
+	_ = mdscan.ForEachFencedLineBytes(content, func(lineNumber int, line string) {
 		if m := ruleItemRe.FindStringSubmatch(line); m != nil {
 			flush()
 			cur = &ruleItem{id: m[1], file: file, line: lineNumber}
@@ -188,7 +191,7 @@ func parseRuleDoc(path string) ([]ruleItem, error) {
 }
 
 func scanRuleDocs(docsRoot string) ([]ruleItem, error) {
-	return collectMarkdown(docsRoot, parseRuleDoc)
+	return mdscan.Collect(docsRoot, parseRuleDoc)
 }
 
 func underPath(path, directory string) bool {
@@ -208,7 +211,7 @@ func underPath(path, directory string) bool {
 }
 
 func markerScanFiles(repoRoot, docsRoot string) ([]string, error) {
-	if files, err := gitScannableFiles(repoRoot); err == nil {
+	if files, err := gitutil.ScannableFiles(repoRoot); err == nil {
 		var out []string
 		for _, f := range files {
 			if !underPath(f, docsRoot) {
@@ -254,9 +257,9 @@ func scanMarkers(r io.Reader, path string, fenced bool) (map[string][]markerLoc,
 	}
 	var err error
 	if fenced {
-		err = forEachFencedLineReader(r, fn)
+		err = mdscan.ForEachFencedLine(r, fn)
 	} else {
-		err = forEachLineReader(r, fn)
+		err = mdscan.ForEachLine(r, fn)
 	}
 	return markers, err
 }
@@ -293,7 +296,7 @@ func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) 
 	results := make(chan fileResult)
 
 	var wg sync.WaitGroup
-	for i := 0; i < boundedWorkers(len(files)); i++ {
+	for i := 0; i < concurrency.BoundedWorkers(len(files)); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

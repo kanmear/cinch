@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"cinch/internal/output"
+	"cinch/internal/semver"
 )
 
 func CmdUpgrade(root string) int {
@@ -50,7 +51,7 @@ func reportPinStatus(m *manifest) {
 		return
 	}
 	minimum = strings.TrimSpace(minimum)
-	if semverAtLeast(Version, minimum) {
+	if semver.AtLeast(Version, minimum) {
 		output.Step("range pin >=%s is satisfied by installed %s; no change", minimum, Version)
 		return
 	}

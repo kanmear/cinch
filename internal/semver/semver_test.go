@@ -1,8 +1,8 @@
-package cinch
+package semver
 
 import "testing"
 
-func TestSemverEqual(t *testing.T) {
+func TestEqual(t *testing.T) {
 	cases := []struct {
 		a, b string
 		want bool
@@ -24,14 +24,14 @@ func TestSemverEqual(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.a+" vs "+tc.b, func(t *testing.T) {
-			if got := semverEqual(tc.a, tc.b); got != tc.want {
-				t.Fatalf("semverEqual(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+			if got := Equal(tc.a, tc.b); got != tc.want {
+				t.Fatalf("Equal(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
 			}
 		})
 	}
 }
 
-func TestSemverAtLeast(t *testing.T) {
+func TestAtLeast(t *testing.T) {
 	cases := []struct {
 		version, minimum string
 		want             bool
@@ -55,8 +55,8 @@ func TestSemverAtLeast(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.version+" >= "+tc.minimum, func(t *testing.T) {
-			if got := semverAtLeast(tc.version, tc.minimum); got != tc.want {
-				t.Fatalf("semverAtLeast(%q, %q) = %v, want %v", tc.version, tc.minimum, got, tc.want)
+			if got := AtLeast(tc.version, tc.minimum); got != tc.want {
+				t.Fatalf("AtLeast(%q, %q) = %v, want %v", tc.version, tc.minimum, got, tc.want)
 			}
 		})
 	}

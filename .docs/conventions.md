@@ -134,3 +134,24 @@ Every `checkX` function should eventually have a `_test.go` covering it. Not
 all of them do yet (`generated.go`, `retirement.go`) — new checks should ship
 with tests; backfilling the gap on existing ones is tracked separately, not a
 license to skip tests on new code.
+
+## Package boundaries
+
+A file belongs in `internal/cinch` if it implements a command, a check, or
+any other behavior a `cinch` user can observe. A file belongs in its own
+sibling package under `internal/` (e.g. `internal/gitutil`, `internal/mdscan`,
+`internal/semver`, `internal/concurrency`) if it's pure, silent mechanism:
+zero dependency on `cinch`'s domain types (`finding`, `checkResult`,
+`manifest`, `docFrontmatter`, `ruleItem`, ...) and zero use of
+`internal/output`. That second condition is what disqualifies something that
+otherwise looks like infrastructure — `selfupdate.go` shells out and hits the
+network, but it drives an interactive user-facing confirmation flow via
+`internal/output`, so it's a feature, not mechanism, and stays in `cinch`.
+
+These sibling packages export what `cinch` needs (dropping the
+now-redundant prefix, e.g. `gitutil.IsRepo` not `gitutil.IsGitRepo`) but are
+still only reachable from within this module — nothing outside `internal/`
+changes. `main.go`'s own touch points into `cinch` (see "Exported vs.
+unexported" above) don't change either: `cinch.IsGitRepo` stays defined in
+`cinch` as a thin delegator to `gitutil.IsRepo`, so main.go keeps importing
+only `cinch`.

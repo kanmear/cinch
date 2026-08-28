@@ -66,7 +66,7 @@ questioned.
 |---|---|
 | `links` | every relative markdown link under the docs root resolves on disk |
 | `rules` | every documented rule ID has a marker or an explicit ignore |
-| `retirement` | (opt-in) a rule ID present at `HEAD^` is still present at `HEAD` or matches your tombstone pattern |
+| `index` | every doc outside `plans/` has a title (`# ` heading) — otherwise it's silently dropped from `cinch index` |
 | `generated` | rendered output (workflows, hook shims) is byte-identical to what `cinch render` produces now — hand-edits fail here |
 | `hooks` | `git config core.hooksPath` actually points at `paths.hooks` |
 | `commit` | (opt-in) the commit subject matches `commit.pattern` (checked from a `commit-msg` hook) |
@@ -157,11 +157,6 @@ hooks:
 #commit:
 #  pattern: '^\[[a-z-]+\] .+'
 
-# Opt-in: tombstone convention for deleted rules. A rule ID removed in the
-# latest commit is accepted if this regexp matches file content containing
-# the ID's text.
-#retirement:
-#  pattern: '<!--\s*retired:.*-->'
 
 # Opt-in: pin the cinch version (exact `0.1.0` or `>=0.1.0`).
 #require:
@@ -170,9 +165,6 @@ hooks:
 
 ## Roadmap
 
-- **Multi-commit retirement tracking** — `retirement` currently only diffs
-  `HEAD^` → `HEAD`, so a removal can be missed if a second commit lands
-  before the next check.
 - **Index-aware pre-commit checks** — check the staged index rather than the
   working tree, so a partially-staged edit can't slip past pre-commit.
 - **Overridable template packs** — let a project supply its own workflow

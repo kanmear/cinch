@@ -19,6 +19,9 @@ usage:
   cinch version           print the cinch version
   cinch init              scaffold a consumer (fills cinch.yml, renders, activates hooks)
   cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
+  cinch check --changed [--only NAMES] [MSGFILE]
+                          scope checks to unstaged files; --only restricts which checks run
+                          (NAMES: links,rules,index,generated,commit,core,hooks)
   cinch ignores           list every cinch:ignore declaration
   cinch render            render docs/templates and git hook shims from cinch.yml
   cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
@@ -66,18 +69,7 @@ func main() {
 		}
 		os.Exit(impl.CmdInit("."))
 	case "check":
-		args := os.Args[2:]
-		if len(args) > 1 {
-			os.Exit(output.UsageError("check: too many arguments"))
-		}
-		messageFile := ""
-		if len(args) == 1 {
-			messageFile = args[0]
-			if _, err := os.Stat(messageFile); err != nil {
-				os.Exit(output.UsageError("check: cannot read message file: " + messageFile))
-			}
-		}
-		os.Exit(impl.CmdCheck(messageFile))
+		os.Exit(checkCommand(os.Args[2:]))
 	case "ignores":
 		if len(os.Args) > 2 {
 			os.Exit(output.UsageError("ignores: takes no arguments"))
@@ -121,6 +113,56 @@ func main() {
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
+}
+
+// checkNames is the set of check names runChecks knows how to run, used to
+// validate --only so a typo fails loudly instead of silently running nothing.
+var checkNames = map[string]bool{
+	"links": true, "rules": true, "index": true,
+	"generated": true, "commit": true, "core": true, "hooks": true,
+}
+
+// checkCommand parses os.Args by hand, matching indexCommand's convention:
+// --changed and --only NAMES may appear in any order around the optional
+// MSGFILE positional.
+func checkCommand(args []string) int {
+	var messageFile string
+	var changed bool
+	var only []string
+	haveMessageFile := false
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--changed":
+			changed = true
+		case "--only":
+			if i+1 >= len(args) {
+				return output.UsageError("check: --only requires a comma-separated NAMES argument")
+			}
+			i++
+			for _, name := range strings.Split(args[i], ",") {
+				name = strings.TrimSpace(name)
+				if !checkNames[name] {
+					return output.UsageError(fmt.Sprintf("check: --only: unknown check %q", name))
+				}
+				only = append(only, name)
+			}
+		default:
+			if haveMessageFile {
+				return output.UsageError("check: too many arguments")
+			}
+			messageFile = args[i]
+			haveMessageFile = true
+		}
+	}
+
+	if haveMessageFile {
+		if _, err := os.Stat(messageFile); err != nil {
+			return output.UsageError("check: cannot read message file: " + messageFile)
+		}
+	}
+
+	return impl.CmdCheck(messageFile, changed, only)
 }
 
 // indexCommand parses os.Args by hand rather than reaching for the flag
