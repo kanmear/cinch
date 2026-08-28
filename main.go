@@ -30,6 +30,8 @@ usage:
                           list the docs that link to PATH
   cinch index --links-from PATH
                           list the docs PATH links to
+  cinch rules --json      print the machine-readable rule inventory
+  cinch impact [FILES...] advisory: rule IDs a diff plausibly affects (default: staged)
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -39,7 +41,7 @@ const bareSynopsis = `cinch — check the operational docs that govern a reposit
 run 'cinch help' for the full command list.
 `
 
-var commands = []string{"help", "version", "init", "check", "ignores", "render", "upgrade", "hook", "workflows", "workflow", "index"}
+var commands = []string{"help", "version", "init", "check", "ignores", "render", "upgrade", "hook", "workflows", "workflow", "index", "rules", "impact"}
 
 func main() {
 	impl.Version = Version
@@ -112,6 +114,10 @@ func main() {
 		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
 	case "index":
 		os.Exit(indexCommand(os.Args[2:]))
+	case "rules":
+		os.Exit(rulesCommand(os.Args[2:]))
+	case "impact":
+		os.Exit(impl.CmdImpact(".", os.Args[2:]))
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
@@ -140,6 +146,16 @@ func indexCommand(args []string) int {
 		return impl.CmdIndexLinksTo(".", args[1])
 	}
 	return impl.CmdIndexLinksFrom(".", args[1])
+}
+
+// rulesCommand parses os.Args by hand, matching indexCommand's convention:
+// this is the second command with a flag, and it should stay hand-parsed
+// rather than tipping the balance toward introducing the flag package.
+func rulesCommand(args []string) int {
+	if len(args) != 1 || args[0] != "--json" {
+		return output.UsageError("rules: requires --json (no other flags or arguments)")
+	}
+	return impl.CmdRules(".", true)
 }
 
 func unknownCommand(name string) int {
