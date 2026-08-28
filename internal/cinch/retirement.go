@@ -5,13 +5,17 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"cinch/internal/concurrency"
+	"cinch/internal/gitutil"
+	"cinch/internal/mdscan"
 )
 
 func checkRetirement(repoRoot, docsRoot string, m *manifest) checkResult {
-	if !isGitRepo(repoRoot) {
+	if !gitutil.IsRepo(repoRoot) {
 		return checkResult{noOp: "not a git repository"}
 	}
-	if !hasHead(repoRoot) {
+	if !gitutil.HasHead(repoRoot) {
 		return checkResult{noOp: "no commits yet"}
 	}
 	if !hasParent(repoRoot) {
@@ -39,7 +43,7 @@ func checkRetirement(repoRoot, docsRoot string, m *manifest) checkResult {
 		return checkResult{noOp: "retirement.pattern is not set in cinch.yml — opt-in, not configured"}
 	}
 
-	paths, err := gitOutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", relTo(repoRoot, docsRoot))
+	paths, err := gitutil.OutputLines(repoRoot, "ls-tree", "-r", "--name-only", "HEAD^", "--", mdscan.RelTo(repoRoot, docsRoot))
 	if err != nil {
 		return checkResult{noOp: "git ls-tree failed"}
 	}
@@ -58,13 +62,13 @@ func checkRetirement(repoRoot, docsRoot string, m *manifest) checkResult {
 // HEAD^ and HEAD, reporting IDs that disappeared without a recognized
 // tombstone.
 func retirementFindingsForFile(repoRoot, path string, tombstone *regexp.Regexp) []finding {
-	parentContent, ok := gitShow(repoRoot, "HEAD^:"+path)
+	parentContent, ok := gitutil.Show(repoRoot, "HEAD^:"+path)
 	if !ok {
 		return nil
 	}
 	parentItems := parseRuleItems(path, parentContent)
 
-	headContent, headOK := gitShow(repoRoot, "HEAD:"+path)
+	headContent, headOK := gitutil.Show(repoRoot, "HEAD:"+path)
 	var headIDs map[string]bool
 	if headOK {
 		headIDs = ruleItemIDs(parseRuleItems(path, headContent))
@@ -100,7 +104,7 @@ func retirementFindings(repoRoot string, paths []string, tombstone *regexp.Regex
 	results := make(chan []finding)
 
 	var wg sync.WaitGroup
-	for i := 0; i < boundedWorkers(len(paths)); i++ {
+	for i := 0; i < concurrency.BoundedWorkers(len(paths)); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -128,7 +132,7 @@ func retirementFindings(repoRoot string, paths []string, tombstone *regexp.Regex
 }
 
 func hasParent(root string) bool {
-	return gitRun(root, "rev-parse", "--verify", "-q", "HEAD^") == nil
+	return gitutil.Run(root, "rev-parse", "--verify", "-q", "HEAD^") == nil
 }
 
 func tombstonePattern(m *manifest) (*regexp.Regexp, error) {

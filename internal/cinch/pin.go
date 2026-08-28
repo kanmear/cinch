@@ -3,6 +3,8 @@ package cinch
 import (
 	"fmt"
 	"strings"
+
+	"cinch/internal/semver"
 )
 
 var Version = "dev"
@@ -20,7 +22,7 @@ func checkPin(version string, m *manifest) checkResult {
 
 	if minimum, isMinimum := strings.CutPrefix(want, ">="); isMinimum {
 		minimum = strings.TrimSpace(minimum)
-		if semverAtLeast(version, minimum) {
+		if semver.AtLeast(version, minimum) {
 			return checkResult{}
 		}
 		return checkResult{findings: []finding{{
@@ -29,7 +31,7 @@ func checkPin(version string, m *manifest) checkResult {
 		}}}
 	}
 
-	if semverEqual(version, want) {
+	if semver.Equal(version, want) {
 		return checkResult{}
 	}
 	return checkResult{findings: []finding{{

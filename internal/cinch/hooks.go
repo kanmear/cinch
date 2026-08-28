@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"cinch/internal/gitutil"
 )
 
 func checkHooks(root string, m *manifest, mErr error) checkResult {
-	if !isGitRepo(root) {
+	if !gitutil.IsRepo(root) {
 		return checkResult{noOp: "not a git repository"}
 	}
 
@@ -17,7 +19,7 @@ func checkHooks(root string, m *manifest, mErr error) checkResult {
 
 	want := hooksPathValue(m)
 
-	out, err := gitOutput(root, "config", "--get", "core.hooksPath")
+	out, err := gitutil.Output(root, "config", "--get", "core.hooksPath")
 	got := strings.TrimSpace(string(out))
 	if err != nil || got == "" {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is not set — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", want)}

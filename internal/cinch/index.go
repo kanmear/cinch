@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -17,8 +18,8 @@ func indexList(docsRoot string) (string, error) {
 	}
 	var entries []entry
 
-	collected, err := collectMarkdown(docsRoot, func(path string) ([]entry, error) {
-		rel := filepath.ToSlash(relTo(docsRoot, path))
+	collected, err := mdscan.Collect(docsRoot, func(path string) ([]entry, error) {
+		rel := filepath.ToSlash(mdscan.RelTo(docsRoot, path))
 		if strings.HasPrefix(rel, "plans/") {
 			return nil, nil
 		}
@@ -57,8 +58,8 @@ type indexReport struct {
 
 func checkIndex(docsRoot string) indexReport {
 	var report indexReport
-	err := walkMarkdownFiles(docsRoot, func(path string) error {
-		rel := filepath.ToSlash(relTo(docsRoot, path))
+	err := mdscan.WalkMarkdownFiles(docsRoot, func(path string) error {
+		rel := filepath.ToSlash(mdscan.RelTo(docsRoot, path))
 		if strings.HasPrefix(rel, "plans/") {
 			return nil
 		}
@@ -111,13 +112,13 @@ func CmdIndex(root string) int {
 // docLinks.
 func docTitleByPath(docsRoot string) (map[string]string, error) {
 	titles := make(map[string]string)
-	err := walkMarkdownFiles(docsRoot, func(path string) error {
+	err := mdscan.WalkMarkdownFiles(docsRoot, func(path string) error {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 		title, _ := titleAndTrigger(string(data))
-		titles[filepath.ToSlash(relTo(docsRoot, path))] = title
+		titles[filepath.ToSlash(mdscan.RelTo(docsRoot, path))] = title
 		return nil
 	})
 	if err != nil {

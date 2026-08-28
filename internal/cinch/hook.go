@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"cinch/internal/gitutil"
 	"cinch/internal/output"
 )
 
@@ -95,15 +96,15 @@ func cmdHookPostCommit(root string) int {
 }
 
 func committedFiles(root string) ([]string, error) {
-	files, err := gitOutputLines(root, "diff", "--name-only", "HEAD^", "HEAD")
+	files, err := gitutil.OutputLines(root, "diff", "--name-only", "HEAD^", "HEAD")
 	if err == nil {
 		return files, nil
 	}
-	return gitOutputLines(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
+	return gitutil.OutputLines(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
 }
 
 func stagedPaths(root string) ([]string, error) {
-	return gitOutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
+	return gitutil.OutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
 }
 
 func dispatchHooks(root string, m *manifest, event string, staged []string, args ...string) bool {
