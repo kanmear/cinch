@@ -107,6 +107,10 @@ func stagedPaths(root string) ([]string, error) {
 	return gitutil.OutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
 }
 
+func unstagedPaths(root string) ([]string, error) {
+	return gitutil.OutputLines(root, "diff", "--name-only", "--diff-filter=ACMRD")
+}
+
 func dispatchHooks(root string, m *manifest, event string, staged []string, args ...string) bool {
 	ok := true
 	for _, name := range m.names("hooks." + event) {

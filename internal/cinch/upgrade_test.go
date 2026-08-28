@@ -34,7 +34,7 @@ func TestCmdUpgradeRendersSyncsAndChecksClean(t *testing.T) {
 
 	// audit's own verification wording: core, generated, and rules must be
 	// clean immediately after CmdUpgrade, in the same invocation.
-	if code := runChecks(root, "", false, "core", "generated", "rules"); code != 0 {
+	if code := runChecks(root, "", false, false, "core", "generated", "rules"); code != 0 {
 		t.Fatalf("post-upgrade checks = %d, want 0 (clean)", code)
 	}
 }
