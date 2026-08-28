@@ -26,6 +26,10 @@ usage:
   cinch workflows         print the workflow trigger table
   cinch workflow NAME     print one rendered workflow
   cinch index             print every doc's path and title
+  cinch index --links-to PATH
+                          list the docs that link to PATH
+  cinch index --links-from PATH
+                          list the docs PATH links to
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -107,13 +111,35 @@ func main() {
 		}
 		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
 	case "index":
-		if len(os.Args) > 2 {
-			os.Exit(output.UsageError("index: takes no arguments"))
-		}
-		os.Exit(impl.CmdIndex("."))
+		os.Exit(indexCommand(os.Args[2:]))
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
+}
+
+// indexCommand parses os.Args by hand rather than reaching for the flag
+// package, because every other command here does and a lone flag set on one
+// command would be the only one.
+func indexCommand(args []string) int {
+	if len(args) == 0 {
+		return impl.CmdIndex(".")
+	}
+
+	flag := args[0]
+	if flag != "--links-to" && flag != "--links-from" {
+		return output.UsageError(fmt.Sprintf("index: unknown argument %q (want --links-to PATH or --links-from PATH)", flag))
+	}
+	if len(args) == 1 {
+		return output.UsageError("index: " + flag + " requires a PATH argument")
+	}
+	if len(args) > 2 {
+		return output.UsageError("index: " + flag + " takes exactly one PATH argument")
+	}
+
+	if flag == "--links-to" {
+		return impl.CmdIndexLinksTo(".", args[1])
+	}
+	return impl.CmdIndexLinksFrom(".", args[1])
 }
 
 func unknownCommand(name string) int {
