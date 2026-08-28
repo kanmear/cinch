@@ -108,3 +108,67 @@ func TestSeededDefectLinksTargetUnreachableFromRoot(t *testing.T) {
 		t.Fatalf("findings = %+v, want none (a titled doc with no inbound links is not a links-check defect)", report.findings)
 	}
 }
+
+// --- Doc link graph ---
+
+// docLinksFixture builds a corpus exercising every edge rule at once: a
+// duplicated link, an anchored link, a self-link, a non-markdown target, and a
+// target above the docs root.
+func docLinksFixture(t *testing.T) string {
+	t.Helper()
+	base := t.TempDir()
+	docsRoot := filepath.Join(base, "docs")
+	if err := os.MkdirAll(filepath.Join(docsRoot, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, base, "outside.md", "# Outside\n")
+	writeTestFile(t, docsRoot, "notes.txt", "not markdown\n")
+	writeTestFile(t, docsRoot, "a.md", "# A\n[x](sub/b.md)\n[y](./sub/b.md)\n[z](sub/b.md#anchor)\n[me](a.md)\n")
+	writeTestFile(t, filepath.Join(docsRoot, "sub"), "b.md", "# B\n[up](../a.md)\n[code](../notes.txt)\n[out](../../outside.md)\n")
+	writeTestFile(t, filepath.Join(docsRoot, "sub"), "c.md", "# C\n[b](b.md)\n")
+	return docsRoot
+}
+
+func TestBuildDocLinks(t *testing.T) {
+	graph := buildDocLinks(docLinksFixture(t))
+
+	cases := []struct {
+		name  string
+		got   []string
+		want  []string
+		about string
+	}{
+		{"outbound a.md", graph.outbound["a.md"], []string{"sub/b.md"},
+			"three links to the same target (one anchored) are one edge, and the self-link is dropped"},
+		{"outbound sub/b.md", graph.outbound["sub/b.md"], []string{"a.md"},
+			"../notes.txt is not markdown and ../../outside.md is above the docs root"},
+		{"outbound sub/c.md", graph.outbound["sub/c.md"], []string{"sub/b.md"},
+			"a sibling link resolves relative to its own directory"},
+		{"inbound sub/b.md", graph.inbound["sub/b.md"], []string{"a.md", "sub/c.md"},
+			"both referrers, sorted, regardless of how they spelled the path"},
+		{"inbound a.md", graph.inbound["a.md"], []string{"sub/b.md"},
+			"../a.md resolves back to the root doc"},
+		{"inbound notes.txt", graph.inbound["notes.txt"], nil,
+			"a non-markdown file is never a graph node"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if strings.Join(tc.got, ",") != strings.Join(tc.want, ",") {
+				t.Fatalf("= %v, want %v (%s)", tc.got, tc.want, tc.about)
+			}
+		})
+	}
+}
+
+// The links check and the graph read the same resolution, so a corpus that is
+// green must not also be producing phantom edges — and vice versa.
+func TestBuildDocLinksLeavesCheckIntact(t *testing.T) {
+	report := checkLinks(docLinksFixture(t))
+
+	if len(report.findings) != 0 {
+		t.Fatalf("findings = %+v, want none (every link in the fixture resolves)", report.findings)
+	}
+	if report.links != 8 {
+		t.Fatalf("links = %d, want 8 (edge filtering must not change the link count)", report.links)
+	}
+}
