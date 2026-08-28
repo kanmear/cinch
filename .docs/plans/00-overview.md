@@ -69,3 +69,51 @@ below, but binding on all ten:
 - Confidence is not distributed evenly across cinch's own checks. `rules` is exercised daily
   and is solid. The plan/workflow ceremony has been exercised once, end to end (item 7). The
   `retirement` check has never been enabled by anyone who wasn't running this benchmark.
+
+## Cut, and why
+
+Three surfaces were removed after shipping. Recorded here because two of the three
+were cut with no rationale in the commit, and the `cinch context` question came back
+months later and had to be re-derived from the benchmark data from scratch. Each entry
+names the commit that holds the code, so restoring is a `git show` away if the stated
+condition is ever met.
+
+- **`cinch context`** — the session-start report: branch, plans under `plans/` with
+  their `Status:` lines, the workflow trigger table, staged paths. Added `276aedd`,
+  status vocabulary added `e50064f`, cut `ec3e8cc` (empty commit body). Three of its
+  four sections are covered by `cinch workflows`, `git branch`, and `git status`; the
+  fourth needs `manifest.go`'s `List()` restored to order a handful of files. It also
+  degrades here, since `58e7457` dropped the self-host files and none of the plans in
+  this directory carry a `Status:` line. **Reopen only if** item 8 lands and cinch
+  self-hosts again *and* a consumer's `plans/` grows past roughly a dozen files with
+  subdirectory grouping — until then `ls` is enough. Note that
+  `05-navigability-check-class.md`'s resolution still names "eventually `cinch
+  context`" as a canonical entry point; that is an aside written before this decision,
+  not a commitment.
+- **`cinch move-docs NEW-PATH`** — moved the docs root, rewrote `paths.docs`, and
+  re-rendered as one atomic operation, so the manifest could never point at a path the
+  directory hadn't followed. Added `a45a5ad`, cut `ec3e8cc`. The failure it prevented
+  is still caught: `checkGenerated`'s cross-root scan compares against the roots
+  `cinch.yml` implied at HEAD, which is the detection half and landed in the same
+  commit. What went was the one-shot migration command, exercised roughly once per
+  consumer per lifetime. **Reopen only if** a consumer actually corrupts a docs root
+  by hand-editing `paths.docs`, which the generated check would now name.
+- **The `coupling` check** — transition-scoped rule-text coupling. Cut `712daba`, which
+  does state its reasoning: it duplicated what an immersed human review already catches,
+  could not tell a punctuation reword from a semantic one, and so blocked legitimate
+  changes. The silent-failure class it was aimed at is covered by the identity check
+  (rule-ID disappearance) and the `rules` check (unmarked rules). Its git helpers
+  survive in `git.go`. **Reopen only if** a measured false-negative shows up that
+  neither of those two catches.
+
+### On the no-retrieval-tool rule
+
+`cinch index --links-to/--links-from` is retrieval-shaped and lands after the bullet
+above that forbids retrieval features. That is deliberate, not an oversight. The
+benchmark's finding is that tooling adds nothing to *reading* the corpus — grep and a
+pointer sufficed. The link flags aren't justified on retrieval value; they exist
+because relative-path resolution is a thing grep provably cannot do: `project_deltadocs`
+holds 12 colliding basenames over 63 docs, and `architecture.md` alone has 20 inbound
+references in five spellings resolving to three different files. Where grep *is*
+sufficient — matching titles — no flag was added, because `cinch index | grep` already
+is one. Apply the same test to the next proposal: if grep can answer it, don't build it.
