@@ -1,12 +1,12 @@
-package cinch
+package concurrency
 
 import "runtime"
 
-// boundedWorkers returns a sensible worker-pool size for n independent,
+// BoundedWorkers returns a sensible worker-pool size for n independent,
 // subprocess- or I/O-bound jobs: capped at 8 to avoid spawning excessive
 // concurrent git subprocesses or open file descriptors on large repos, never
 // more than n, and never less than 1.
-func boundedWorkers(n int) int {
+func BoundedWorkers(n int) int {
 	c := runtime.GOMAXPROCS(0)
 	if c > 8 {
 		c = 8

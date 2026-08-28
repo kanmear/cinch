@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -97,7 +98,7 @@ func buildImpact(repoRoot, docsRoot string, changedFiles []string) ([]impactHit,
 	for id, locs := range rawMarkers {
 		normalized := make([]markerLoc, len(locs))
 		for i, loc := range locs {
-			normalized[i] = markerLoc{file: filepath.ToSlash(relTo(repoRoot, loc.file)), line: loc.line}
+			normalized[i] = markerLoc{file: filepath.ToSlash(mdscan.RelTo(repoRoot, loc.file)), line: loc.line}
 		}
 		markers[id] = normalized
 	}

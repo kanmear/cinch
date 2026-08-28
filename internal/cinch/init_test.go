@@ -3,6 +3,8 @@ package cinch
 import (
 	"strings"
 	"testing"
+
+	"cinch/internal/gitutil"
 )
 
 func TestCmdInitActivatesHooksWhenUnset(t *testing.T) {
@@ -63,7 +65,7 @@ func TestCmdInitRefusesToClobberExistingHooksPath(t *testing.T) {
 
 func gitConfigGet(t *testing.T, root, key string) string {
 	t.Helper()
-	out, err := gitOutput(root, "config", "--get", key)
+	out, err := gitutil.Output(root, "config", "--get", key)
 	if err != nil {
 		t.Fatalf("git config --get %s: %v", key, err)
 	}

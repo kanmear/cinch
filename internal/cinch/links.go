@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -40,7 +41,7 @@ type docLinks struct {
 
 func checkLinks(docsRoot string) linksReport {
 	var report linksReport
-	err := walkMarkdownFiles(docsRoot, func(path string) error {
+	err := mdscan.WalkMarkdownFiles(docsRoot, func(path string) error {
 		report.docs++
 		fileReport, ferr := checkLinksInFile(docsRoot, path)
 		report.findings = append(report.findings, fileReport.findings...)
@@ -76,7 +77,7 @@ func checkLinksInFile(docsRoot, path string) (linksReport, error) {
 
 	var report linksReport
 	lineNumber := 0
-	scanErr := forEachFencedLine(data, func(n int, line string) {
+	scanErr := mdscan.ForEachFencedLineBytes(data, func(n int, line string) {
 		lineNumber = n
 		for _, m := range mdLinkRe.FindAllStringSubmatch(line, -1) {
 			target := strings.TrimSpace(m[1])
@@ -127,11 +128,11 @@ func docEdgeFor(docsRoot, from, resolvedTo string) (docEdge, bool) {
 	if !strings.HasSuffix(resolvedTo, ".md") {
 		return docEdge{}, false
 	}
-	to := filepath.ToSlash(relTo(docsRoot, resolvedTo))
+	to := filepath.ToSlash(mdscan.RelTo(docsRoot, resolvedTo))
 	if to == ".." || strings.HasPrefix(to, "../") {
 		return docEdge{}, false
 	}
-	source := filepath.ToSlash(relTo(docsRoot, from))
+	source := filepath.ToSlash(mdscan.RelTo(docsRoot, from))
 	if source == to {
 		return docEdge{}, false
 	}

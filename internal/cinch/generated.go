@@ -4,6 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"cinch/internal/gitutil"
+	"cinch/internal/mdscan"
 )
 
 func checkGenerated(root string, m *manifest, mErr error) checkResult {
@@ -54,7 +57,7 @@ func checkGenerated(root string, m *manifest, mErr error) checkResult {
 		}
 	}
 
-	if previousData, ok := gitShow(root, "HEAD:"+manifestPath); ok {
+	if previousData, ok := gitutil.Show(root, "HEAD:"+manifestPath); ok {
 		if previousManifest, err := parseManifestBytes(previousData, manifestPath+"@HEAD"); err == nil {
 			renderDirectories[filepath.Join(root, docsPathValue(previousManifest), workflowsSubdir)] = true
 			renderDirectories[filepath.Join(root, hooksPathValue(previousManifest))] = true
@@ -78,7 +81,7 @@ func checkGenerated(root string, m *manifest, mErr error) checkResult {
 			if err != nil || !hasGeneratedHeader(string(data)) {
 				continue
 			}
-			rel := relTo(root, path)
+			rel := mdscan.RelTo(root, path)
 			findings = append(findings, finding{
 				check: "generated", level: "error", file: rel, line: 1,
 				message: "orphaned generated file, no longer produced by cinch render — delete it (cinch render never removes files)",

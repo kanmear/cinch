@@ -13,6 +13,32 @@ func parseRuleItemsStr(t *testing.T, body string) []ruleItem {
 	return parseRuleItems("test.md", []byte(body))
 }
 
+// unreadableTree returns a temp dir whose sub/ subtree is unreadable,
+// skipping the test when running as root (permission checks are void).
+func unreadableTree(t *testing.T) string {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("running as root; permission checks are void")
+	}
+	directory := t.TempDir()
+	sub := filepath.Join(directory, "sub")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "a.md"), []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(sub, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chmod(sub, 0o755); err != nil {
+			t.Logf("restoring permissions on %s: %v", sub, err)
+		}
+	})
+	return directory
+}
+
 func TestParseRuleItemsBasic(t *testing.T) {
 	got := parseRuleItemsStr(t, "1. **ABC-1** first rule\n2. **DEF-2** second rule\n")
 	want := []ruleItem{
