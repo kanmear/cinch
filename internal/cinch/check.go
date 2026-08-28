@@ -31,15 +31,15 @@ func scanErrorFinding(check, scope string, err error) []finding {
 }
 
 func CmdCheck(messageFile string, changed bool, only []string) int {
-	return runChecks(".", messageFile, true, changed, only...)
+	return runChecks(".", messageFile, changed, only...)
 }
 
 func preCommitChecks(root string) int {
-	return runChecks(root, "", false, false, "links", "rules", "index", "retirement", "generated", "core")
+	return runChecks(root, "", false, "links", "rules", "index", "generated", "core")
 }
 
 func commitMsgChecks(root, messageFile string) int {
-	return runChecks(root, messageFile, false, false, "commit")
+	return runChecks(root, messageFile, false, "commit")
 }
 
 // changedFileSet resolves the set of unstaged working-tree file paths, keyed
@@ -119,7 +119,7 @@ func generatedRelevant(root, docsRoot string, m *manifest, changed map[string]bo
 	return changedUnder(changed, filepath.Join(root, hooksPathValue(m)))
 }
 
-func runChecks(root, messageFile string, includeRetirement, changed bool, only ...string) int {
+func runChecks(root, messageFile string, changed bool, only ...string) int {
 	docsRoot, err := ResolveDocsRoot(root)
 	if err != nil {
 		return output.Fail("check", err)
@@ -183,13 +183,6 @@ func runChecks(root, messageFile string, includeRetirement, changed bool, only .
 		scoped(func() checkResult { return rulesCheckResult(checkRules(root, docsRoot)) }))
 	launch("index", relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
 		scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) }))
-	if includeRetirement {
-		launch("retirement", true, func() checkResult { return checkRetirement(root, docsRoot, m) })
-	} else {
-		launch("retirement", true, func() checkResult {
-			return checkResult{noOp: "HEAD^ vs HEAD lags one commit in pre-commit/commit-msg; run 'cinch check' in CI"}
-		})
-	}
 	launch("generated", relevant(generatedRelevant(root, docsRoot, m, changedSet)),
 		func() checkResult { return checkGenerated(root, m, mErr) })
 	// commit is unconditionally suppressed without a MSGFILE, not just under
