@@ -21,10 +21,17 @@ usage:
   cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
   cinch ignores           list every cinch:ignore declaration
   cinch render            render docs/templates and git hook shims from cinch.yml
+  cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
   cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
   cinch workflows         print the workflow trigger table
   cinch workflow NAME     print one rendered workflow
   cinch index             print every doc's path and title
+  cinch index --links-to PATH
+                          list the docs that link to PATH
+  cinch index --links-from PATH
+                          list the docs PATH links to
+  cinch rules --json      print the machine-readable rule inventory
+  cinch impact [FILES...] advisory: rule IDs a diff plausibly affects (default: staged)
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -34,7 +41,7 @@ const bareSynopsis = `cinch — check the operational docs that govern a reposit
 run 'cinch help' for the full command list.
 `
 
-var commands = []string{"help", "version", "init", "check", "ignores", "render", "hook", "workflows", "workflow", "index"}
+var commands = []string{"help", "version", "init", "check", "ignores", "render", "upgrade", "hook", "workflows", "workflow", "index", "rules", "impact"}
 
 func main() {
 	impl.Version = Version
@@ -85,6 +92,11 @@ func main() {
 			os.Exit(output.UsageError("render: takes no arguments"))
 		}
 		os.Exit(impl.CmdRender("."))
+	case "upgrade":
+		if len(os.Args) > 2 {
+			os.Exit(output.UsageError("upgrade: takes no arguments"))
+		}
+		os.Exit(impl.CmdUpgrade("."))
 	case "hook":
 		if len(os.Args) < 3 {
 			os.Exit(output.UsageError("hook: requires an event argument"))
@@ -101,13 +113,49 @@ func main() {
 		}
 		os.Exit(impl.CmdWorkflow(".", os.Args[2]))
 	case "index":
-		if len(os.Args) > 2 {
-			os.Exit(output.UsageError("index: takes no arguments"))
-		}
-		os.Exit(impl.CmdIndex("."))
+		os.Exit(indexCommand(os.Args[2:]))
+	case "rules":
+		os.Exit(rulesCommand(os.Args[2:]))
+	case "impact":
+		os.Exit(impl.CmdImpact(".", os.Args[2:]))
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
+}
+
+// indexCommand parses os.Args by hand rather than reaching for the flag
+// package, because every other command here does and a lone flag set on one
+// command would be the only one.
+func indexCommand(args []string) int {
+	if len(args) == 0 {
+		return impl.CmdIndex(".")
+	}
+
+	flag := args[0]
+	if flag != "--links-to" && flag != "--links-from" {
+		return output.UsageError(fmt.Sprintf("index: unknown argument %q (want --links-to PATH or --links-from PATH)", flag))
+	}
+	if len(args) == 1 {
+		return output.UsageError("index: " + flag + " requires a PATH argument")
+	}
+	if len(args) > 2 {
+		return output.UsageError("index: " + flag + " takes exactly one PATH argument")
+	}
+
+	if flag == "--links-to" {
+		return impl.CmdIndexLinksTo(".", args[1])
+	}
+	return impl.CmdIndexLinksFrom(".", args[1])
+}
+
+// rulesCommand parses os.Args by hand, matching indexCommand's convention:
+// this is the second command with a flag, and it should stay hand-parsed
+// rather than tipping the balance toward introducing the flag package.
+func rulesCommand(args []string) int {
+	if len(args) != 1 || args[0] != "--json" {
+		return output.UsageError("rules: requires --json (no other flags or arguments)")
+	}
+	return impl.CmdRules(".", true)
 }
 
 func unknownCommand(name string) int {

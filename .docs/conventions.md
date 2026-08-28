@@ -12,8 +12,9 @@ Export an identifier — type, func, var, const, or struct field — only if
 something outside its package needs it. Check this concretely: `internal/cinch`
 is consumed only by `main.go`, and `main.go` only ever touches `CmdCheck`,
 `CmdInit`, `CmdRender`, `CmdHook`, `CmdWorkflows`, `CmdWorkflow`, `CmdIndex`,
-`CmdIgnores`, `ResolveDocsRoot`, `IsGitRepo`, `ManifestExists`, and `Version`.
-Everything else stays unexported.
+`CmdIndexLinksTo`, `CmdIndexLinksFrom`, `CmdIgnores`, `ResolveDocsRoot`,
+`IsGitRepo`, `ManifestExists`, and `Version`. Everything else stays
+unexported.
 
 A struct's field casing follows the struct's own exported-ness — an unexported
 type gets unexported fields, since nothing outside the package can reach them

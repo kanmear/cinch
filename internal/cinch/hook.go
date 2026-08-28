@@ -30,6 +30,16 @@ func cmdHookPreCommit(root string) int {
 
 	ok := preCommitChecks(root) == 0
 
+	if docsRoot, dErr := ResolveDocsRoot(root); dErr == nil {
+		if hits, iErr := buildImpact(root, docsRoot, staged); iErr == nil {
+			printImpact(hits)
+		}
+		// iErr is deliberately swallowed: this advisory is a bonus nobody
+		// asked for on this path, and ok must never move because of it —
+		// printing a failure-styled message from a path that still exits 0
+		// would be actively misleading.
+	}
+
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return output.Fail("hook", err)

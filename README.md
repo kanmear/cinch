@@ -82,6 +82,19 @@ it guarantees dispatch, not script correctness. `cinch workflows` / `cinch
 workflow NAME` / `cinch index` compute the workflow table and doc index from
 disk on demand, so nothing persisted can drift.
 
+`cinch index --links-to PATH` and `--links-from PATH` answer which docs
+reference a doc, and which it references. The links check already resolves
+every markdown link against its source file's directory to decide whether the
+target exists; these flags read the same resolution instead of re-parsing, so
+the graph and the check can't disagree. The resolution is the point: a corpus
+routinely holds several `architecture.md`, referenced as `../architecture.md`
+from one directory and `./architecture.md` from another, and grep can't say
+which file any of them means. Pass a bare basename and every doc answering to
+it comes back with its link counts; pass a path with a directory in it and
+that doc is addressed exactly. Unlike `cinch index`, the graph counts
+`plans/` as both source and target — excluding it answers "what is the doc
+corpus", but "what links here" would be lying by omission.
+
 ### Commands
 
 ```
@@ -92,6 +105,10 @@ cinch hook EVENT [ARGS] git-hook dispatcher run by the generated shims
 cinch workflows         print the workflow trigger table
 cinch workflow NAME     print one rendered workflow
 cinch index             print every doc's path and title
+cinch index --links-to PATH
+                        list the docs that link to PATH
+cinch index --links-from PATH
+                        list the docs PATH links to
 cinch ignores           list every cinch:ignore declaration with its reason
 cinch version
 ```
