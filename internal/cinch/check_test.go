@@ -1,10 +1,47 @@
 package cinch
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// captureStderr temporarily redirects os.Stderr (which output.CheckStatus
+// writes through) so a test can assert on which check status lines did or
+// didn't print.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stderr
+	os.Stderr = w
+	fn()
+	os.Stderr = original
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
+
+// changedTestRepo commits an initial state, then leaves the working tree
+// dirty with unstaged edits made by dirty — mirroring how a developer running
+// `cinch check --changed` would find their tree.
+func changedTestRepo(t *testing.T, root string, seed, dirty func()) {
+	t.Helper()
+	git := retirementGitRepo(t, root)
+	seed()
+	git("add", "-A")
+	git("commit", "-q", "-m", "seed")
+	dirty()
+}
 
 // TestHookChecksSeparate pins the pre-commit/commit-msg split: the static
 // suite catches doc issues, while commit-msg checks only the subject pattern
@@ -29,5 +66,202 @@ func TestHookChecksSeparate(t *testing.T) {
 	}
 	if got := commitMsgChecks(root, bad); got != 1 {
 		t.Fatalf("commitMsgChecks(non-matching) = %d, want 1", got)
+	}
+}
+
+// TestCheckChangedFiltersLinksToChangedFiles pins the core --changed
+// behavior: a pre-existing broken link in a doc that wasn't touched must not
+// surface, but the same broken link does surface once its doc is the one
+// with an unstaged edit.
+func TestCheckChangedFiltersLinksToChangedFiles(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	changedTestRepo(t, root,
+		func() {
+			writeTestFile(t, docs, "broken.md", "# Broken\n\n[dead](nowhere.md)\n")
+			writeTestFile(t, docs, "other.md", "# Other\n\nsome text\n")
+		},
+		func() {
+			writeTestFile(t, docs, "other.md", "# Other\n\nsome text, edited\n")
+		},
+	)
+
+	if got := runChecks(root, "", false, true); got != 0 {
+		t.Fatalf("runChecks(changed) = %d, want 0 (broken.md wasn't touched)", got)
+	}
+
+	writeTestFile(t, docs, "broken.md", "# Broken\n\n[dead](nowhere.md)\nedited too\n")
+	if got := runChecks(root, "", false, true); got != 1 {
+		t.Fatalf("runChecks(changed) = %d, want 1 (broken.md is now the changed file)", got)
+	}
+}
+
+// TestCheckChangedSuppressesIrrelevantCheckStatus is the "no unstaged files
+// means no related output" behavior: when nothing under docsRoot changed,
+// links/index must not print a status line at all, not even a skip line.
+func TestCheckChangedSuppressesIrrelevantCheckStatus(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	changedTestRepo(t, root,
+		func() {
+			writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
+			writeTestFile(t, root, "other.txt", "unrelated\n")
+		},
+		func() {
+			writeTestFile(t, root, "other.txt", "unrelated, edited\n")
+		},
+	)
+
+	out := captureStderr(t, func() {
+		if got := runChecks(root, "", false, true); got != 0 {
+			t.Fatalf("runChecks(changed) = %d, want 0", got)
+		}
+	})
+
+	for _, name := range []string{"links:", "index:", "commit:"} {
+		if bytes.Contains([]byte(out), []byte(name)) {
+			t.Fatalf("stderr contains %q, want it fully suppressed; stderr=%q", name, out)
+		}
+	}
+	// rules is deliberately NOT suppressed here: rule markers can live
+	// outside docsRoot, so any changed file at all keeps it relevant.
+	if !bytes.Contains([]byte(out), []byte("rules:")) {
+		t.Fatalf("stderr missing %q, want rules to stay relevant when any file changed; stderr=%q", "rules:", out)
+	}
+}
+
+// TestCheckCommitSuppressedWithoutMessageFile pins commit's relevance
+// predicate: it goes silent whenever no MSGFILE was given — on plain `cinch
+// check` just as much as under --changed, since nobody hand-invokes `cinch
+// check somefile.txt` in ordinary use — but still runs when one is provided.
+func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	changedTestRepo(t, root,
+		func() { writeTestFile(t, docs, "a.md", "# A\n\ntext\n") },
+		func() { writeTestFile(t, docs, "a.md", "# A\n\ntext, edited\n") },
+	)
+
+	for _, changed := range []bool{false, true} {
+		out := captureStderr(t, func() { runChecks(root, "", false, changed) })
+		if bytes.Contains([]byte(out), []byte("commit:")) {
+			t.Fatalf("changed=%v: stderr contains %q, want commit suppressed with no MSGFILE; stderr=%q", changed, "commit:", out)
+		}
+	}
+
+	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
+	for _, changed := range []bool{false, true} {
+		out := captureStderr(t, func() { runChecks(root, msg, false, changed) })
+		if !bytes.Contains([]byte(out), []byte("commit:")) {
+			t.Fatalf("changed=%v: stderr missing %q, want commit to run when a MSGFILE is given; stderr=%q", changed, "commit:", out)
+		}
+	}
+}
+
+// TestCheckChangedGeneratedCoarseGate pins generated's coarse relevance: it
+// only re-runs when the manifest or a rendered destination path changed, not
+// on every unrelated edit — even though real drift may exist on disk either
+// way, since checkGenerated always scans everything once it decides to run.
+func TestCheckChangedGeneratedCoarseGate(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	changedTestRepo(t, root,
+		func() {
+			writeTestFile(t, root, "cinch.yml", "")
+			writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
+		},
+		func() {
+			writeTestFile(t, docs, "a.md", "# A\n\ntext, edited\n")
+		},
+	)
+
+	out := captureStderr(t, func() {
+		runChecks(root, "", false, true)
+	})
+	if bytes.Contains([]byte(out), []byte("generated:")) {
+		t.Fatalf("stderr contains %q, want generated suppressed (cinch.yml untouched); stderr=%q", "generated:", out)
+	}
+
+	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
+	out = captureStderr(t, func() {
+		runChecks(root, "", false, true)
+	})
+	if !bytes.Contains([]byte(out), []byte("generated:")) {
+		t.Fatalf("stderr missing %q, want generated relevant (cinch.yml changed); stderr=%q", "generated:", out)
+	}
+}
+
+// TestCheckChangedLeavesFileAgnosticChecksAlone regression-guards that
+// --changed never affects the checks that have no notion of "which file
+// changed": retirement (already scoped to HEAD^ vs HEAD), commit, core, and
+// hooks all must behave identically with changed=true and changed=false.
+func TestCheckChangedLeavesFileAgnosticChecksAlone(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	changedTestRepo(t, root,
+		func() {
+			writeTestFile(t, root, "cinch.yml", "retirement:\n  pattern: \"RETIRED: [A-Z0-9]+-[0-9]+\"\n")
+			writeTestFile(t, docs, "rules.md", "1. **SIG-001** rule text\n")
+		},
+		func() {
+			writeTestFile(t, docs, "rules.md", "no rules here\n")
+		},
+	)
+	git := gitTestHelper(t, root)
+	git("add", "-A")
+	git("commit", "-q", "-m", "remove SIG-001 without a tombstone")
+
+	for _, changed := range []bool{false, true} {
+		got := runChecks(root, "", true, changed, "retirement")
+		if got != 1 {
+			t.Fatalf("runChecks(changed=%v, only=retirement) = %d, want 1 (missing tombstone, unaffected by --changed)", changed, got)
+		}
+	}
+}
+
+// TestCheckOnlyRestrictsCheckerSet exposes the pre-existing internal only
+// mechanism: with --only links, no other check's status line should appear
+// even when --changed is also active.
+func TestCheckOnlyRestrictsCheckerSet(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	changedTestRepo(t, root,
+		func() { writeTestFile(t, docs, "a.md", "# A\n\ntext\n") },
+		func() { writeTestFile(t, docs, "a.md", "# A\n\ntext, edited\n") },
+	)
+
+	out := captureStderr(t, func() {
+		runChecks(root, "", false, true, "links", "index")
+	})
+	for _, name := range []string{"rules:", "generated:", "commit:", "core:", "hooks:", "retirement:"} {
+		if bytes.Contains([]byte(out), []byte(name)) {
+			t.Fatalf("stderr contains %q, want only links/index to run; stderr=%q", name, out)
+		}
+	}
+	if !bytes.Contains([]byte(out), []byte("links:")) {
+		t.Fatalf("stderr missing %q; stderr=%q", "links:", out)
 	}
 }
