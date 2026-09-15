@@ -25,6 +25,7 @@ tier three is small in isolation but compounds.
 | 9 | [Calibrate every heuristic against real history](09-calibrate-heuristics-against-history.md) | 3 — decide before investing | Open |
 | 10 | [`kind:` — normative versus descriptive](10-kind-normative-vs-descriptive.md) | 3 — decide before investing | Open |
 | 11 | [`rules.roots` and hook-baseline overrides](11-sibling-code-roots.md) | 1 — trust the checker | **Shipped** (`7e5c70d`) — kept for provenance |
+| 12 | [Skip directory entries (submodule gitlinks) in the primary marker scan](12-skip-directory-entries-marker-scan.md) | 1 — trust the checker | Open |
 
 ## Reading order vs. build order
 
