@@ -34,12 +34,40 @@ func CmdCheck(messageFile string, changed bool, only []string) int {
 	return runChecks(".", messageFile, changed, only...)
 }
 
+const (
+	hooksPreCommitChecksKey = "hooks.pre-commit-checks"
+	hooksCommitMsgChecksKey = "hooks.commit-msg-checks"
+)
+
+var (
+	defaultPreCommitChecks = []string{"links", "rules", "index", "generated", "core"}
+	defaultCommitMsgChecks = []string{"commit"}
+)
+
+// preCommitChecks and commitMsgChecks each load their own manifest copy
+// (mirroring runChecks/ResolveDocsRoot's existing style of reloading rather
+// than threading a manifest through every call site) purely to look up an
+// optional override of their baseline check list — hooks.pre-commit-checks /
+// hooks.commit-msg-checks. A malformed cinch.yml is deliberately not an
+// error here: it's surfaced properly by runChecks's own load via the
+// "generated" check, and this lookup silently falls back to the hardcoded
+// default on any error, same as an absent key.
 func preCommitChecks(root string) int {
-	return runChecks(root, "", false, "links", "rules", "index", "generated", "core")
+	m, _ := loadManifestOptional(root)
+	only := m.list(hooksPreCommitChecksKey)
+	if len(only) == 0 {
+		only = defaultPreCommitChecks
+	}
+	return runChecks(root, "", false, only...)
 }
 
 func commitMsgChecks(root, messageFile string) int {
-	return runChecks(root, messageFile, false, "commit")
+	m, _ := loadManifestOptional(root)
+	only := m.list(hooksCommitMsgChecksKey)
+	if len(only) == 0 {
+		only = defaultCommitMsgChecks
+	}
+	return runChecks(root, messageFile, false, only...)
 }
 
 // changedFileSet resolves the set of unstaged working-tree file paths, keyed
@@ -180,7 +208,7 @@ func runChecks(root, messageFile string, changed bool, only ...string) int {
 	launch("links", relevant(changedMarkdownUnder(changedSet, docsRoot)),
 		scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) }))
 	launch("rules", relevant(len(changedSet) > 0),
-		scoped(func() checkResult { return rulesCheckResult(checkRules(root, docsRoot)) }))
+		scoped(func() checkResult { return rulesCheckResult(checkRules(root, docsRoot, m.list(rulesRootsKey))) }))
 	launch("index", relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
 		scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) }))
 	launch("generated", relevant(generatedRelevant(root, docsRoot, m, changedSet)),
