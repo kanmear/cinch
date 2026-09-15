@@ -24,6 +24,7 @@ tier three is small in isolation but compounds.
 | 8 | [`paths.exclude`, then dogfood](08-paths-exclude-and-dogfood.md) | 3 — decide before investing | Open |
 | 9 | [Calibrate every heuristic against real history](09-calibrate-heuristics-against-history.md) | 3 — decide before investing | Open |
 | 10 | [`kind:` — normative versus descriptive](10-kind-normative-vs-descriptive.md) | 3 — decide before investing | Open |
+| 11 | [`rules.roots` and hook-baseline overrides](11-sibling-code-roots.md) | 1 — trust the checker | **Shipped** (`feature/sibling-code-roots`) |
 
 ## Reading order vs. build order
 

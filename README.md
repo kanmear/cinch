@@ -65,7 +65,7 @@ questioned.
 | check | enforces |
 |---|---|
 | `links` | every relative markdown link under the docs root resolves on disk |
-| `rules` | every documented rule ID has a marker or an explicit ignore |
+| `rules` | every documented rule ID has a marker or an explicit ignore (also scans `rules.roots`, for a docs repo separated from the code it governs) |
 | `index` | every doc outside `plans/` has a title (`# ` heading) — otherwise it's silently dropped from `cinch index` |
 | `generated` | rendered output (workflows, hook shims) is byte-identical to what `cinch render` produces now — hand-edits fail here |
 | `hooks` | `git config core.hooksPath` actually points at `paths.hooks` |
@@ -139,11 +139,24 @@ paths:
   docs: .docs            # docs corpus root; rendered workflows land in <docs>/workflows/
   hooks: .githooks       # where generated hook shims land (must be core.hooksPath)
 
+# Opt-in: additional sibling repos (".." allowed — unlike paths.docs/hooks
+# above, this is a read-only scan target, not a write destination) also
+# scanned for // cinch:rule markers. For a docs/harness repo that no longer
+# contains the code it governs; a missing root is skipped, not an error.
+#rules:
+#  roots: [../backend, ../frontend]
+
 # Project-specific checks, dispatched by cinch hook at each event.
 # `when` is a list of path prefixes (not globs) scoped to the staged set
 # (pre-commit) or the committed set (post-commit); omit for always.
 # commit-msg entries receive the message file path as $1.
+#
+# pre-commit-checks/commit-msg-checks (opt-in) override which checks the
+# generated hooks run at all — default pre-commit is [links, rules, index,
+# generated, core], default commit-msg is [commit].
 hooks:
+  #pre-commit-checks: [links, index, generated, core]
+  #commit-msg-checks: [commit]
   pre-commit:
     error-codes:
       run: scripts/check_error_codes.sh
