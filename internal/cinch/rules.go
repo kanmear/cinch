@@ -268,9 +268,19 @@ func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) 
 		var out []scannedFile
 		for _, f := range files {
 			sf := toScanned(f)
-			if !underPath(sf.fsPath, docsRoot) {
-				out = append(out, sf)
+			if underPath(sf.fsPath, docsRoot) {
+				continue
 			}
+			// git ls-files lists a submodule as one gitlink entry — a path that
+			// is actually a directory on disk, not a blob. Opening it as a file
+			// below would succeed (Linux permits open() on a directory) but
+			// fail on the first read with EISDIR, surfacing as a bogus scan
+			// error. Skip it; rules.roots is the supported way to also scan a
+			// submodule's own content.
+			if info, statErr := os.Lstat(sf.fsPath); statErr == nil && info.IsDir() {
+				continue
+			}
+			out = append(out, sf)
 		}
 		return out, nil
 	}

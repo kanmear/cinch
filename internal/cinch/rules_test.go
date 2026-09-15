@@ -765,6 +765,54 @@ func TestCheckRulesUnaffectedWithoutConfiguredRoots(t *testing.T) {
 	}
 }
 
+// TestMarkerScanSkipsSubmoduleGitlink pins the fix for a real bug found while adapting
+// fsed-odin-docs to use git submodules: git ls-files lists a submodule as one gitlink
+// entry — a path that is actually a directory on disk, not a blob — and opening it as a
+// file used to succeed (Linux permits open() on a directory) but fail on the first read
+// with EISDIR, surfacing as a bogus "failed to scan" finding. The primary scan must skip
+// it silently; rules.roots remains the supported way to also scan a submodule's content.
+func TestMarkerScanSkipsSubmoduleGitlink(t *testing.T) {
+	subSrc := t.TempDir()
+	subGit := gitTestHelper(t, subSrc)
+	subGit("init", "-q")
+	subGit("config", "user.email", "cinch@test")
+	subGit("config", "user.name", "cinch test")
+	writeTestFile(t, subSrc, "a.go", "// cinch:rule ABC-1\n")
+	subGit("add", "a.go")
+	subGit("commit", "-q", "-m", "seed")
+
+	root := t.TempDir()
+	git := gitTestHelper(t, root)
+	git("init", "-q")
+	git("config", "user.email", "cinch@test")
+	git("config", "user.name", "cinch test")
+	git("-c", "protocol.file.allow=always", "submodule", "add", "-q", subSrc, "sub")
+
+	// Primary scan (no rules.roots): the submodule gitlink must be skipped, not opened.
+	markers, missing, err := scanRuleMarkers(root, filepath.Join(root, "docs"), nil)
+	if err != nil {
+		t.Fatalf("scanRuleMarkers = %v, want nil (submodule gitlink must be skipped, not opened as a file)", err)
+	}
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(markers["ABC-1"]) != 0 {
+		t.Fatalf("markers[ABC-1] via primary scan = %v, want none (only rules.roots should reach into a submodule)", markers["ABC-1"])
+	}
+
+	// rules.roots explicitly targets the submodule's own git index and finds its markers.
+	markers, missing, err = scanRuleMarkers(root, filepath.Join(root, "docs"), []string{"sub"})
+	if err != nil {
+		t.Fatalf("scanRuleMarkers with rules.roots = %v, want nil", err)
+	}
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none (sub exists)", missing)
+	}
+	if len(markers["ABC-1"]) != 1 {
+		t.Fatalf("markers[ABC-1] via rules.roots = %v, want 1 loc", markers["ABC-1"])
+	}
+}
+
 func TestCheckLinksReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
 	report := checkLinks(root)
