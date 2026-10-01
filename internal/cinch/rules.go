@@ -45,7 +45,18 @@ type rulesReport struct {
 	rules    int
 	docs     int
 	ignores  int
+	// skip, when non-empty, means the check couldn't meaningfully run at all
+	// (every configured rules.roots entry is absent) — reported as a single
+	// "skip: ..." rather than one misleading "no marker found" per rule.
+	skip string
 }
+
+// rulesRootsKey configures additional sibling filesystem roots (relative
+// paths, ".." allowed) to also scan for // cinch:rule markers — for a docs
+// repo that no longer contains the code it governs. Unlike paths.docs/
+// paths.hooks (manifest.go's repoLocalPathKeys), these are read-only scan
+// targets, not write destinations, so leaving the repository is the point.
+const rulesRootsKey = "rules.roots"
 
 func ruleItemIDs(items []ruleItem) map[string]bool {
 	ids := make(map[string]bool, len(items))
@@ -210,19 +221,72 @@ func underPath(path, directory string) bool {
 	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
 }
 
-func markerScanFiles(repoRoot, docsRoot string) ([]string, error) {
-	if files, err := gitutil.ScannableFiles(repoRoot); err == nil {
-		var out []string
+// ruleScanRoot is one filesystem location scanned for // cinch:rule markers.
+// display is the prefix applied to a file's reported path — empty for the
+// primary repoRoot (reported paths stay exactly as before), or the
+// configured rules.roots entry for a sibling (e.g. "../backend"), so a
+// finding stays navigable from wherever cinch was invoked.
+type ruleScanRoot struct {
+	path    string
+	display string
+}
+
+// scannedFile pairs where to actually open a candidate file (fsPath) with
+// where to report it (display) — they differ only for a sibling root.
+type scannedFile struct {
+	fsPath  string
+	display string
+}
+
+// resolveRuleScanRoots turns rules.roots entries into scan roots, splitting
+// out any that don't exist on disk (a docs-only clone, or a CI job that only
+// checked out one repo) so checkRules can report a clean skip instead of one
+// false "no marker found" finding per rule.
+func resolveRuleScanRoots(repoRoot string, extraRoots []string) (present []ruleScanRoot, missing []string) {
+	present = append(present, ruleScanRoot{path: repoRoot})
+	for _, r := range extraRoots {
+		resolved := filepath.Join(repoRoot, r)
+		if info, err := os.Stat(resolved); err == nil && info.IsDir() {
+			present = append(present, ruleScanRoot{path: resolved, display: r})
+		} else {
+			missing = append(missing, r)
+		}
+	}
+	return present, missing
+}
+
+func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) {
+	toScanned := func(rel string) scannedFile {
+		display := rel
+		if root.display != "" {
+			display = filepath.ToSlash(filepath.Join(root.display, rel))
+		}
+		return scannedFile{fsPath: filepath.Join(root.path, rel), display: display}
+	}
+
+	if files, err := gitutil.ScannableFiles(root.path); err == nil {
+		var out []scannedFile
 		for _, f := range files {
-			if !underPath(f, docsRoot) {
-				out = append(out, f)
+			sf := toScanned(f)
+			if underPath(sf.fsPath, docsRoot) {
+				continue
 			}
+			// git ls-files lists a submodule as one gitlink entry — a path that
+			// is actually a directory on disk, not a blob. Opening it as a file
+			// below would succeed (Linux permits open() on a directory) but
+			// fail on the first read with EISDIR, surfacing as a bogus scan
+			// error. Skip it; rules.roots is the supported way to also scan a
+			// submodule's own content.
+			if info, statErr := os.Lstat(sf.fsPath); statErr == nil && info.IsDir() {
+				continue
+			}
+			out = append(out, sf)
 		}
 		return out, nil
 	}
 
-	var out []string
-	err := filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
+	var out []scannedFile
+	err := filepath.WalkDir(root.path, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -235,11 +299,11 @@ func markerScanFiles(repoRoot, docsRoot string) ([]string, error) {
 		if underPath(path, docsRoot) {
 			return nil
 		}
-		rel, err := filepath.Rel(repoRoot, path)
+		rel, err := filepath.Rel(root.path, path)
 		if err != nil {
 			rel = path
 		}
-		out = append(out, rel)
+		out = append(out, toScanned(rel))
 		return nil
 	})
 	if err != nil {
@@ -273,18 +337,26 @@ func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 	return scanMarkers(f, path, strings.HasSuffix(path, ".md"))
 }
 
-// scanRuleMarkers reads every in-scope file looking for // cinch:rule
-// markers, using a bounded worker pool since each file is an independent
-// os.Open + scan. The merge order across files is not guaranteed, so the
-// location order within markers[id] is not stable run-to-run when the same
-// ID appears in more than one file.
-func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) {
-	files, err := markerScanFiles(repoRoot, docsRoot)
-	if err != nil {
-		return nil, err
+// scanRuleMarkers reads every in-scope file (repoRoot plus any present
+// rules.roots sibling) looking for // cinch:rule markers, using a bounded
+// worker pool since each file is an independent os.Open + scan. The merge
+// order across files is not guaranteed, so the location order within
+// markers[id] is not stable run-to-run when the same ID appears in more than
+// one file. missingRoots names any configured extraRoots entry that doesn't
+// exist on disk, so the caller can decide whether to skip rather than report.
+func scanRuleMarkers(repoRoot, docsRoot string, extraRoots []string) (markers map[string][]markerLoc, missingRoots []string, err error) {
+	roots, missing := resolveRuleScanRoots(repoRoot, extraRoots)
+
+	var files []scannedFile
+	for _, root := range roots {
+		rootFiles, ferr := markerScanFiles(root, docsRoot)
+		if ferr != nil {
+			return nil, nil, ferr
+		}
+		files = append(files, rootFiles...)
 	}
 	if len(files) == 0 {
-		return map[string][]markerLoc{}, nil
+		return map[string][]markerLoc{}, missing, nil
 	}
 
 	type fileResult struct {
@@ -292,7 +364,7 @@ func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) 
 		err     error
 	}
 
-	jobs := make(chan string)
+	jobs := make(chan scannedFile)
 	results := make(chan fileResult)
 
 	var wg sync.WaitGroup
@@ -300,9 +372,18 @@ func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for file := range jobs {
-				m, err := scanFileMarkers(filepath.Join(repoRoot, file))
-				results <- fileResult{markers: m, err: err}
+			for f := range jobs {
+				m, ferr := scanFileMarkers(f.fsPath)
+				if ferr == nil {
+					for id, locs := range m {
+						relabeled := make([]markerLoc, len(locs))
+						for i, loc := range locs {
+							relabeled[i] = markerLoc{file: f.display, line: loc.line}
+						}
+						m[id] = relabeled
+					}
+				}
+				results <- fileResult{markers: m, err: ferr}
 			}
 		}()
 	}
@@ -317,7 +398,7 @@ func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) 
 		close(results)
 	}()
 
-	markers := map[string][]markerLoc{}
+	out := map[string][]markerLoc{}
 	var firstErr error
 	for r := range results {
 		if r.err != nil {
@@ -327,29 +408,42 @@ func scanRuleMarkers(repoRoot, docsRoot string) (map[string][]markerLoc, error) 
 			continue
 		}
 		for id, locs := range r.markers {
-			markers[id] = append(markers[id], locs...)
+			out[id] = append(out[id], locs...)
 		}
 	}
 	if firstErr != nil {
-		return nil, firstErr
+		return nil, nil, firstErr
 	}
-	return markers, nil
+	return out, missing, nil
 }
 
-func checkRules(repoRoot, docsRoot string) rulesReport {
+// checkRules cross-references documented rule IDs under docsRoot against
+// // cinch:rule markers under repoRoot plus any extraRoots (rules.roots) —
+// sibling repos for a docs corpus that no longer contains the code it
+// governs. If every configured extraRoots entry is absent, every rule would
+// otherwise report a misleading "no marker found", so the whole check is
+// skipped instead: there's no code available to check against, not a real
+// gap.
+func checkRules(repoRoot, docsRoot string, extraRoots []string) rulesReport {
 	items, err := scanRuleDocs(docsRoot)
 	if err != nil {
 		return rulesReport{findings: scanErrorFinding("rules", docsRoot, err)}
 	}
-	markers, err := scanRuleMarkers(repoRoot, docsRoot)
+	markers, missingRoots, err := scanRuleMarkers(repoRoot, docsRoot, extraRoots)
 	if err != nil {
 		return rulesReport{findings: scanErrorFinding("rules", repoRoot, err)}
+	}
+	if len(extraRoots) > 0 && len(missingRoots) == len(extraRoots) {
+		return rulesReport{skip: "configured code roots not present (" + strings.Join(missingRoots, ", ") + ")"}
 	}
 
 	return checkRulesFrom(items, markers)
 }
 
 func rulesCheckResult(report rulesReport) checkResult {
+	if report.skip != "" {
+		return checkResult{noOp: report.skip}
+	}
 	if report.rules == 0 && len(report.findings) == 0 {
 		return checkResult{noOp: "no rule IDs found — rules check enforces nothing"}
 	}

@@ -81,6 +81,39 @@ func TestHookChecksSeparate(t *testing.T) {
 	}
 }
 
+// TestPreCommitChecksHonorsManifestOverride pins hooks.pre-commit-checks:
+// with "links" excluded from the configured baseline, a doc-link finding
+// that would otherwise fail the hook must not surface. The baseline is
+// narrowed to ["core"] specifically because core no-ops with no
+// require.cinch set (checks_misc.go's checkPin), isolating "did the override
+// take effect" from any other check's behavior in a minimal fixture.
+func TestPreCommitChecksHonorsManifestOverride(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "a.md", "[broken](missing.md)\n")
+	writeTestFile(t, root, "cinch.yml", "hooks:\n  pre-commit-checks: [core]\n")
+
+	if got := preCommitChecks(root); got != 0 {
+		t.Fatalf("preCommitChecks = %d, want 0 (links excluded from the configured baseline)", got)
+	}
+}
+
+// TestCommitMsgChecksHonorsManifestOverride mirrors the pre-commit case for
+// hooks.commit-msg-checks: with "commit" excluded, a message that violates
+// an active commit.pattern must not fail the hook.
+func TestCommitMsgChecksHonorsManifestOverride(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "commit:\n  pattern: '^docs: .+'\nhooks:\n  commit-msg-checks: [core]\n")
+	msg := writeTestFile(t, root, "msg.txt", "not-matching-at-all\n")
+
+	if got := commitMsgChecks(root, msg); got != 0 {
+		t.Fatalf("commitMsgChecks = %d, want 0 (commit check excluded from the configured baseline)", got)
+	}
+}
+
 // TestCheckChangedFiltersLinksToChangedFiles pins the core --changed
 // behavior: a pre-existing broken link in a doc that wasn't touched must not
 // surface, but the same broken link does surface once its doc is the one

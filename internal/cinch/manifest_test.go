@@ -55,6 +55,37 @@ func TestManifestListRejectsNonScalarItems(t *testing.T) {
 	}
 }
 
+func TestManifestValidateRejectsAbsolutePathsDocs(t *testing.T) {
+	m := parseTestManifest(t, "paths:\n  docs: /etc/docs\n")
+	if err := m.validate("cinch.yml"); err == nil {
+		t.Fatal("validate = nil, want error for absolute paths.docs")
+	}
+}
+
+func TestManifestValidateRejectsDotDotPathsHooks(t *testing.T) {
+	m := parseTestManifest(t, "paths:\n  hooks: ../shared-hooks\n")
+	if err := m.validate("cinch.yml"); err == nil {
+		t.Fatal("validate = nil, want error for paths.hooks escaping the repository")
+	}
+}
+
+// rules.roots is exempt from paths.docs/paths.hooks' IsLocal gate — a
+// sibling-relative entry (a docs repo scanning code in another repo) is the
+// feature, not a mistake.
+func TestManifestValidateAllowsDotDotInRulesRoots(t *testing.T) {
+	m := parseTestManifest(t, "rules:\n  roots: [../backend, ../frontend]\n")
+	if err := m.validate("cinch.yml"); err != nil {
+		t.Fatalf("validate = %v, want nil (rules.roots may point outside the repository)", err)
+	}
+}
+
+func TestManifestValidateRejectsAbsoluteRulesRoots(t *testing.T) {
+	m := parseTestManifest(t, "rules:\n  roots: [/home/x/backend]\n")
+	if err := m.validate("cinch.yml"); err == nil {
+		t.Fatal("validate = nil, want error for an absolute rules.roots entry")
+	}
+}
+
 func TestManifestNamesIncludesListOnlyEntry(t *testing.T) {
 	m := parseTestManifest(t, "hooks:\n  pre-commit:\n    lint:\n      when: [src/a]\n")
 	got := m.names("hooks.pre-commit")

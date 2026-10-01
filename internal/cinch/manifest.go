@@ -84,6 +84,17 @@ func (m *manifest) validate(path string) error {
 			return fmt.Errorf("%s: %s: %q must be inside the repository", path, key, value)
 		}
 	}
+	// rules.roots is a read-only scan target, not a write destination like
+	// paths.docs/paths.hooks above — a sibling-relative ".." entry is the
+	// whole point (a docs repo scanning code that lives in a sibling repo),
+	// so it's exempt from repoLocalPathKeys' IsLocal gate. It still must not
+	// be absolute: an absolute path bakes one contributor's filesystem
+	// layout into a file every clone shares.
+	for _, value := range m.lists[rulesRootsKey] {
+		if filepath.IsAbs(value) {
+			return fmt.Errorf("%s: %s: %q must not be absolute", path, rulesRootsKey, value)
+		}
+	}
 	return nil
 }
 
