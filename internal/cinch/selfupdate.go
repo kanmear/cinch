@@ -1,7 +1,6 @@
 package cinch
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -69,8 +68,7 @@ func maybeInstallLatest() (code int, handled bool) {
 		return 0, false
 	}
 
-	fmt.Printf("cinch %s is available (installed: %s) — install and continue? [y/N] ", remote, Version)
-	if !promptYesNo() {
+	if !output.AskYesNo(fmt.Sprintf("cinch %s is available (installed: %s) — install and continue?", remote, Version)) {
 		output.Step("skipping install; continuing with local sync")
 		return 0, false
 	}
@@ -188,13 +186,4 @@ func runInstallScript(tag, installDir string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func promptYesNo() bool {
-	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
-		return false
-	}
-	answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
-	return answer == "y" || answer == "yes"
 }

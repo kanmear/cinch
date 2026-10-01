@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -276,5 +278,36 @@ func TestCheckOnlyRestrictsCheckerSet(t *testing.T) {
 	}
 	if !bytes.Contains([]byte(out), []byte("links:")) {
 		t.Fatalf("stderr missing %q; stderr=%q", "links:", out)
+	}
+}
+
+// TestRunChecksStatusLinesInFixedOrder pins the print order of the status
+// lines: checks finish in scheduler order, so the same run repeated must still
+// come out in checkLaunchOrder every time.
+func TestRunChecksStatusLinesInFixedOrder(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
+	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
+
+	want := []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
+	if !reflect.DeepEqual(checkLaunchOrder, want) {
+		t.Fatalf("checkLaunchOrder = %v, want %v", checkLaunchOrder, want)
+	}
+
+	for run := 0; run < 20; run++ {
+		out := captureStderr(t, func() { runChecks(root, msg, false) })
+
+		var got []string
+		for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+			prefix, _, _ := strings.Cut(line, ":")
+			got = append(got, prefix)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("run %d: status line order = %v, want %v; stderr=%q", run, got, want, out)
+		}
 	}
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -217,23 +216,13 @@ func bareInvocation() int {
 	fmt.Println("this doesn't look like an initialized cinch project (no cinch.yml found in the current directory).")
 
 	if impl.IsGitRepo(".") && output.IsInteractiveStdin(os.Stdin) {
-		fmt.Print("run 'cinch init' now? [y/N] ")
-		if promptYes() {
+		if output.AskYesNo("run 'cinch init' now?") {
 			return impl.CmdInit(".")
 		}
 	}
 
 	fmt.Println("run 'cinch init' to get started, or 'cinch help' for the full command list.")
 	return 2
-}
-
-func promptYes() bool {
-	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
-		return false
-	}
-	answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
-	return answer == "y" || answer == "yes"
 }
 
 func closestCommand(name string) (string, int) {
