@@ -90,6 +90,11 @@ tracked files, or that an ignore exists. It can't tell whether the marked test
 actually asserts the rule, whether the marker is above the right function, or
 whether an ignore's reason holds up. All of those are cheap to fake.
 
+It also can't find a rule nobody wrote. A behavior the docs never state, such as
+who receives a realtime event, has no ID to check, so `cinch check` stays green.
+The planning and bug-fix workflows ask you to name missing rules; nothing
+mechanical does.
+
 What you do get: a rule nobody accounted for fails loudly, by ID, instead of
 drifting quietly. Whether the tests really enforce the rules is a question for
 code review and the `docs-audit-coverage` workflow.

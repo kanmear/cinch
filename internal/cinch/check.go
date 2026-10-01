@@ -42,6 +42,12 @@ const (
 var (
 	defaultPreCommitChecks = []string{"links", "rules", "index", "generated", "core"}
 	defaultCommitMsgChecks = []string{"commit"}
+
+	// checkLaunchOrder is both the order checks start in and the order their
+	// status lines print in, so the two can't drift apart. Checks finish in
+	// whatever order the scheduler picks; printing in this order is what
+	// keeps the output stable run to run.
+	checkLaunchOrder = []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
 )
 
 // preCommitChecks and commitMsgChecks each load their own manifest copy
@@ -188,45 +194,61 @@ func runChecks(root, messageFile string, changed bool, only ...string) int {
 		}
 	}
 
+	type plannedCheck struct {
+		enabled bool
+		fn      func() checkResult
+	}
 	type namedResult struct {
 		name   string
 		result checkResult
 	}
 
-	results := make(chan namedResult, 8)
+	planned := map[string]plannedCheck{
+		"links": {relevant(changedMarkdownUnder(changedSet, docsRoot)),
+			scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })},
+		"rules": {relevant(len(changedSet) > 0),
+			scoped(func() checkResult { return rulesCheckResult(checkRules(root, docsRoot, m.list(rulesRootsKey))) })},
+		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
+			scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) })},
+		"generated": {relevant(generatedRelevant(root, docsRoot, m, changedSet)),
+			func() checkResult { return checkGenerated(root, m, mErr) }},
+		// commit is unconditionally suppressed without a MSGFILE, not just under
+		// --changed: nobody hand-invokes `cinch check somefile.txt` in ordinary
+		// use (the commit-msg hook goes through commitMsgChecks instead), so
+		// "no commit message file given" is noise on every plain `cinch check`,
+		// not a diff-scoping question.
+		"commit": {messageFile != "", func() checkResult { return checkCommit(messageFile, m) }},
+		"core":   {true, func() checkResult { return checkPin(Version, m) }},
+		"hooks":  {true, func() checkResult { return checkHooks(root, m, mErr) }},
+	}
+
+	results := make(chan namedResult, len(checkLaunchOrder))
 	launched := 0
-	launch := func(name string, ok bool, fn func() checkResult) {
-		if !run(name) || !ok {
-			return
+	for _, name := range checkLaunchOrder {
+		check := planned[name]
+		if !run(name) || !check.enabled {
+			continue
 		}
 		launched++
 		go func() {
-			results <- namedResult{name: name, result: fn()}
+			results <- namedResult{name: name, result: check.fn()}
 		}()
 	}
 
-	launch("links", relevant(changedMarkdownUnder(changedSet, docsRoot)),
-		scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) }))
-	launch("rules", relevant(len(changedSet) > 0),
-		scoped(func() checkResult { return rulesCheckResult(checkRules(root, docsRoot, m.list(rulesRootsKey))) }))
-	launch("index", relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
-		scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) }))
-	launch("generated", relevant(generatedRelevant(root, docsRoot, m, changedSet)),
-		func() checkResult { return checkGenerated(root, m, mErr) })
-	// commit is unconditionally suppressed without a MSGFILE, not just under
-	// --changed: nobody hand-invokes `cinch check somefile.txt` in ordinary
-	// use (the commit-msg hook goes through commitMsgChecks instead), so
-	// "no commit message file given" is noise on every plain `cinch check`,
-	// not a diff-scoping question.
-	launch("commit", messageFile != "", func() checkResult { return checkCommit(messageFile, m) })
-	launch("core", true, func() checkResult { return checkPin(Version, m) })
-	launch("hooks", true, func() checkResult { return checkHooks(root, m, mErr) })
-
-	var findings []finding
+	finished := make(map[string]checkResult, launched)
 	for i := 0; i < launched; i++ {
 		r := <-results
-		findings = append(findings, r.result.findings...)
-		output.CheckStatus(r.name, len(r.result.findings), r.result.noOp, r.result.detail)
+		finished[r.name] = r.result
+	}
+
+	var findings []finding
+	for _, name := range checkLaunchOrder {
+		result, ok := finished[name]
+		if !ok {
+			continue
+		}
+		findings = append(findings, result.findings...)
+		output.CheckStatus(name, len(result.findings), result.noOp, result.detail)
 	}
 
 	sort.Slice(findings, func(i, j int) bool {

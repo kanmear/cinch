@@ -1,5 +1,7 @@
 # 6. The machine surface: `rules --json` + `owns:` → `cinch impact`
 
+**Status: shipped in `f7f94ac`.**
+
 **Tier 2 — make green mean something. Cost estimate: days.**
 
 ## Provenance

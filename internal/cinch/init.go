@@ -1,7 +1,6 @@
 package cinch
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -74,11 +73,11 @@ func askInit() initAnswers {
 	answers.docsPath = askLine("paths.docs (default .docs)", defaultDocsPath)
 	answers.hooksPath = askLine("paths.hooks (default .githooks)", defaultHooksPath)
 
-	if askYesNo("enforce a commit message pattern?") {
+	if output.AskYesNo("enforce a commit message pattern?") {
 		answers.commitPattern = askLine("commit.pattern", "")
 	}
 
-	if Version != "dev" && askYesNo(fmt.Sprintf("require cinch %s?", Version)) {
+	if Version != "dev" && output.AskYesNo(fmt.Sprintf("require cinch %s?", Version)) {
 		answers.require = Version
 	}
 
@@ -107,24 +106,11 @@ func askLine(prompt, defaultValue string) string {
 	} else {
 		fmt.Printf("%s: ", prompt)
 	}
-	line := readLine()
-	if strings.TrimSpace(line) == "" {
+	line := output.ReadLine()
+	if line == "" {
 		return defaultValue
 	}
-	return strings.TrimSpace(line)
-}
-
-func askYesNo(prompt string) bool {
-	fmt.Printf("%s [y/N] ", prompt)
-	return strings.ToLower(readLine()) == "y"
-}
-
-func readLine() string {
-	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
-		return ""
-	}
-	return strings.TrimSpace(scanner.Text())
+	return line
 }
 
 func writeInitManifest(root string, a initAnswers) error {
