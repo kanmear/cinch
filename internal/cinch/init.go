@@ -64,6 +64,15 @@ func CmdInit(root string) int {
 		output.Skip("hooks", "not a git repository — hook shims generated but not activated")
 	}
 
+	if !agentsPointerEnabled(m) {
+		output.Skip("init", fmt.Sprintf("%s is false — %s left alone", agentsPointerKey, agentsFile))
+		return 0
+	}
+	if err := ensureAgentPointer(root, manifestVar(m, pathsDocsKey, defaultDocsPath)); err != nil {
+		return output.Fail("init", err)
+	}
+	hintClaudeMd(root)
+
 	return 0
 }
 

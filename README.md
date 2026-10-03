@@ -39,6 +39,9 @@ cinch check    # exit 0 clean, 1 findings, 2 usage error
 commit pattern, version pin, extra pre-commit scripts) and uses defaults
 otherwise. It won't overwrite a `core.hooksPath` that another tool already set.
 
+`init` also adds a short section to AGENTS.md pointing agents at the docs
+(skipped if AGENTS.md already mentions cinch).
+
 From then on, every commit runs the checks. To update later, run
 `cinch upgrade`. It offers to install the latest release, re-renders, updates
 an exact `require.cinch` pin, and runs the checks.
@@ -217,6 +220,10 @@ hooks:
 # Optional: commit subjects must match this regexp.
 #commit:
 #  pattern: '^\[[a-z-]+\] .+'
+
+# Optional: set to false to stop `cinch init` from writing the AGENTS.md pointer.
+#agents:
+#  pointer: false
 
 # Optional: required cinch version, exact (0.1.0) or minimum (>=0.1.0).
 #require:
