@@ -31,6 +31,76 @@ func TestLinkTargetIsExempt(t *testing.T) {
 	}
 }
 
+func TestStripInlineCode(t *testing.T) {
+	cases := []struct {
+		name string
+		line string
+		want string
+	}{
+		{"no backticks", "plain [a](b.md)", "plain [a](b.md)"},
+		{"single span", "x `[a](b)` y", "x `      ` y"},
+		{"double span holds a single backtick", "`` a`b ``", "``" + "     " + "``"},
+		{"longer run is not a closer", "`a``b`", "`    `"},
+		{"unclosed run stays", "`[a](b.md)", "`[a](b.md)"},
+		{"mismatched runs stay", "``a`", "``a`"},
+		{"two spans", "`a` [l](m.md) `b`", "` ` [l](m.md) ` `"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := stripInlineCode(tc.line)
+			if got != tc.want {
+				t.Fatalf("stripInlineCode(%q) = %q, want %q", tc.line, got, tc.want)
+			}
+			if len(got) != len(tc.line) {
+				t.Fatalf("length changed: %d -> %d", len(tc.line), len(got))
+			}
+		})
+	}
+}
+
+func TestCheckLinksInlineCodeAndTitles(t *testing.T) {
+	cases := []struct {
+		name      string
+		content   string
+		wantLinks int
+	}{
+		{"single-backtick span", "`[x](y)`\n", 0},
+		{"double-backtick span", "`` [x](y) ``\n", 0},
+		{"title in double quotes", "[a](real.md \"Title\")\n", 1},
+		{"title in single quotes", "[a](real.md 'Title')\n", 1},
+		{"angle-bracket target", "[a](<real.md>)\n", 1},
+		{"unclosed backtick before a real link", "`oops [a](real.md)\n", 1},
+		{"real link after a span", "`[x](y)` then [a](real.md)\n", 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			docsRoot := t.TempDir()
+			writeTestFile(t, docsRoot, "real.md", "# Real\n")
+			writeTestFile(t, docsRoot, "a.md", tc.content)
+
+			report := checkLinks(docsRoot)
+
+			if len(report.findings) != 0 {
+				t.Fatalf("findings = %+v, want none", report.findings)
+			}
+			if report.links != tc.wantLinks {
+				t.Fatalf("links = %d, want %d", report.links, tc.wantLinks)
+			}
+		})
+	}
+}
+
+func TestCheckLinksUnclosedBacktickStillFlagsBrokenLink(t *testing.T) {
+	docsRoot := t.TempDir()
+	writeTestFile(t, docsRoot, "a.md", "`oops [a](missing.md)\n")
+
+	report := checkLinks(docsRoot)
+
+	if len(report.findings) != 1 || !strings.Contains(report.findings[0].message, "missing.md") {
+		t.Fatalf("findings = %+v, want one 'does not resolve' finding for missing.md", report.findings)
+	}
+}
+
 // --- Seeded defect battery: links.go ---
 
 func TestSeededDefectLinksTargetMoved(t *testing.T) {

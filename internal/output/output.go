@@ -1,8 +1,10 @@
 package output
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -32,6 +34,10 @@ func IsInteractiveStdin(f *os.File) bool {
 var (
 	stdoutColor = isColorTerminal(os.Stdout)
 	stderrColor = isColorTerminal(os.Stderr)
+
+	// stdin is shared by every prompt: a fresh reader per call would let the
+	// first one buffer several piped lines and leave the next one empty.
+	stdin = bufio.NewReader(os.Stdin)
 )
 
 func paint(enabled bool, code ansi, s string) string {
@@ -80,6 +86,28 @@ func CheckStatus(check string, findingCount int, noOp string, detail string) {
 		}
 		fmt.Fprintf(os.Stderr, "%s: %s\n", check, paint(stderrColor, colorGreen, ok))
 	}
+}
+
+func ReadLine() string {
+	return readLine(stdin)
+}
+
+func AskYesNo(prompt string) bool {
+	return askYesNo(stdin, prompt)
+}
+
+func readLine(reader *bufio.Reader) string {
+	line, _ := reader.ReadString('\n')
+	return strings.TrimSpace(line)
+}
+
+func askYesNo(reader *bufio.Reader, prompt string) bool {
+	fmt.Print(prompt + " [y/N] ")
+	switch strings.ToLower(readLine(reader)) {
+	case "y", "yes":
+		return true
+	}
+	return false
 }
 
 func Plural(n int, word string) string {

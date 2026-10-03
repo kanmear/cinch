@@ -143,14 +143,14 @@ func TestScanRuleMarkersReadError(t *testing.T) {
 	if err := os.Symlink("missing.go", broken); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := scanRuleMarkers(root, filepath.Join(root, "docs"), nil); err == nil {
+	if _, _, err := scanRuleMarkers(workingTreeRoots(root), filepath.Join(root, "docs"), nil); err == nil {
 		t.Fatal("scanRuleMarkers = nil error, want error for unreadable file")
 	}
 }
 
 func TestCheckRulesReportsScanError(t *testing.T) {
 	docsRoot := unreadableTree(t)
-	report := checkRules(".", docsRoot, nil)
+	report := checkRules(workingTreeRoots("."), docsRoot, nil)
 	if len(report.findings) == 0 {
 		t.Fatal("checkRules = no findings, want error finding for unreadable subdirectory")
 	}
@@ -180,7 +180,7 @@ func TestCheckRulesScanErrorDoesNotReportUnmarked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(repoRoot, docsRoot, nil)
+	report := checkRules(workingTreeRoots(repoRoot), docsRoot, nil)
 	scanErr := false
 	unmarked := 0
 	for _, f := range report.findings {
@@ -211,7 +211,7 @@ func TestScanRuleMarkersLargeFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	markers, _, err := scanRuleMarkers(root, filepath.Join(root, "docs"), nil)
+	markers, _, err := scanRuleMarkers(workingTreeRoots(root), filepath.Join(root, "docs"), nil)
 	if err != nil {
 		t.Fatalf("scanRuleMarkers = %v, want nil (a >4MB file must not abort the scan)", err)
 	}
@@ -231,7 +231,7 @@ func TestScanMarkersFenceOnlyForMarkdown(t *testing.T) {
 	write("note.md", "before\n```\n// cinch:rule ABC-1\n```\nafter\n// cinch:rule DEF-2\n")
 	write("x.go", "```\n// cinch:rule ABC-2\n")
 
-	markers, _, err := scanRuleMarkers(root, filepath.Join(root, "docs"), nil)
+	markers, _, err := scanRuleMarkers(workingTreeRoots(root), filepath.Join(root, "docs"), nil)
 	if err != nil {
 		t.Fatalf("scanRuleMarkers = %v, want nil", err)
 	}
@@ -300,7 +300,7 @@ func TestScanRuleMarkersGitScope(t *testing.T) {
 	git("add", "a.go", ".gitignore")
 	git("add", "-f", "vendor/kept.go")
 
-	markers, _, err := scanRuleMarkers(root, filepath.Join(root, "docs"), nil)
+	markers, _, err := scanRuleMarkers(workingTreeRoots(root), filepath.Join(root, "docs"), nil)
 	if err != nil {
 		t.Fatalf("scanRuleMarkers = %v, want nil", err)
 	}
@@ -474,7 +474,7 @@ func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	if len(report.findings) != 1 || !strings.Contains(report.findings[0].message, "no // cinch:rule marker") {
 		t.Fatalf("findings = %+v, want single 'no marker' finding", report.findings)
@@ -495,7 +495,7 @@ func TestSeededDefectRulesHollowedTest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	// GAP: the marker resolves to a real rule ID, so the grammar check
 	// passes even though the test body it sits next to has been gutted.
@@ -520,7 +520,7 @@ func TestSeededDefectRulesContradictingNeighbor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	// GAP: rules.go only checks marker presence, ID resolution, and ignore
 	// hygiene — it has no prose-semantics analysis, so two rules that
@@ -546,7 +546,7 @@ func TestSeededDefectRulesDuplicateID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	ok := false
 	for _, f := range report.findings {
@@ -573,7 +573,7 @@ func TestSeededDefectRulesNearMissID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	ok := false
 	for _, f := range report.findings {
@@ -597,7 +597,7 @@ func TestSeededDefectRulesIgnoreNoReason(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	ok := false
 	for _, f := range report.findings {
@@ -624,7 +624,7 @@ func TestSeededDefectRulesIgnoreWithMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 
 	ok := false
 	for _, f := range report.findings {
@@ -650,7 +650,7 @@ func TestScanRuleMarkersPrefixesSiblingRootFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	markers, missing, err := scanRuleMarkers(repoRoot, filepath.Join(repoRoot, "docs"), []string{rel})
+	markers, missing, err := scanRuleMarkers(workingTreeRoots(repoRoot), filepath.Join(repoRoot, "docs"), []string{rel})
 	if err != nil {
 		t.Fatalf("scanRuleMarkers: %v", err)
 	}
@@ -664,6 +664,59 @@ func TestScanRuleMarkersPrefixesSiblingRootFindings(t *testing.T) {
 	wantFile := filepath.ToSlash(filepath.Join(rel, "a.go"))
 	if locs[0].file != wantFile {
 		t.Fatalf("file = %q, want %q (prefixed with the configured sibling root)", locs[0].file, wantFile)
+	}
+}
+
+// git quotes a non-ASCII path in plain ls-files output, which used to make
+// the marker scan open a file that doesn't exist and fail the whole check.
+func TestCheckRulesFindsMarkerInNonASCIIPath(t *testing.T) {
+	root := t.TempDir()
+	git := initTestGitRepo(t, root)
+	for _, directory := range []string{"docs", "internal"} {
+		if err := os.MkdirAll(filepath.Join(root, directory), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeTestFile(t, filepath.Join(root, "docs"), "rules.md", "1. **AUTH-001** tokens rotate\n")
+	writeTestFile(t, filepath.Join(root, "internal"), "rötate.go", "// cinch:rule AUTH-001\n")
+	git("add", "-A")
+	git("commit", "-q", "-m", "seed")
+
+	report := checkRules(workingTreeRoots(root), filepath.Join(root, "docs"), nil)
+	if len(report.findings) != 0 || report.rules != 1 {
+		t.Fatalf("report = %+v, want 1 rule and no findings (AUTH-001 is marked in internal/rötate.go)", report)
+	}
+}
+
+// A hook spawned by `git commit -a` inherits an absolute GIT_INDEX_FILE for
+// the primary repo. Listing a sibling repo's files with it would return the
+// primary's index entries, which don't exist in the sibling and fail the scan.
+func TestScanRuleMarkersSiblingIgnoresInheritedIndex(t *testing.T) {
+	parent := t.TempDir()
+	repoRoot := filepath.Join(parent, "repo")
+	sibling := filepath.Join(parent, "sib")
+	for _, directory := range []string{repoRoot, sibling} {
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitRepo := initTestGitRepo(t, repoRoot)
+	writeTestFile(t, repoRoot, "only-in-repo.go", "package main\n")
+	gitRepo("add", "-A")
+	gitRepo("commit", "-q", "-m", "seed")
+	gitSibling := initTestGitRepo(t, sibling)
+	writeTestFile(t, sibling, "a.go", "// cinch:rule SIG-001\n")
+	gitSibling("add", "-A")
+	gitSibling("commit", "-q", "-m", "seed")
+
+	t.Setenv("GIT_INDEX_FILE", filepath.Join(repoRoot, ".git", "index"))
+
+	markers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), filepath.Join(repoRoot, "docs"), []string{"../sib"})
+	if err != nil {
+		t.Fatalf("scanRuleMarkers: %v", err)
+	}
+	if locs := markers["SIG-001"]; len(locs) != 1 || locs[0].file != "../sib/a.go" {
+		t.Fatalf("markers[SIG-001] = %v, want one loc at ../sib/a.go", locs)
 	}
 }
 
@@ -685,7 +738,7 @@ func TestCheckRulesScansSiblingRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(repoRoot, docsRoot, []string{rel})
+	report := checkRules(workingTreeRoots(repoRoot), docsRoot, []string{rel})
 	if report.skip != "" {
 		t.Fatalf("skip = %q, want empty (sibling root is present)", report.skip)
 	}
@@ -704,7 +757,7 @@ func TestCheckRulesSkipsWhenAllRootsMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(repoRoot, docsRoot, []string{"../does-not-exist", "../also-missing"})
+	report := checkRules(workingTreeRoots(repoRoot), docsRoot, []string{"../does-not-exist", "../also-missing"})
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none — every configured root is absent, so this should skip "+
 			"rather than report a false 'no marker found' per rule", report.findings)
@@ -735,7 +788,7 @@ func TestCheckRulesPartialRootsStillChecksPresentOnes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkRules(repoRoot, docsRoot, []string{rel, "../does-not-exist"})
+	report := checkRules(workingTreeRoots(repoRoot), docsRoot, []string{rel, "../does-not-exist"})
 	if report.skip != "" {
 		t.Fatalf("skip = %q, want empty — one of the two configured roots is present", report.skip)
 	}
@@ -756,7 +809,7 @@ func TestCheckRulesUnaffectedWithoutConfiguredRoots(t *testing.T) {
 
 	// No extraRoots at all (nil, today's only mode): a real gap must still
 	// report normally, not get swallowed by the new skip path.
-	report := checkRules(root, docsRoot, nil)
+	report := checkRules(workingTreeRoots(root), docsRoot, nil)
 	if report.skip != "" {
 		t.Fatalf("skip = %q, want empty when rules.roots is unset entirely", report.skip)
 	}
@@ -789,7 +842,7 @@ func TestMarkerScanSkipsSubmoduleGitlink(t *testing.T) {
 	git("-c", "protocol.file.allow=always", "submodule", "add", "-q", subSrc, "sub")
 
 	// Primary scan (no rules.roots): the submodule gitlink must be skipped, not opened.
-	markers, missing, err := scanRuleMarkers(root, filepath.Join(root, "docs"), nil)
+	markers, missing, err := scanRuleMarkers(workingTreeRoots(root), filepath.Join(root, "docs"), nil)
 	if err != nil {
 		t.Fatalf("scanRuleMarkers = %v, want nil (submodule gitlink must be skipped, not opened as a file)", err)
 	}
@@ -801,7 +854,7 @@ func TestMarkerScanSkipsSubmoduleGitlink(t *testing.T) {
 	}
 
 	// rules.roots explicitly targets the submodule's own git index and finds its markers.
-	markers, missing, err = scanRuleMarkers(root, filepath.Join(root, "docs"), []string{"sub"})
+	markers, missing, err = scanRuleMarkers(workingTreeRoots(root), filepath.Join(root, "docs"), []string{"sub"})
 	if err != nil {
 		t.Fatalf("scanRuleMarkers with rules.roots = %v, want nil", err)
 	}

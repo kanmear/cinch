@@ -90,6 +90,11 @@ tracked files, or that an ignore exists. It can't tell whether the marked test
 actually asserts the rule, whether the marker is above the right function, or
 whether an ignore's reason holds up. All of those are cheap to fake.
 
+It also can't find a rule nobody wrote. A behavior the docs never state, such as
+who receives a realtime event, has no ID to check, so `cinch check` stays green.
+The planning and bug-fix workflows ask you to name missing rules; nothing
+mechanical does.
+
 What you do get: a rule nobody accounted for fails loudly, by ID, instead of
 drifting quietly. Whether the tests really enforce the rules is a question for
 code review and the `docs-audit-coverage` workflow.
@@ -108,6 +113,9 @@ code review and the `docs-audit-coverage` workflow.
 | `commit` | (opt-in) the commit subject doesn't match `commit.pattern` |
 | `core` | (opt-in) the installed cinch doesn't satisfy `require.cinch` |
 
+The pre-commit hook and `cinch check --staged` check the content being
+committed, not your working tree: an unstaged edit can't block a commit, and
+an unstaged or untracked marker can't let a broken one through.
 `cinch check --changed` limits the run to files with unstaged changes.
 `--only links,rules` runs just the named checks.
 
@@ -118,6 +126,8 @@ cinch init              set up cinch.yml, render, activate hooks
 cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
 cinch check --changed [--only NAMES] [MSGFILE]
                         only check unstaged files / only run the named checks
+cinch check --staged [--only NAMES] [MSGFILE]
+                        check the staged content, as the pre-commit hook does
 cinch render            re-render workflows and hook shims from cinch.yml
 cinch upgrade           install the latest release, re-render, sync the pin, check
 cinch hook EVENT [ARGS] git-hook dispatcher (called by the generated shims)
@@ -140,7 +150,8 @@ A few notes:
 - **`hook`**: for `pre-commit` and `commit-msg`, it runs the checks and then
   every script registered under `hooks.<event>` in `cinch.yml` whose `when`
   prefixes match the changed files. cinch only runs these scripts; whether
-  they're correct is up to you.
+  they're correct is up to you. The checks read the staged content; these
+  scripts, and the `impact` list, see your working tree.
 - **`impact`**: lists rules from docs whose `owns` covers a changed file, plus
   rules whose marker is in a changed file. The pre-commit hook prints the same
   list as a reminder. It never fails the commit.
