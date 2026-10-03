@@ -1,8 +1,10 @@
 package cinch
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,8 +21,9 @@ func TestImpactOwnsMatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
-	if len(hits) != 1 || hits[0].ruleID != "SIG-019" || hits[0].reason != "owns" {
-		t.Fatalf("hits = %+v, want one owns hit on SIG-019", hits)
+	if len(hits) != 1 || hits[0].kind != "owns" || hits[0].doc != ".docs/sig.md" ||
+		len(hits[0].ruleIDs) != 1 || hits[0].ruleIDs[0] != "SIG-019" {
+		t.Fatalf("hits = %+v, want one owns hit on .docs/sig.md naming SIG-019", hits)
 	}
 }
 
@@ -42,8 +45,12 @@ func TestImpactMarkerMatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
-	if len(hits) != 1 || hits[0].ruleID != "SIG-020" || hits[0].reason != "marker" {
+	if len(hits) != 1 || hits[0].kind != "marker" || hits[0].ruleID != "SIG-020" {
 		t.Fatalf("hits = %+v, want one marker hit on SIG-020", hits)
+	}
+	want := markerLoc{file: "internal/sig/verify.go", line: 3}
+	if len(hits[0].markers) != 1 || hits[0].markers[0] != want {
+		t.Fatalf("markers = %+v, want %+v", hits[0].markers, want)
 	}
 }
 
@@ -67,12 +74,9 @@ func TestImpactBothInSameDiff(t *testing.T) {
 		t.Fatalf("buildImpact: %v", err)
 	}
 
-	ids := map[string]bool{}
-	for _, h := range hits {
-		ids[h.ruleID] = true
-	}
-	if !ids["SIG-019"] || !ids["SIG-020"] {
-		t.Fatalf("hits = %+v, want both SIG-019 (owns) and SIG-020 (marker) named", hits)
+	if len(hits) != 2 || hits[0].kind != "marker" || hits[0].ruleID != "SIG-020" ||
+		hits[1].kind != "owns" || len(hits[1].ruleIDs) != 2 {
+		t.Fatalf("hits = %+v, want a SIG-020 marker hit then one owns hit covering both doc rules", hits)
 	}
 }
 
@@ -147,5 +151,112 @@ func TestOwnsMatchesExactAndPrefix(t *testing.T) {
 		if got := ownsMatches(tc.changed, owns); got != tc.want {
 			t.Errorf("ownsMatches(%q, %v) = %v, want %v", tc.changed, owns, got, tc.want)
 		}
+	}
+}
+
+// writeOwnsDoc writes a doc owning paths with n rules named prefix-001..n.
+func writeOwnsDoc(t *testing.T, docs, name, prefix string, owns []string, n int) {
+	t.Helper()
+	var b strings.Builder
+	b.WriteString("---\nowns:\n")
+	for _, o := range owns {
+		b.WriteString("  - " + o + "\n")
+	}
+	b.WriteString("rule_prefix: " + prefix + "\n---\n# Doc\n\n")
+	for i := 1; i <= n; i++ {
+		fmt.Fprintf(&b, "%d. **%s-%03d** rule number %d\n", i, prefix, i, i)
+	}
+	writeTestFile(t, docs, name, b.String())
+}
+
+func TestImpactCollapsesPerDoc(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeOwnsDoc(t, docs, "auth.md", "AUTH", []string{"src/auth"}, 10)
+
+	hits, err := buildImpact(root, docs, []string{"src/auth/util.go"})
+	if err != nil {
+		t.Fatalf("buildImpact: %v", err)
+	}
+	if len(hits) != 1 || len(hits[0].ruleIDs) != 10 {
+		t.Fatalf("hits = %+v, want exactly one owns hit with 10 rules", hits)
+	}
+	out := captureStderr(t, func() { printImpact(hits) })
+	if n := strings.Count(out, " owns "); n != 1 {
+		t.Fatalf("output has %d owns lines, want 1:\n%s", n, out)
+	}
+	if !strings.Contains(out, "AUTH-001, AUTH-002, AUTH-003 +7 more") {
+		t.Fatalf("output = %q, want 3 IDs and +7 more", out)
+	}
+}
+
+func TestImpactAttributesByDocNotPrefix(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeOwnsDoc(t, docs, "auth.md", "AUTH", []string{"src/auth"}, 2)
+	writeOwnsDoc(t, docs, "authz.md", "AUTHZ", []string{"src/authz"}, 2)
+
+	hits, err := buildImpact(root, docs, []string{"src/auth/x.go"})
+	if err != nil {
+		t.Fatalf("buildImpact: %v", err)
+	}
+	out := captureStderr(t, func() { printImpact(hits) })
+	if !strings.Contains(out, "AUTH-001") {
+		t.Fatalf("output = %q, want AUTH rules named", out)
+	}
+	if strings.Contains(out, "AUTHZ-") || strings.Contains(out, "authz.md") {
+		t.Fatalf("output = %q, must never mention AUTHZ", out)
+	}
+}
+
+func TestImpactOwnsWithoutRulesIsSilent(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "empty.md", "---\nowns:\n  - src/auth\n---\n# No rules\n")
+
+	hits, err := buildImpact(root, docs, []string{"src/auth/x.go"})
+	if err != nil {
+		t.Fatalf("buildImpact: %v", err)
+	}
+	if len(hits) != 0 {
+		t.Fatalf("hits = %+v, want none for an owning doc with no rules", hits)
+	}
+}
+
+func TestImpactMarkerLineHasFileAndLine(t *testing.T) {
+	hits := []impactHit{{kind: "marker", ruleID: "SIG-020", markers: []markerLoc{{file: "internal/sig/verify.go", line: 3}}}}
+	out := captureStderr(t, func() { printImpact(hits) })
+	if !strings.Contains(out, "SIG-020 — marker at internal/sig/verify.go:3") {
+		t.Fatalf("output = %q, want file:line on the marker line", out)
+	}
+}
+
+func TestPrintImpactGolden(t *testing.T) {
+	hits := []impactHit{
+		{kind: "marker", ruleID: "SIG-020", markers: []markerLoc{{file: "internal/sig/verify.go", line: 3}}},
+		{kind: "marker", ruleID: "SIG-021", markers: []markerLoc{{file: "a.go", line: 1}, {file: "b.go", line: 9}}},
+		{kind: "owns", doc: ".docs/auth.md",
+			files:   []string{"src/auth/a.go", "src/auth/b.go", "src/auth/c.go", "src/auth/d.go"},
+			ruleIDs: []string{"AUTH-001", "AUTH-002", "AUTH-003", "AUTH-004"}},
+		{kind: "owns", doc: ".docs/sig.md", files: []string{"internal/sig/verify.go"}, ruleIDs: []string{"SIG-019"}},
+	}
+	got := captureStderr(t, func() { printImpact(hits) })
+	want := "cinch impact: this diff plausibly touches:\n" +
+		"  SIG-020 — marker at internal/sig/verify.go:3\n" +
+		"  SIG-021 — marker at a.go:1, b.go:9\n" +
+		"  .docs/auth.md — owns src/auth/a.go, src/auth/b.go, src/auth/c.go +1 more — rules AUTH-001, AUTH-002, AUTH-003 +1 more\n" +
+		"  .docs/sig.md — owns internal/sig/verify.go — rules SIG-019\n" +
+		"confirm the docs still match\n"
+	if got != want {
+		t.Fatalf("printImpact output:\n%s\nwant:\n%s", got, want)
 	}
 }

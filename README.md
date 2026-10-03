@@ -69,9 +69,9 @@ Each rule needs one of two things:
 - a `<!-- cinch:ignore: <reason> -->` line under the rule, saying why it
   can't be tested.
 
-The front matter is optional. `rule_prefix` sets the doc's ID prefix, and
-`owns` lists the code paths the doc's rules cover (prefix match, not globs).
-`cinch impact` reads both.
+The front matter is optional. `owns` lists the code paths the doc's rules
+cover (prefix match, not globs). `cinch impact` reads `owns:`: a change under
+an owned path names that doc's rules.
 
 Here's what `cinch check` prints for the doc above with one mistyped marker:
 
