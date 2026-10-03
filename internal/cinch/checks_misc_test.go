@@ -84,17 +84,20 @@ func TestCheckHooksDefaultPath(t *testing.T) {
 	}
 }
 
-func gitTestHelper(t *testing.T, root string) func(args ...string) {
+// gitTestHelper's env entries go last, so they override both the isolation
+// defaults and the inherited environment (exec keeps the last value for a
+// repeated key).
+func gitTestHelper(t *testing.T, root string, env ...string) func(args ...string) {
 	t.Helper()
 	return func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", args...)
 		cmd.Dir = root
-		cmd.Env = append([]string{
+		cmd.Env = append(append([]string{
 			"HOME=" + root,
 			"GIT_CONFIG_GLOBAL=/dev/null",
 			"GIT_CONFIG_SYSTEM=/dev/null",
-		}, os.Environ()...)
+		}, os.Environ()...), env...)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
 		}
