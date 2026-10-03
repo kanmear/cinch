@@ -23,6 +23,14 @@ type checkResult struct {
 	detail   string
 }
 
+// checkRoots separates where git runs from where checked content is read.
+// git never runs inside an index snapshot; stagedSnapshot says why.
+type checkRoots struct {
+	repoRoot   string   // real repository: git commands, rules.roots siblings, core.hooksPath
+	fsRoot     string   // where file content is read: == repoRoot, or an index snapshot
+	indexFiles []string // staged mode only: `git ls-files --cached`, repo-relative
+}
+
 func scanErrorFinding(check, scope string, err error) []finding {
 	return []finding{{
 		check: check, level: "error", file: scope, line: 1,
@@ -30,8 +38,42 @@ func scanErrorFinding(check, scope string, err error) []finding {
 	}}
 }
 
-func CmdCheck(messageFile string, changed bool, only []string) int {
-	return runChecks(".", messageFile, changed, only...)
+func CmdCheck(messageFile string, changed, staged bool, only []string) int {
+	if !staged {
+		return runChecks(workingTreeRoots("."), messageFile, changed, only...)
+	}
+	roots, cleanup, err := stagedSnapshot(".")
+	defer cleanup()
+	if err != nil {
+		return output.Fail("check", err)
+	}
+	return runChecks(roots, messageFile, false, only...)
+}
+
+func workingTreeRoots(repoRoot string) checkRoots {
+	return checkRoots{repoRoot: repoRoot, fsRoot: repoRoot}
+}
+
+// relabel maps a finding read from an index snapshot back to the path it
+// has in the repository, so output never names the temporary directory and
+// reads exactly as it would for the same content in the working tree.
+func (roots checkRoots) relabel(f finding) finding {
+	if roots.fsRoot == roots.repoRoot {
+		return f
+	}
+	prefix := roots.fsRoot + string(filepath.Separator)
+	replacement := ""
+	if roots.repoRoot != "." {
+		replacement = roots.repoRoot + string(filepath.Separator)
+	}
+	switch {
+	case f.file == roots.fsRoot:
+		f.file = roots.repoRoot
+	case strings.HasPrefix(f.file, prefix):
+		f.file = replacement + strings.TrimPrefix(f.file, prefix)
+	}
+	f.message = strings.ReplaceAll(f.message, prefix, replacement)
+	return f
 }
 
 const (
@@ -58,13 +100,16 @@ var (
 // error here: it's surfaced properly by runChecks's own load via the
 // "generated" check, and this lookup silently falls back to the hardcoded
 // default on any error, same as an absent key.
-func preCommitChecks(root string) int {
-	m, _ := loadManifestOptional(root)
+//
+// preCommitChecks reads the override from roots.fsRoot, so in staged mode the
+// cinch.yml being committed decides which checks gate that commit.
+func preCommitChecks(roots checkRoots) int {
+	m, _ := loadManifestOptional(roots.fsRoot)
 	only := m.list(hooksPreCommitChecksKey)
 	if len(only) == 0 {
 		only = defaultPreCommitChecks
 	}
-	return runChecks(root, "", false, only...)
+	return runChecks(roots, "", false, only...)
 }
 
 func commitMsgChecks(root, messageFile string) int {
@@ -73,7 +118,7 @@ func commitMsgChecks(root, messageFile string) int {
 	if len(only) == 0 {
 		only = defaultCommitMsgChecks
 	}
-	return runChecks(root, messageFile, false, only...)
+	return runChecks(workingTreeRoots(root), messageFile, false, only...)
 }
 
 // changedFileSet resolves the set of unstaged working-tree file paths, keyed
@@ -153,13 +198,16 @@ func generatedRelevant(root, docsRoot string, m *manifest, changed map[string]bo
 	return changedUnder(changed, filepath.Join(root, hooksPathValue(m)))
 }
 
-func runChecks(root, messageFile string, changed bool, only ...string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+// runChecks reads every checked file under roots.fsRoot. changed is only
+// meaningful for working-tree roots: unstaged paths say nothing about a
+// snapshot of the index.
+func runChecks(roots checkRoots, messageFile string, changed bool, only ...string) int {
+	docsRoot, err := ResolveDocsRoot(roots.fsRoot)
 	if err != nil {
 		return output.Fail("check", err)
 	}
 
-	m, mErr := loadManifestOptional(root)
+	m, mErr := loadManifestOptional(roots.fsRoot)
 
 	onlySet := make(map[string]bool, len(only))
 	for _, n := range only {
@@ -169,7 +217,7 @@ func runChecks(root, messageFile string, changed bool, only ...string) int {
 
 	var changedSet map[string]bool
 	if changed {
-		changedSet, err = changedFileSet(root)
+		changedSet, err = changedFileSet(roots.repoRoot)
 		if err != nil {
 			return output.Failf("check", "git diff failed: %s", err.Error())
 		}
@@ -207,11 +255,11 @@ func runChecks(root, messageFile string, changed bool, only ...string) int {
 		"links": {relevant(changedMarkdownUnder(changedSet, docsRoot)),
 			scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })},
 		"rules": {relevant(len(changedSet) > 0),
-			scoped(func() checkResult { return rulesCheckResult(checkRules(root, docsRoot, m.list(rulesRootsKey))) })},
+			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, m.list(rulesRootsKey))) })},
 		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
 			scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) })},
-		"generated": {relevant(generatedRelevant(root, docsRoot, m, changedSet)),
-			func() checkResult { return checkGenerated(root, m, mErr) }},
+		"generated": {relevant(generatedRelevant(roots.fsRoot, docsRoot, m, changedSet)),
+			func() checkResult { return checkGenerated(roots, m, mErr) }},
 		// commit is unconditionally suppressed without a MSGFILE, not just under
 		// --changed: nobody hand-invokes `cinch check somefile.txt` in ordinary
 		// use (the commit-msg hook goes through commitMsgChecks instead), so
@@ -219,7 +267,7 @@ func runChecks(root, messageFile string, changed bool, only ...string) int {
 		// not a diff-scoping question.
 		"commit": {messageFile != "", func() checkResult { return checkCommit(messageFile, m) }},
 		"core":   {true, func() checkResult { return checkPin(Version, m) }},
-		"hooks":  {true, func() checkResult { return checkHooks(root, m, mErr) }},
+		"hooks":  {true, func() checkResult { return checkHooks(roots.repoRoot, m, mErr) }},
 	}
 
 	results := make(chan namedResult, len(checkLaunchOrder))
@@ -247,7 +295,9 @@ func runChecks(root, messageFile string, changed bool, only ...string) int {
 		if !ok {
 			continue
 		}
-		findings = append(findings, result.findings...)
+		for _, f := range result.findings {
+			findings = append(findings, roots.relabel(f))
+		}
 		output.CheckStatus(name, len(result.findings), result.noOp, result.detail)
 	}
 

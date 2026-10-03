@@ -29,8 +29,11 @@ func cmdHookPreCommit(root string) int {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
-	ok := preCommitChecks(root) == 0
+	ok := stagedPreCommitChecks(root) == 0
 
+	// Only the checks above read the index. buildImpact and dispatchHooks
+	// still see the working tree: impact is advisory, and project hook
+	// scripts read whatever is on disk.
 	if docsRoot, dErr := ResolveDocsRoot(root); dErr == nil {
 		if hits, iErr := buildImpact(root, docsRoot, staged); iErr == nil {
 			printImpact(hits)
@@ -96,19 +99,19 @@ func cmdHookPostCommit(root string) int {
 }
 
 func committedFiles(root string) ([]string, error) {
-	files, err := gitutil.OutputLines(root, "diff", "--name-only", "HEAD^", "HEAD")
+	files, err := gitutil.OutputPaths(root, "diff", "--name-only", "HEAD^", "HEAD")
 	if err == nil {
 		return files, nil
 	}
-	return gitutil.OutputLines(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
+	return gitutil.OutputPaths(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
 }
 
 func stagedPaths(root string) ([]string, error) {
-	return gitutil.OutputLines(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
+	return gitutil.OutputPaths(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
 }
 
 func unstagedPaths(root string) ([]string, error) {
-	return gitutil.OutputLines(root, "diff", "--name-only", "--diff-filter=ACMRD")
+	return gitutil.OutputPaths(root, "diff", "--name-only", "--diff-filter=ACMRD")
 }
 
 func dispatchHooks(root string, m *manifest, event string, staged []string, args ...string) bool {

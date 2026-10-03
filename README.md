@@ -113,6 +113,9 @@ code review and the `docs-audit-coverage` workflow.
 | `commit` | (opt-in) the commit subject doesn't match `commit.pattern` |
 | `core` | (opt-in) the installed cinch doesn't satisfy `require.cinch` |
 
+The pre-commit hook and `cinch check --staged` check the content being
+committed, not your working tree: an unstaged edit can't block a commit, and
+an unstaged or untracked marker can't let a broken one through.
 `cinch check --changed` limits the run to files with unstaged changes.
 `--only links,rules` runs just the named checks.
 
@@ -123,6 +126,8 @@ cinch init              set up cinch.yml, render, activate hooks
 cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
 cinch check --changed [--only NAMES] [MSGFILE]
                         only check unstaged files / only run the named checks
+cinch check --staged [--only NAMES] [MSGFILE]
+                        check the staged content, as the pre-commit hook does
 cinch render            re-render workflows and hook shims from cinch.yml
 cinch upgrade           install the latest release, re-render, sync the pin, check
 cinch hook EVENT [ARGS] git-hook dispatcher (called by the generated shims)
@@ -145,7 +150,8 @@ A few notes:
 - **`hook`**: for `pre-commit` and `commit-msg`, it runs the checks and then
   every script registered under `hooks.<event>` in `cinch.yml` whose `when`
   prefixes match the changed files. cinch only runs these scripts; whether
-  they're correct is up to you.
+  they're correct is up to you. The checks read the staged content; these
+  scripts, and the `impact` list, see your working tree.
 - **`impact`**: lists rules from docs whose `owns` covers a changed file, plus
   rules whose marker is in a changed file. The pre-commit hook prints the same
   list as a reminder. It never fails the commit.

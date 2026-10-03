@@ -21,6 +21,8 @@ usage:
   cinch check --changed [--only NAMES] [MSGFILE]
                           scope checks to unstaged files; --only restricts which checks run
                           (NAMES: links,rules,index,generated,commit,core,hooks)
+  cinch check --staged [--only NAMES] [MSGFILE]
+                          check the staged content, as the pre-commit hook does
   cinch ignores           list every cinch:ignore declaration
   cinch render            render docs/templates and git hook shims from cinch.yml
   cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
@@ -122,11 +124,11 @@ var checkNames = map[string]bool{
 }
 
 // checkCommand parses os.Args by hand, matching indexCommand's convention:
-// --changed and --only NAMES may appear in any order around the optional
-// MSGFILE positional.
+// --changed, --staged and --only NAMES may appear in any order around the
+// optional MSGFILE positional.
 func checkCommand(args []string) int {
 	var messageFile string
-	var changed bool
+	var changed, staged bool
 	var only []string
 	haveMessageFile := false
 
@@ -134,6 +136,8 @@ func checkCommand(args []string) int {
 		switch args[i] {
 		case "--changed":
 			changed = true
+		case "--staged":
+			staged = true
 		case "--only":
 			if i+1 >= len(args) {
 				return output.UsageError("check: --only requires a comma-separated NAMES argument")
@@ -155,13 +159,19 @@ func checkCommand(args []string) int {
 		}
 	}
 
+	// --changed scopes to unstaged paths, which a snapshot of the index
+	// doesn't contain by definition.
+	if changed && staged {
+		return output.UsageError("check: --changed and --staged can't be combined")
+	}
+
 	if haveMessageFile {
 		if _, err := os.Stat(messageFile); err != nil {
 			return output.UsageError("check: cannot read message file: " + messageFile)
 		}
 	}
 
-	return impl.CmdCheck(messageFile, changed, only)
+	return impl.CmdCheck(messageFile, changed, staged, only)
 }
 
 // indexCommand parses os.Args by hand rather than reaching for the flag

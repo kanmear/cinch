@@ -119,7 +119,7 @@ func TestBuildRulesInventoryCountMatchesCheckDetail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildRulesInventory: %v", err)
 	}
-	report := checkRules(root, docs, nil)
+	report := checkRules(workingTreeRoots(root), docs, nil)
 	if len(inv.Rules) != report.rules {
 		t.Fatalf("len(inv.Rules) = %d, checkRules.rules = %d, want equal", len(inv.Rules), report.rules)
 	}
