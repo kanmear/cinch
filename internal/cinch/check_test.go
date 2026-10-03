@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -13,22 +15,34 @@ import (
 // didn't print.
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()
+	return captureFile(t, &os.Stderr, fn)
+}
+
+// captureStdout temporarily redirects os.Stdout, where runChecks prints its
+// findings.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	return captureFile(t, &os.Stdout, fn)
+}
+
+func captureFile(t *testing.T, target **os.File, fn func()) string {
+	t.Helper()
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	original := os.Stderr
-	os.Stderr = w
+	original := *target
+	*target = w
 	fn()
-	os.Stderr = original
+	*target = original
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
+	var buffer bytes.Buffer
+	if _, err := io.Copy(&buffer, r); err != nil {
 		t.Fatal(err)
 	}
-	return buf.String()
+	return buffer.String()
 }
 
 // initTestGitRepo initializes a git repo with a committer identity set, so
@@ -70,7 +84,7 @@ func TestHookChecksSeparate(t *testing.T) {
 	good := writeTestFile(t, root, "msg-good.txt", "docs: remove completed plan\n")
 	bad := writeTestFile(t, root, "msg-bad.txt", "oops: not matching\n")
 
-	if got := preCommitChecks(root); got != 1 {
+	if got := preCommitChecks(workingTreeRoots(root)); got != 1 {
 		t.Fatalf("preCommitChecks = %d, want 1 (broken doc link)", got)
 	}
 	if got := commitMsgChecks(root, good); got != 0 {
@@ -96,7 +110,7 @@ func TestPreCommitChecksHonorsManifestOverride(t *testing.T) {
 	writeTestFile(t, docs, "a.md", "[broken](missing.md)\n")
 	writeTestFile(t, root, "cinch.yml", "hooks:\n  pre-commit-checks: [core]\n")
 
-	if got := preCommitChecks(root); got != 0 {
+	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (links excluded from the configured baseline)", got)
 	}
 }
@@ -135,12 +149,12 @@ func TestCheckChangedFiltersLinksToChangedFiles(t *testing.T) {
 		},
 	)
 
-	if got := runChecks(root, "", true); got != 0 {
+	if got := runChecks(workingTreeRoots(root), "", true); got != 0 {
 		t.Fatalf("runChecks(changed) = %d, want 0 (broken.md wasn't touched)", got)
 	}
 
 	writeTestFile(t, docs, "broken.md", "# Broken\n\n[dead](nowhere.md)\nedited too\n")
-	if got := runChecks(root, "", true); got != 1 {
+	if got := runChecks(workingTreeRoots(root), "", true); got != 1 {
 		t.Fatalf("runChecks(changed) = %d, want 1 (broken.md is now the changed file)", got)
 	}
 }
@@ -166,7 +180,7 @@ func TestCheckChangedSuppressesIrrelevantCheckStatus(t *testing.T) {
 	)
 
 	out := captureStderr(t, func() {
-		if got := runChecks(root, "", true); got != 0 {
+		if got := runChecks(workingTreeRoots(root), "", true); got != 0 {
 			t.Fatalf("runChecks(changed) = %d, want 0", got)
 		}
 	})
@@ -199,7 +213,7 @@ func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
 	)
 
 	for _, changed := range []bool{false, true} {
-		out := captureStderr(t, func() { runChecks(root, "", changed) })
+		out := captureStderr(t, func() { runChecks(workingTreeRoots(root), "", changed) })
 		if bytes.Contains([]byte(out), []byte("commit:")) {
 			t.Fatalf("changed=%v: stderr contains %q, want commit suppressed with no MSGFILE; stderr=%q", changed, "commit:", out)
 		}
@@ -207,7 +221,7 @@ func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
 
 	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
 	for _, changed := range []bool{false, true} {
-		out := captureStderr(t, func() { runChecks(root, msg, changed) })
+		out := captureStderr(t, func() { runChecks(workingTreeRoots(root), msg, changed) })
 		if !bytes.Contains([]byte(out), []byte("commit:")) {
 			t.Fatalf("changed=%v: stderr missing %q, want commit to run when a MSGFILE is given; stderr=%q", changed, "commit:", out)
 		}
@@ -236,7 +250,7 @@ func TestCheckChangedGeneratedCoarseGate(t *testing.T) {
 	)
 
 	out := captureStderr(t, func() {
-		runChecks(root, "", true)
+		runChecks(workingTreeRoots(root), "", true)
 	})
 	if bytes.Contains([]byte(out), []byte("generated:")) {
 		t.Fatalf("stderr contains %q, want generated suppressed (cinch.yml untouched); stderr=%q", "generated:", out)
@@ -244,7 +258,7 @@ func TestCheckChangedGeneratedCoarseGate(t *testing.T) {
 
 	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
 	out = captureStderr(t, func() {
-		runChecks(root, "", true)
+		runChecks(workingTreeRoots(root), "", true)
 	})
 	if !bytes.Contains([]byte(out), []byte("generated:")) {
 		t.Fatalf("stderr missing %q, want generated relevant (cinch.yml changed); stderr=%q", "generated:", out)
@@ -267,7 +281,7 @@ func TestCheckOnlyRestrictsCheckerSet(t *testing.T) {
 	)
 
 	out := captureStderr(t, func() {
-		runChecks(root, "", true, "links", "index")
+		runChecks(workingTreeRoots(root), "", true, "links", "index")
 	})
 	for _, name := range []string{"rules:", "generated:", "commit:", "core:", "hooks:"} {
 		if bytes.Contains([]byte(out), []byte(name)) {
@@ -276,5 +290,36 @@ func TestCheckOnlyRestrictsCheckerSet(t *testing.T) {
 	}
 	if !bytes.Contains([]byte(out), []byte("links:")) {
 		t.Fatalf("stderr missing %q; stderr=%q", "links:", out)
+	}
+}
+
+// TestRunChecksStatusLinesInFixedOrder pins the print order of the status
+// lines: checks finish in scheduler order, so the same run repeated must still
+// come out in checkLaunchOrder every time.
+func TestRunChecksStatusLinesInFixedOrder(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
+	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
+
+	want := []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
+	if !reflect.DeepEqual(checkLaunchOrder, want) {
+		t.Fatalf("checkLaunchOrder = %v, want %v", checkLaunchOrder, want)
+	}
+
+	for run := 0; run < 20; run++ {
+		out := captureStderr(t, func() { runChecks(workingTreeRoots(root), msg, false) })
+
+		var got []string
+		for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+			prefix, _, _ := strings.Cut(line, ":")
+			got = append(got, prefix)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("run %d: status line order = %v, want %v; stderr=%q", run, got, want, out)
+		}
 	}
 }

@@ -79,8 +79,8 @@ func checkLinksInFile(docsRoot, path string) (linksReport, error) {
 	lineNumber := 0
 	scanErr := mdscan.ForEachFencedLineBytes(data, func(n int, line string) {
 		lineNumber = n
-		for _, m := range mdLinkRe.FindAllStringSubmatch(line, -1) {
-			target := strings.TrimSpace(m[1])
+		for _, m := range mdLinkRe.FindAllStringSubmatch(stripInlineCode(line), -1) {
+			target := linkTargetFrom(m[1])
 			if linkTargetIsExempt(target) {
 				continue
 			}
@@ -118,6 +118,70 @@ func checkLinksInFile(docsRoot, path string) (linksReport, error) {
 	}
 
 	return report, nil
+}
+
+// stripInlineCode blanks the contents of every CommonMark code span so link
+// syntax inside one is never parsed as a link. Contents become spaces byte for
+// byte, keeping everything after a span at its original offset. A backtick
+// run with no closer of exactly the same length is literal text and stays.
+func stripInlineCode(line string) string {
+	if !strings.Contains(line, "`") {
+		return line
+	}
+	result := []byte(line)
+	for i := 0; i < len(line); {
+		if line[i] != '`' {
+			i++
+			continue
+		}
+		openEnd := i
+		for openEnd < len(line) && line[openEnd] == '`' {
+			openEnd++
+		}
+		runLength := openEnd - i
+
+		closeStart, closeEnd := -1, -1
+		for j := openEnd; j < len(line); {
+			if line[j] != '`' {
+				j++
+				continue
+			}
+			runEnd := j
+			for runEnd < len(line) && line[runEnd] == '`' {
+				runEnd++
+			}
+			if runEnd-j == runLength {
+				closeStart, closeEnd = j, runEnd
+				break
+			}
+			j = runEnd
+		}
+		if closeStart < 0 {
+			i = openEnd
+			continue
+		}
+		for k := openEnd; k < closeStart; k++ {
+			result[k] = ' '
+		}
+		i = closeEnd
+	}
+	return string(result)
+}
+
+// linkTargetFrom reduces the raw "(...)" capture to a bare path: a <...>
+// destination is taken verbatim, otherwise everything from the first
+// whitespace on (a "title" or 'title') is dropped.
+func linkTargetFrom(raw string) string {
+	target := strings.TrimSpace(raw)
+	if strings.HasPrefix(target, "<") {
+		if end := strings.Index(target, ">"); end >= 0 {
+			return target[1:end]
+		}
+	}
+	if end := strings.IndexAny(target, " \t\n\r"); end >= 0 {
+		return target[:end]
+	}
+	return target
 }
 
 // docEdgeFor returns the graph edge for a link that resolved on disk. Links

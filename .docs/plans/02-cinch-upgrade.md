@@ -1,5 +1,7 @@
 # 2. `cinch upgrade`
 
+**Status: shipped in `cf3edcf`.**
+
 **Tier 1 — trust the checker. Cost estimate: an afternoon.**
 
 ## Provenance

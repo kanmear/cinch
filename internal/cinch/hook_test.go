@@ -3,6 +3,7 @@ package cinch
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -93,7 +94,7 @@ func TestCmdHookPreCommitImpactNeverBlocks(t *testing.T) {
 
 	git("add", "-A")
 
-	if got := preCommitChecks(root); got != 0 {
+	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (clean corpus)", got)
 	}
 	hits, err := buildImpact(root, filepath.Join(root, ".docs"), []string{"internal/pkg/impl.go"})
@@ -124,7 +125,7 @@ func TestCmdHookPreCommitImpactErrorSwallowed(t *testing.T) {
 	writeTestFile(t, docs, "malformed.md", "---\nowns: \"not-a-list\"\n---\n# Malformed\n\nno rules here\n")
 	git("add", "-A")
 
-	if got := preCommitChecks(root); got != 0 {
+	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (malformed frontmatter is invisible to the checks)", got)
 	}
 	if _, err := buildImpact(root, filepath.Join(root, ".docs"), nil); err == nil {
@@ -133,5 +134,64 @@ func TestCmdHookPreCommitImpactErrorSwallowed(t *testing.T) {
 
 	if got := cmdHookPreCommit(root); got != 0 {
 		t.Fatalf("cmdHookPreCommit = %d, want 0 — a buildImpact scan error must be swallowed, not surfaced", got)
+	}
+}
+
+// Without -z, git C-quotes a path holding non-ASCII bytes or a '"', so
+// internal/ü.go would come back as "internal/\303\274.go", quotes included,
+// and no longer start with a when: prefix like internal/.
+func TestPathListingsReturnVerbatimNames(t *testing.T) {
+	names := []string{`internal/say "hi".go`, "internal/ü.go"}
+	writeAll := func(t *testing.T, root, body string) {
+		t.Helper()
+		for _, name := range names {
+			writeTestFile(t, root, name, body)
+		}
+	}
+	cases := []struct {
+		name string
+		list func(t *testing.T, root string, git func(args ...string)) ([]string, error)
+	}{
+		{"staged", func(t *testing.T, root string, git func(args ...string)) ([]string, error) {
+			writeAll(t, root, "staged\n")
+			git("add", "-A")
+			return stagedPaths(root)
+		}},
+		{"unstaged", func(t *testing.T, root string, git func(args ...string)) ([]string, error) {
+			writeAll(t, root, "committed\n")
+			git("add", "-A")
+			git("commit", "-q", "-m", "add")
+			writeAll(t, root, "unstaged\n")
+			return unstagedPaths(root)
+		}},
+		{"committed", func(t *testing.T, root string, git func(args ...string)) ([]string, error) {
+			writeAll(t, root, "committed\n")
+			git("add", "-A")
+			git("commit", "-q", "-m", "add")
+			return committedFiles(root)
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			git := initTestGitRepo(t, root)
+			writeTestFile(t, root, "README.md", "seed\n")
+			if err := os.MkdirAll(filepath.Join(root, "internal"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			git("add", "-A")
+			git("commit", "-q", "-m", "seed")
+
+			got, err := c.list(t, root, git)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, names) {
+				t.Fatalf("paths = %q, want %q", got, names)
+			}
+			if !hookWhenMatches(got, []string{"internal/"}) {
+				t.Fatalf("hookWhenMatches(%q, [internal/]) = false, want true", got)
+			}
+		})
 	}
 }
