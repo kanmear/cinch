@@ -47,7 +47,7 @@ func buildRulesInventory(repoRoot, docsRoot string, extraRoots []string) (rulesI
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
-	markers, _, err := scanRuleMarkers(repoRoot, docsRoot, extraRoots)
+	markers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, extraRoots)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}

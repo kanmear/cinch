@@ -90,7 +90,7 @@ func buildImpact(repoRoot, docsRoot string, changedFiles []string) ([]impactHit,
 	// only ever matches a marker's file against changedFiles, which are
 	// always repoRoot-relative (staged paths or CLI args) — a sibling root's
 	// files can never appear there, so scanning them would be pure overhead.
-	rawMarkers, _, err := scanRuleMarkers(repoRoot, docsRoot, nil)
+	rawMarkers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, nil)
 	if err != nil {
 		return nil, err
 	}

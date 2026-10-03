@@ -33,7 +33,9 @@ func CmdUpgrade(root string) int {
 		return output.Fail("upgrade", err)
 	}
 
-	return preCommitChecks(root)
+	// The files just rendered aren't staged, so the working tree — not the
+	// index — is what has to come out clean here.
+	return preCommitChecks(workingTreeRoots(root))
 }
 
 // reportPinStatus surfaces the one case syncRequireCinch leaves silent: a

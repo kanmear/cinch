@@ -281,7 +281,7 @@ func TestSeededDefectGeneratedHandEdited(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := checkGenerated(root, m, nil)
+	result := checkGenerated(workingTreeRoots(root), m, nil)
 
 	ok := false
 	for _, f := range result.findings {
@@ -303,7 +303,7 @@ func TestSeededDefectGeneratedMissingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := checkGenerated(root, m, nil)
+	result := checkGenerated(workingTreeRoots(root), m, nil)
 
 	ok := false
 	for _, f := range result.findings {
@@ -327,7 +327,7 @@ func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := checkGenerated(root, m, nil)
+	result := checkGenerated(workingTreeRoots(root), m, nil)
 
 	ok := false
 	for _, f := range result.findings {
