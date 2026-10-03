@@ -171,8 +171,8 @@ func TestPathListingsReturnVerbatimNames(t *testing.T) {
 			return committedFiles(root)
 		}},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			git := initTestGitRepo(t, root)
 			writeTestFile(t, root, "README.md", "seed\n")
@@ -182,7 +182,7 @@ func TestPathListingsReturnVerbatimNames(t *testing.T) {
 			git("add", "-A")
 			git("commit", "-q", "-m", "seed")
 
-			got, err := c.list(t, root, git)
+			got, err := tc.list(t, root, git)
 			if err != nil {
 				t.Fatal(err)
 			}

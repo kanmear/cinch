@@ -2,7 +2,6 @@ package cinch
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -106,12 +105,7 @@ func TestStagedSnapshotHonorsGitIndexFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeTestFile(t, filepath.Join(root, "internal"), "extra.go", "// staged in the alternate index\n")
-	add := exec.Command("git", "add", "internal/extra.go")
-	add.Dir = root
-	add.Env = append(os.Environ(), "GIT_INDEX_FILE="+alternateIndex, "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
-	if out, err := add.CombinedOutput(); err != nil {
-		t.Fatalf("git add into the alternate index: %v\n%s", err, out)
-	}
+	gitTestHelper(t, root, "GIT_INDEX_FILE="+alternateIndex)("add", "internal/extra.go")
 	writeTestFile(t, filepath.Join(root, "internal"), "extra.go", "// unstaged edit\n")
 
 	t.Setenv("GIT_INDEX_FILE", alternateIndex)
