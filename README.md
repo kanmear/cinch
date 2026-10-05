@@ -210,7 +210,8 @@ paths:
 #
 # pre-commit-checks / commit-msg-checks change which checks the hooks run.
 # Defaults: pre-commit [links, rules, index, generated, core],
-# commit-msg [commit].
+# commit-msg [commit]. An empty list (`[]`) turns that hook's built-in checks
+# off; leaving the key out keeps the defaults.
 hooks:
   #pre-commit-checks: [links, index, generated, core]
   #commit-msg-checks: [commit]

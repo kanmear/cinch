@@ -71,6 +71,50 @@ func TestCheckHooksMatch(t *testing.T) {
 	}
 }
 
+func TestCheckHooksMatchAbsolutePath(t *testing.T) {
+	root := t.TempDir()
+	git := gitTestHelper(t, root)
+	git("init", "-q")
+	writeTestFile(t, root, "cinch.yml", "paths:\n  hooks: .githooks\n")
+	git("config", "core.hooksPath", filepath.Join(root, ".githooks"))
+
+	res := checkHooksTest(t, root)
+	if res.noOp != "" || len(res.findings) != 0 {
+		t.Fatalf("checkHooks = %+v, want clean result for the absolute spelling of paths.hooks", res)
+	}
+}
+
+func TestSameHooksDirectory(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".githooks"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, ".githooks"), filepath.Join(root, "link")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		got, want string
+		same      bool
+	}{
+		{"identical relative", ".githooks", ".githooks", true},
+		{"unclean relative", "./.githooks/", ".githooks", true},
+		{"absolute versus relative", filepath.Join(root, ".githooks"), ".githooks", true},
+		{"nonexistent directories", filepath.Join(root, "missing"), "missing", true},
+		{"symlink to the directory", "link", ".githooks", true},
+		{"different directory", "other-hooks", ".githooks", false},
+		{"different absolute directory", filepath.Join(root, "other-hooks"), ".githooks", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sameHooksDirectory(root, tt.got, tt.want); got != tt.same {
+				t.Fatalf("sameHooksDirectory(%q, %q) = %v, want %v", tt.got, tt.want, got, tt.same)
+			}
+		})
+	}
+}
+
 func TestCheckHooksDefaultPath(t *testing.T) {
 	root := t.TempDir()
 	git := gitTestHelper(t, root)

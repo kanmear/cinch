@@ -29,10 +29,33 @@ func checkHooks(root string, m *manifest, mErr error) checkResult {
 	if err != nil || got == "" {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is not set — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", want)}
 	}
-	if filepath.Clean(got) != filepath.Clean(want) {
+	if !sameHooksDirectory(root, got, want) {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is %q, expected %q (paths.hooks) — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", got, want, want)}
 	}
 	return checkResult{}
+}
+
+// sameHooksDirectory reports whether two core.hooksPath spellings name the
+// same directory. Git resolves a relative core.hooksPath against the worktree
+// root, so relative values are joined to repoRoot before comparing; symlinks
+// are resolved when both directories exist.
+func sameHooksDirectory(repoRoot, got, want string) bool {
+	resolve := func(path string) string {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(repoRoot, path)
+		}
+		if abs, err := filepath.Abs(path); err == nil {
+			return abs
+		}
+		return filepath.Clean(path)
+	}
+	gotPath, wantPath := resolve(got), resolve(want)
+	if gotPath == wantPath {
+		return true
+	}
+	gotReal, gotErr := filepath.EvalSymlinks(gotPath)
+	wantReal, wantErr := filepath.EvalSymlinks(wantPath)
+	return gotErr == nil && wantErr == nil && gotReal == wantReal
 }
 
 func checkCommit(messageFile string, m *manifest) checkResult {

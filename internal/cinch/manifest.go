@@ -200,6 +200,17 @@ func (m *manifest) list(key string) []string {
 	return out
 }
 
+// hasList reports whether key was written as a list at all, including an
+// explicit empty one (`key: []`), which list() can't distinguish from an
+// absent key.
+func (m *manifest) hasList(key string) bool {
+	if m == nil {
+		return false
+	}
+	_, ok := m.lists[key]
+	return ok
+}
+
 func (m *manifest) names(prefix string) []string {
 	if m == nil {
 		return nil

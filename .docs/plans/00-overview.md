@@ -20,12 +20,18 @@ tier three is small in isolation but compounds.
 | 4 | [Measure binding strength before designing for it](04-measure-binding-strength.md) | 2 — make green mean something | Open |
 | 5 | [Navigability as one check class](05-navigability-check-class.md) | 2 — make green mean something | H1 half shipped (`2925bf4`); the reachability half was dropped — see the item's resolution and the comment in `TestSeededDefectLinksTargetUnreachableFromRoot` |
 | 6 | [The machine surface: `rules --json` + `owns:` → `cinch impact`](06-machine-surface-rules-json-impact.md) | 2 — make green mean something | **Shipped** (`f7f94ac`) |
-| 7 | [Workflow prose value and F1's scope](07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | Open, reframed |
-| 8 | [`paths.exclude`, then dogfood](08-paths-exclude-and-dogfood.md) | 3 — decide before investing | Open |
+| 7 | [Workflow prose value and F1's scope](07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | Cheap half effectively done by the workflow-template trim (`09ef586`); expensive half still open |
+| 8 | [`paths.exclude`, then dogfood](08-paths-exclude-and-dogfood.md) | 3 — decide before investing | **Shipped** (`9830825`) |
 | 9 | [Calibrate every heuristic against real history](09-calibrate-heuristics-against-history.md) | 3 — decide before investing | Open |
 | 10 | [`kind:` — normative versus descriptive](10-kind-normative-vs-descriptive.md) | 3 — decide before investing | Open |
 | 11 | [`rules.roots` and hook-baseline overrides](11-sibling-code-roots.md) | 1 — trust the checker | **Shipped** (`7e5c70d`) — kept for provenance |
 | 12 | [Skip directory entries (submodule gitlinks) in the primary marker scan](12-skip-directory-entries-marker-scan.md) | 1 — trust the checker | **Shipped** (`92b99d4`) — kept for provenance |
+| 13 | [Housekeeping: link parser, one prompt, stable output order, docs resync](13-housekeeping.md) | 1 — trust the checker | **Shipped** (`1bcd33c`) — kept for provenance |
+| 14 | [Pre-commit checks what's staged, not the working tree](14-pre-commit-checks-index.md) | 1 — trust the checker | **Shipped** (`1af2986`) — kept for provenance |
+| 15 | [`cinch impact`: one line per doc, not one per rule](15-impact-one-line-per-doc.md) | 2 — make green mean something | **Shipped** (`ed08e9e`) — kept for provenance |
+| 16 | [`cinch init` writes the AGENTS.md pointer](16-init-agents-pointer.md) | 2 — make green mean something | **Shipped** (`5121e4e`) — kept for provenance |
+| 17 | [Cut the workflow pack; render removes stale generated files](17-trim-workflow-pack.md) | 3 — decide before investing | **Shipped** (`09ef586`) — kept for provenance |
+| 18 | [`paths.exclude`, then dogfood — the hand-off plan](18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **Shipped** (`9830825`) — implements item 8 |
 
 ## Reading order vs. build order
 
@@ -88,7 +94,11 @@ condition is ever met.
   degrades here, since `58e7457` dropped the self-host files and none of the plans in
   this directory carry a `Status:` line. **Reopen only if** item 8 lands and cinch
   self-hosts again *and* a consumer's `plans/` grows past roughly a dozen files with
-  subdirectory grouping — until then `ls` is enough. Note that
+  subdirectory grouping — until then `ls` is enough. The first half is now met
+  (`9830825`: cinch self-hosts via its own `cinch.yml`, with `paths.exclude` and
+  `cinch check` in CI); the `plans/` half is not. The condition names a consumer's
+  `plans/`, and this repo's own `.docs/plans/` is 13 flat files with no subdirectory
+  grouping. Note that
   `05-navigability-check-class.md`'s resolution still names "eventually `cinch
   context`" as a canonical entry point; that is an aside written before this decision,
   not a commitment.
