@@ -146,6 +146,10 @@ func CmdRender(root string) int {
 		return output.Fail("render", err)
 	}
 
+	if err := removeOrphanedFiles(root, files); err != nil {
+		return output.Fail("render", err)
+	}
+
 	if err := syncRequireCinch(root); err != nil {
 		return output.Fail("render", err)
 	}
@@ -168,6 +172,18 @@ func writeRenderedFiles(root string, files []renderFile) error {
 			return err
 		}
 		output.Step("rendered %s", f.destination)
+	}
+	return nil
+}
+
+// removeOrphanedFiles deletes only what orphanedGeneratedFiles reports, so a
+// file without cinch's generated header is never touched.
+func removeOrphanedFiles(root string, files []renderFile) error {
+	for _, rel := range orphanedGeneratedFiles(workingTreeRoots(root), files) {
+		if err := os.Remove(filepath.Join(root, rel)); err != nil {
+			return err
+		}
+		output.Step("removed orphaned %s", rel)
 	}
 	return nil
 }

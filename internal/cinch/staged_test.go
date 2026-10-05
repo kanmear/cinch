@@ -287,6 +287,9 @@ func TestStagedGeneratedFindsOrphansFromHeadManifest(t *testing.T) {
 	if code := CmdRender(root); code != 0 {
 		t.Fatalf("CmdRender = %d, want 0", code)
 	}
+	// Render removes the old docs root's files; restore them, as a render by
+	// an older cinch would have left them.
+	git("checkout", "HEAD", "--", defaultDocsPath)
 	git("add", "-A")
 	writeTestFile(t, root, "untracked.txt", "forces a snapshot\n")
 
