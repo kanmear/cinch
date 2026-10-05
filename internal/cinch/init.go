@@ -52,7 +52,7 @@ func CmdInit(root string) int {
 	if gitutil.IsRepo(root) {
 		hooksDirectory := hooksPathValue(m)
 		if existing, err := gitutil.Output(root, "config", "--get", "core.hooksPath"); err == nil {
-			if got := strings.TrimSpace(string(existing)); got != "" && filepath.Clean(got) != filepath.Clean(hooksDirectory) {
+			if got := strings.TrimSpace(string(existing)); got != "" && !sameHooksDirectory(root, got, hooksDirectory) {
 				return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
 			}
 		}
