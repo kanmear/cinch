@@ -67,6 +67,22 @@ func TestCmdInitRefusesToClobberExistingHooksPath(t *testing.T) {
 	}
 }
 
+func TestCmdInitNormalizesAbsoluteEquivalentHooksPath(t *testing.T) {
+	root := t.TempDir()
+	git := initTestGitRepo(t, root)
+	writeTestFile(t, root, "cinch.yml", "paths:\n  hooks: .githooks\n")
+	git("config", "core.hooksPath", filepath.Join(root, ".githooks"))
+
+	if code := CmdInit(root); code != 0 {
+		t.Fatalf("CmdInit = %d, want 0 when core.hooksPath is the absolute spelling of paths.hooks", code)
+	}
+
+	got := gitConfigGet(t, root, "core.hooksPath")
+	if got != ".githooks" {
+		t.Fatalf("core.hooksPath = %q, want normalized to %q", got, ".githooks")
+	}
+}
+
 func gitConfigGet(t *testing.T, root, key string) string {
 	t.Helper()
 	out, err := gitutil.Output(root, "config", "--get", key)
