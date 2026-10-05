@@ -101,13 +101,21 @@ var (
 // "generated" check, and this lookup silently falls back to the hardcoded
 // default on any error, same as an absent key.
 //
+// An explicit empty list (`pre-commit-checks: []`) is not the same as an
+// absent key: absent means "use the default checks", `[]` means "run no
+// built-in checks", so the hook returns 0 without running any. runChecks
+// can't express that itself, since it treats an empty set as "run
+// everything".
+//
 // preCommitChecks reads the override from roots.fsRoot, so in staged mode the
 // cinch.yml being committed decides which checks gate that commit.
 func preCommitChecks(roots checkRoots) int {
 	m, _ := loadManifestOptional(roots.fsRoot)
 	only := m.list(hooksPreCommitChecksKey)
-	if len(only) == 0 {
+	if !m.hasList(hooksPreCommitChecksKey) {
 		only = defaultPreCommitChecks
+	} else if len(only) == 0 {
+		return 0
 	}
 	return runChecks(roots, "", false, only...)
 }
@@ -115,8 +123,10 @@ func preCommitChecks(roots checkRoots) int {
 func commitMsgChecks(root, messageFile string) int {
 	m, _ := loadManifestOptional(root)
 	only := m.list(hooksCommitMsgChecksKey)
-	if len(only) == 0 {
+	if !m.hasList(hooksCommitMsgChecksKey) {
 		only = defaultCommitMsgChecks
+	} else if len(only) == 0 {
+		return 0
 	}
 	return runChecks(workingTreeRoots(root), messageFile, false, only...)
 }
