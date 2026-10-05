@@ -69,6 +69,7 @@ func TestSyncRequireCinchAlreadyMatches(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-004
 func TestSyncRequireCinchRewritesExactMismatch(t *testing.T) {
 	withVersion(t, "1.2.4")
 	directory := t.TempDir()
@@ -100,6 +101,7 @@ func TestSyncRequireCinchPreservesQuoteStyle(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-004
 func TestSyncRequireCinchLeavesRangeUntouched(t *testing.T) {
 	withVersion(t, "1.9.9")
 	directory := t.TempDir()
@@ -131,5 +133,29 @@ func TestCmdRenderSyncsRequireCinch(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, defaultHooksPath, "pre-commit")); err != nil {
 		t.Fatalf("expected hook shim to be rendered: %v", err)
+	}
+}
+
+// cinch:rule CINCH-002
+func TestCmdRenderRemovesOrphans(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "")
+	directory := filepath.Join(root, defaultDocsPath, workflowsSubdir)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	staleBody := "# Retired workflow\n"
+	writeTestFile(t, directory, "retired.md", header("docs/templates/retired.md", staleBody, styleMarkdown)+staleBody)
+	writeTestFile(t, directory, "hand-written.md", "# Ours\n")
+
+	if code := CmdRender(root); code != 0 {
+		t.Fatalf("CmdRender = %d, want 0", code)
+	}
+
+	if _, err := os.Stat(filepath.Join(directory, "retired.md")); !os.IsNotExist(err) {
+		t.Fatalf("retired.md stat err = %v, want it removed", err)
+	}
+	if got := readTestFile(t, directory, "hand-written.md"); got != "# Ours\n" {
+		t.Fatalf("hand-written.md = %q, want it untouched", got)
 	}
 }

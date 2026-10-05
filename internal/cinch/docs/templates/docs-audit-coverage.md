@@ -1,146 +1,76 @@
 # Rule Coverage Audit
 
-Audit test coverage against documented domain rules in `{{paths.docs}}/`.
+Use this periodically, or after a batch of rule changes, to check whether each rule's test really enforces it.
 
-## Usage
+`cinch check` only proves that a marker exists. This audit asks whether the marked test means
+anything.
 
-Identify which domain rules lack test coverage, classified by testability.
+## 1. Inventory
 
-## Instructions
+Run `cinch check` and get it green first. It reports markers that name no rule, which the
+inventory below can't show. For each one, judge the test above it: a correct test with a mistyped
+ID needs its marker fixed, not a new test.
 
-### 1. Get the closure from the harness checkers
+Then run `cinch rules --json`. For every rule it gives the ID, the doc's `file` and `line`, the
+markers, and any `cinch:ignore` reason, and for every doc its `owns:` paths. That is the complete
+rule set, so don't re-enumerate the docs by hand. Quote a rule's text from its doc at `file:line`:
+for the last rule in a list, the JSON `text` can run on into the lines that follow it.
 
-The rule set is **script output, not something to re-read by hand**. Run `cinch check` —
-its rule check reads every rule item from the markdown under `{{paths.docs}}/`, then scans for
-`// cinch:rule <ID>` markers in every tracked and untracked-but-not-ignored file (per the repo's
-git ignore rules) outside `{{paths.docs}}/`. It reports, per rule:
+## 2. Testable or N/A
 
-- **unmarked** — no `// cinch:rule <ID>` marker anywhere in the tree: the rule is either untested
-  (a coverage gap) or declared N/A (step 2)
-- **unresolved marker** — a marker that names no real rule: dead syntax, fix it
+A rule is N/A only if no automated test could observe it (display wording, a constraint on future
+decisions). Declare it with `<!-- cinch:ignore: <reason> -->` directly under the rule item, not
+just in the report. Hold existing ignore reasons to the same standard: a reason a test could
+refute hides a missing test.
 
-`cinch ignores` lists every rule declared N/A. The checker's findings plus that inventory **are**
-the enumerated list — `cinch check` reports one line per unmarked rule (`<ID>: no // cinch:rule
-marker (or cinch:ignore declaration)`, no rule summary included) and one per unresolved marker
-(`// cinch:rule <ID> does not resolve to any rule ID`); `cinch ignores` separately lists every
-`cinch:ignore`'d ID with its reason. Read the rule's own text from its doc, not from the finding
-line — the finding only carries the ID and location.
+## 3. Derive coverage from the tests, then compare
 
-Your job starts where the script stops: the semantic half in steps 2–3. Do not re-enumerate the
-rule set by hand — the checkers never miss a rule; a hand extraction can.
+This is a search with nonzero expected yield: find the rules whose tests don't enforce them. Expect
+to find at least one, because rules rot as behavior changes. Don't frame the audit as confirming
+each marker; that verifies the marker exists, not what the test means.
 
-### 2. Classify each rule by testability
+**First, derive the mapping without looking at markers.** Read the tests for the code each rule
+doc `owns:` (where a doc has no `owns:`, the code its rules describe). For each test, write one sentence on what its assertions actually pin (the response
+or state, not the test's name) and match that sentence against the rules. Write this test→rule
+mapping down before you read any marker.
 
-Categories:
-**API-enforced** — the rule is enforced at the handler level and causes a specific HTTP response
-when violated (e.g. a mutation rejected with a specific status when the caller lacks the
-permission the rule requires). Look in the test directory covering your request-handling layer
-(e.g. `<service>/tests/handlers`).
+**Then compare it with the markers** in the inventory, reading every marked test next to its
+rule's text:
 
-**Model-enforced** — the rule is enforced by the DB schema or model layer (UNIQUE constraint,
-CASCADE, model-level guard). Look in the test directory covering your persistence layer (e.g.
-`<service>/tests/models`). Examples: a uniqueness constraint, a cascade delete, an
-immutable-history rule.
+- The assertions contradict the rule: **TENSION**. Quote the contradicting line.
+- The marked test asserts too little to enforce the rule: under-enforced. Report it like TENSION.
+- A test you derived as enforcing a rule carries no marker: the marker is missing or misplaced.
+  Say where it belongs.
+- A testable rule with no test that enforces it: **MISSING**.
 
-**N/A** — the rule describes display or structural behavior that cannot be tested automatically
-(e.g. "display names are derived from another field"). Declare it in the doc by placing
-`<!-- cinch:ignore: <reason> -->` directly under the rule item, so `cinch check` stops warning
-about it as uncovered and `cinch ignores` lists the inventory. Not a test coverage gap.
+## 4. Report
 
-### 3. Find test coverage
-
-This is a **search with nonzero expected yield**: find the rules whose tests do not enforce
-them. Expect to find at least one — rules rot as behaviour changes. Do not frame it as
-"confirm each rule is enforced"; confirmation of an existing link is the leading question, and
-it verifies the marker's existence instead of the test's meaning.
-
-**Derive the mapping from the tests, not from the markers.** Read the tests in the locations
-named in the classification — or `manifest.paths.tests` if no category named a directory — and
-for each test write down, in one sentence, what its assertions actually enforce (the response
-or state it pins, not its name). Then match each statement against the rules: which rule does
-that assertion enforce? A test called `TestUpdate_<Subject>Pending` enforces "editing is
-always free while a request is pending" (asserts 200 OK and content updated while the request
-is pending) even though the names don't literally match — the assertions are the evidence, not
-the name. This derived test→rule mapping is your answer; write it down before you consult the
-markers.
-
-**Then diff your mapping against the recorded one.** The markers — found by searching the tree
-for `// cinch:rule <ID>` — plus the closure's report are the recorded answer. Read every
-marked test and restate its rule's text and the test's assertions side by side, and flag any
-tension *before* deciding. A disagreement is a conflict, not a doubt:
-
-- the marked test's assertions contradict the rule's text → **TENSION** — report it; the content
-  question — does the marker's test enforce the rule's *new* meaning? — is yours
-- a rule you derived as enforced by a test that carries no marker above it → the marker is
-  missing or misplaced — the rules check warns on every unmarked rule, so search the tree for
-  `// cinch:rule <ID>` first and judge the marker's placement and its test's quality
-- a rule with no derived enforcer → MISSING (cross-check against the unmarked list)
-- an unresolved marker (a `// cinch:rule <ID>` naming no real rule) → judge the test the
-  marker sits above: a correct test with a mistyped marker is covered — report the marker typo,
-  not a missing test
-
-A rule can be marked yet under-enforced (marker above a weak test); it cannot be unmarked under
-a zero-unmarked closure. Read representative test files if you're unsure whether a test covers
-a rule.
-
-### 4. Report
-
-Produce one table per domain file under a `## <domain>.md` heading, with **verbatim
-evidence in every row**:
+One table per rule doc, with verbatim evidence in every row:
 
 ```
-## <domain>.md
+## <doc path>
 
 | Rule | Rule text (verbatim) | Testable | Covered | Test file | Test | Assertion (verbatim) |
 |------|----------------------|----------|---------|-----------|------|----------------------|
-| RULE-001 | `<the rule's text, copied exactly from the doc>` | Yes | ✅ | `<path/to/the_test_file>` | `TestTheCoveringTest` | `the exact assertion line from the test, verbatim` |
-| RULE-002 | `<a rule whose test asserts something that contradicts it>` | Yes | ⚠️ TENSION | `<path/to/the_test_file>` | `TestTheContradictingTest` | `the contradicting assertion line, verbatim` |
-| RULE-003 | `<a testable rule with no test anywhere>` | Yes | ⚠️ MISSING | — | — | — |
-| RULE-004 | `<a rule describing display or structural behavior>` | N/A | N/A | — | — | — |
+| <ID> | `<exact rule text>` | Yes | ✅ | `<path>` | `<test name>` | `<exact assertion line>` |
+| <ID> | `<exact rule text>` | Yes | ⚠️ TENSION | `<path>` | `<test name>` | `<contradicting line>` |
+| <ID> | `<exact rule text>` | Yes | ⚠️ MISSING | — | — | — |
+| <ID> | `<exact rule text>` | N/A | N/A | — | — | — |
 ```
 
-The **Rule text** and **Assertion** cells are verbatim copies: copy the exact text from
-the rule's doc item and the exact assertion line from the test source, in backticks,
-nothing more and nothing less. A cell is one line, so a multi-line rule quotes a single-line
-fragment of its text.
+Rule text and assertion cells are exact copies in backticks. A cell is one line, so for a
+multi-line rule, quote a one-line fragment.
 
-Use ✅ for covered, ⚠️ TENSION for a marked test whose assertions contradict its rule's
-text (the Assertion cell carries the contradicting line verbatim), ⚠️ MISSING for gap,
-N/A for rules skipped in step 2. MISSING and N/A rows carry `—` in the Test file, Test,
-and Assertion columns. When a test covers a rule, the `// cinch:rule <ID>` marker goes
-above that test function.
+## 5. Suggest tests for gaps
 
-### 5. Suggest tests for gaps
+For each MISSING or under-enforced rule, give a test name that follows the pattern of the
+neighboring tests, the assertion that would prove the rule, the test file, and the
+`cinch:rule <ID>` marker to put above it.
 
-For each ⚠️ MISSING rule, suggest:
+## Before finishing
 
-- **Test name** — follow the pattern of existing tests in the same file (e.g. `Test<Action>_<Condition>`)
-- **What to assert** — the specific response or state the test should verify
-- **File** — which test file it belongs in
-
-Example:
-
-```
-## Suggested tests
-
-**[SIG-0NN] <rule summary>**
-- Test: `TestFoo_Bar` in the test file covering the rule's area
-- Assert: <the response or state the rule requires>
-- Marker: `// cinch:rule SIG-0NN` above the test function
-```
-
-## Summary Checklist
-
-Before finishing, confirm:
-
-- [ ] The rule closure came from the harness checkers — no hand re-enumeration of `{{paths.docs}}/`
-- [ ] Every rule was classified by its ID (API / Model / N/A)
-- [ ] N/A rules are declared `<!-- cinch:ignore: <reason> -->` in their doc — not just skipped in the report
-- [ ] The test→rule mapping was derived from test assertions **before** markers were consulted
-- [ ] Every marked test was restated against its rule's text, and tensions flagged before deciding
-- [ ] Every row quotes the rule text — and, for ✅/⚠️ TENSION rows, the assertion line —
-      verbatim from its source
-- [ ] Test files were read, not just searched by name — semantic matching used
-- [ ] TENSION rows restate the contradiction; unresolved-marker rows judge the test, not the typo
-- [ ] Covered rules carry a `// cinch:rule <ID>` marker above the enforcing test
-- [ ] MISSING entries have concrete test suggestions with names, assertions, and marker
+- [ ] The rule set came from `cinch rules --json`, after a green `cinch check`
+- [ ] The test→rule mapping was derived from assertions before any marker was read
+- [ ] Every marked test was read against its rule's text
+- [ ] Every row quotes its rule text and assertion verbatim
+- [ ] Every N/A rule has a `cinch:ignore` reason in its doc

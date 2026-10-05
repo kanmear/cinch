@@ -1,0 +1,20 @@
+paths:
+  docs: .docs
+  hooks: .githooks
+  exclude:
+    # marker-shaped test fixtures, not real bindings
+    - internal/cinch/rules_test.go
+    - internal/cinch/hook_test.go
+    - internal/cinch/impact_test.go
+    - internal/cinch/rules_json_test.go
+
+hooks:
+  # generated is left out locally: the shims exec the installed cinch, whose
+  # embedded templates can lag the source being edited. CI runs the full set from source.
+  pre-commit-checks: [links, rules, index, core]
+  commit-msg:
+    conventions:
+      run: scripts/check-squash-merge-msg.sh
+  post-commit:
+    version-bump:
+      run: scripts/post-commit-version-bump.sh

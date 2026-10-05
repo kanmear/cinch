@@ -84,17 +84,20 @@ func TestCheckHooksDefaultPath(t *testing.T) {
 	}
 }
 
-func gitTestHelper(t *testing.T, root string) func(args ...string) {
+// gitTestHelper's env entries go last, so they override both the isolation
+// defaults and the inherited environment (exec keeps the last value for a
+// repeated key).
+func gitTestHelper(t *testing.T, root string, env ...string) func(args ...string) {
 	t.Helper()
 	return func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", args...)
 		cmd.Dir = root
-		cmd.Env = append([]string{
+		cmd.Env = append(append([]string{
 			"HOME=" + root,
 			"GIT_CONFIG_GLOBAL=/dev/null",
 			"GIT_CONFIG_SYSTEM=/dev/null",
-		}, os.Environ()...)
+		}, os.Environ()...), env...)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
 		}
@@ -271,6 +274,7 @@ func renderedFixture(t *testing.T) (root string, m *manifest, files []renderFile
 	return root, m, files
 }
 
+// cinch:rule CINCH-001
 func TestSeededDefectGeneratedHandEdited(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]
@@ -316,6 +320,7 @@ func TestSeededDefectGeneratedMissingFile(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-002
 func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]
@@ -331,7 +336,7 @@ func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 
 	ok := false
 	for _, f := range result.findings {
-		if strings.Contains(f.file, "orphan-leftover.md") && strings.Contains(f.message, "orphaned generated file") {
+		if strings.Contains(f.file, "orphan-leftover.md") && strings.Contains(f.message, "orphaned generated file, no longer produced by cinch render — run 'cinch render' to remove it") {
 			ok = true
 		}
 	}

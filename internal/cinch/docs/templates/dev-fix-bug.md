@@ -1,244 +1,74 @@
-# Bug Fix Workflow
+# Bug Fix
 
-Produce a structured bug fix plan that reproduces the issue, identifies the root cause, adds a regression test, and verifies the fix.
+Use this when a bug crosses layers, needs more than one session, or comes from a missing or ambiguous rule.
 
-Outputs `{{paths.docs}}/plans/fix/<bug-slug>.md` — a living fix file that tracks reproduction steps, root cause, regression test, and per-task execution checklists.
+Otherwise fix it directly (reproduce, write a regression test that fails, fix, see it pass), but
+still do the missing-rule step (step 3). Switch to this workflow as soon as a direct fix turns out to
+cross layers, spread beyond a few lines, or need a rule.
 
-**Do not write implementation code during this workflow.** Writing the plan file is the only output.
+The output is a fix plan, `{{paths.docs}}/plans/fix/<bug-slug>.md`, confirmed by the user before
+the fix is written. Rule docs are any doc under `{{paths.docs}}/` with numbered `ID-NNN` items;
+`cinch rules --json` lists every rule with its file, line, and markers.
 
----
+## 1. Reproduce
 
-## When to run
+Record the expected behavior, the actual behavior, the steps, and any errors or logs. Reproduce it,
+with a failing test if you can, otherwise by running the software. If it doesn't reproduce, report
+what you tried and ask for more detail. Don't fix what you can't see.
 
-Route the bug by size:
+## 2. Root cause
 
-- **Full workflow** — the bug touches data integrity or spans layers (a change on one side of a layer boundary requires a matching change on the other). Run all five phases.
-- **Fast path** (see below) — a single-line logic error in one layer (off-by-one, inverted condition, wrong operator) where the rule already exists and is clear.
-- **Skip entirely** — typos, CSS adjustments, or build-tool configuration issues.
+Trace inward from the symptom, reading only the files on the trace path, until you reach a
+`file:line` or the missing logic. Then check the tests: `cinch impact <file>` names the rules that
+cover that code, and `cinch rules --json` shows where each rule's marked test lives. A marked test
+that didn't catch this bug asserts too little; fix its assertion as part of the fix.
 
----
+## 3. Missing-rule step
 
-## Fast path — small, confirmed fixes
+If the bug broke an invariant no rule states, write that rule as part of the fix; the regression
+test carries its `cinch:rule <ID>` marker. The Admission Test ([Doc Philosophy](docs-philosophy.md))
+decides what counts. If a rule exists but reads two ways, clarify it. Rule changes go through
+`{{paths.docs}}/workflows/docs-maintain-domain.md`.
 
-Most bugs are a single wrong line in one layer. The full five-phase workflow (three ⛔ checkpoints + a persisted plan file) is overkill for those. Use the fast path when **all** of these hold:
+## 4. Regression test
 
-- **Single layer** — no cross-layer sync required.
-- **Clear implementation error** — inverted condition, off-by-one, wrong operator/comparison, wrong variable. The correct behavior is obvious once you see the line.
-- **Rule already exists and is unambiguous** — the code simply fails to match a domain rule that's already written. No new or clarified rule needed.
-- **Localized** — the fix is a few lines in one file.
+One test that sets up the minimal state, exercises the failing path, and asserts the correct
+behavior. It must fail before the fix and pass after. It carries the `cinch:rule <ID>` marker of the
+rule the bug broke.
 
-### Fast-path procedure
+## 5. ⛔ Checkpoint
 
-1. **Reproduce** (still mandatory — you can't fix what you can't see). Narrow the layer per §1.3.
-2. **Trace to root cause** — get the `file:line` and confirm the rule it violates (§2.1–2.2, §3.1).
-3. **⛔ Single combined checkpoint.** Present reproduction + root cause (`file:line`) + the existing rule + the one-line regression test you'll write. Ask: *"Confirm this is the bug and the fix — proceed?"* Wait for confirmation.
-4. **Regression test → fix.** Write the regression test (must fail), apply the fix (must pass), then run the layer's tier `cmd` — a Makefile target name from `taxonomy.test_tiers` in `manifest.yml`, run directly as `make <cmd>`. TDD stays non-negotiable.
-5. **No persisted plan file.** The single checkpoint + the regression test are the record.
-6. Post-fix: troubleshooting update only if diagnosis was non-obvious (rare on this path).
-7. **Commit.** One commit for the fix, the regression test, and any troubleshooting note together, following the Commit Conventions in `{{paths.docs}}/workflows/dev-execute-plan.md` — no plan file or Session Handoff needed here, but the commit format still applies.
+Present in one message: the reproduction, the root cause (`file:line`), the rule the bug breaks or
+the rule you propose, the regression test, and any weak test you will fix. Ask whether this is the
+bug and the right fix. Wait for confirmation.
 
-### Escape hatch
+## 6. Plan file and tasks
 
-If at any point the fix turns out to be cross-layer, reveals a missing or ambiguous rule, or spreads beyond a few lines — **abort the fast path and run the full workflow** from Phase 1. When in doubt, use the full workflow.
-
----
-
-## Phase 1: Reproduce
-
-**Goal:** Confirm the bug exists, understand the exact symptom, and narrow the scope.
-
-### 1.1 Capture the report
-
-Record what the user reported:
-
-- Expected behavior
-- Actual behavior
-- Steps to reproduce (if known)
-- Error messages, screenshots, or logs
-
-### 1.2 Reproduce the bug
-
-Attempt to reproduce the bug. Choose the appropriate method — commands are Makefile
-targets, run with `make <target>` (`make help` lists them); `manifest.yml`'s
-`taxonomy.test_tiers` maps layer → cmd, and its `development.commands` aliases the
-handful of targets whose short name differs from the actual one:
-
-| Method | When to use |
-| -------- | ------------- |
-| Run existing tests | Bug might already be caught by a flaky test |
-| Layer test cmd — the tier's `cmd`, per `taxonomy.test_tiers` (`{{paths.docs}}/workflows/dev-task-primitive.md` § Test tiers) | Suspect a specific layer |
-| Manual API call (e.g., `curl`) | Issue confined to one service's API surface |
-| Dev servers — the aliased run commands in `development.commands` | Issue spanning services, or a UI issue |
-| Check troubleshooting files | the layer's troubleshooting doc (find it via `cinch index`) |
-
-If the bug doesn't reproduce, document what you tried and ask the user for more details before proceeding.
-
-### 1.3 Narrow the layer
-
-Identify which layer(s) are involved from the symptom, then read the relevant layer docs — the
-affected domain's API/model docs, plus the project's conventions doc if it has one (find it via
-`cinch index`).
-
-### 1.4 ⛔ CHECKPOINT — Present reproduction to user
-
-Present:
-
-1. What you tried to reproduce and whether it reproduced
-2. Which layer(s) you've narrowed it to
-3. The exact symptom (error codes, state, UI behavior)
-
-Ask: *"Can you confirm this matches the bug you're seeing? Any additional steps or conditions?"*
-
-Wait for confirmation before proceeding.
-
----
-
-## Phase 2: Root Cause
-
-**Goal:** Trace the bug to a specific line of code or missing logic.
-
-### 2.1 Read the affected code
-
-Start from the symptom and trace inward. Read only the files along the trace path — don't read the
-whole codebase. Prefer the domain's API/model docs, and the project's conventions doc if it has
-one (find it via `cinch index`), for where to start.
-
-### 2.2 Identify the root cause
-
-Classify the root cause:
-
-| Type | Example |
-| ------ | --------- |
-| Missing guard | No check for edge case the domain rules require |
-| Wrong logic | Condition inverted, wrong comparison, off-by-one |
-| Missing sync | One layer added a field the layer across the boundary doesn't use (or vice versa) |
-| Race/ordering | Operations executed in wrong order, missing transaction |
-| Missing rule | The behavior isn't wrong — there's simply no rule for this case |
-
-### 2.3 Check existing tests
-
-Look for tests that should have caught this bug:
-
-- Search each affected layer's test root (per `manifest.taxonomy.test_tiers`) for tests related to the affected area
-- If a test exists but didn't catch the bug: was the assertion wrong, or was the scenario not covered?
-- If no test exists: this is a coverage gap to fix
-
-### 2.4 ⛔ CHECKPOINT — Present root cause
-
-Present:
-
-1. The root cause with file:line reference
-2. Why existing tests didn't catch it (if applicable)
-3. Whether this reveals a missing domain rule
-
-Ask: *"Is this the correct root cause? Does this reveal a gap in the domain rules?"*
-
-Wait for confirmation.
-
----
-
-## Phase 3: Domain Rule Check
-
-**Goal:** Determine if the bug reveals a missing or ambiguous domain rule.
-
-### 3.1 Cross-reference with domain rules
-
-Read the relevant `{{paths.docs}}/<domain>.md` file(s). Check:
-
-1. **Is there an existing rule that this code should enforce?** If yes, the bug is a rule violation — the fix is to make the code match the rule.
-2. **Is there no rule for this case?** If the behavior is currently undefined, a new rule is needed before fixing.
-3. **Is the rule ambiguous?** If the rule could be interpreted in multiple ways, clarify it first.
-
-### 3.2 Write missing rules
-
-If the bug revealed a missing rule, write it via the rules workflow (`{{paths.docs}}/workflows/docs-maintain-domain.md`). Don't inline rule text in the plan file — reference the canonical location.
-
-### 3.3 Skip if not applicable
-
-For bugs that are purely implementation errors (e.g., typo in a variable name, wrong comparison operator) where the domain rule already exists and is clear, skip rule changes.
-
----
-
-## Phase 4: Regression Test Plan
-
-**Goal:** Write a test that fails before the fix and passes after — proving the bug is fixed.
-
-### 4.1 One regression test per bug
-
-Write one test that reproduces the exact conditions that triggered the bug. The test should:
-
-- Set up the minimal state needed to trigger the bug
-- Exercise the failing path
-- Assert the correct behavior (not the buggy behavior)
-
-### 4.2 Classify the test
-
-Classify by tier, per `{{paths.docs}}/workflows/dev-task-primitive.md` § Test tiers (`manifest.taxonomy.test_tiers`):
-whichever tiers your project declares — typically `integration`, `unit`, `e2e` (opt-in, for
-cross-layer bugs), or `manual`.
-
-The regression test is **TDD-mandatory** regardless of tier: it must fail before the fix and pass
-after.
-
-### 4.3 Fix existing broken tests
-
-If an existing test had wrong assertions or covered the wrong scenario, note which test to fix and what the correct assertion should be.
-
-### 4.4 Record the test plan
+Most fixes are one task: the test and the fix together. Split only when each part passes the
+project's test command (see AGENTS.md or the project's own docs) on its own, such as a rule, then
+its enforcement, then a consumer's handling.
 
 ```markdown
+# Fix: <bug>
+**Status:** in-progress
+
+## Reproduction
+<steps, expected, actual>
+
+## Root Cause
+<file:line> — <what is wrong>; rule <ID> (existing, or new in <doc path>)
+
 ## Regression Test
+- [ ] <assertion> — <test file>
 
-### New Tests
-[ ] integration: <description> — reproduces the bug conditions
-      Assert: <what proves the fix is correct>
-      File: <the integration tier's test root>/<layer>/<file>_test.<ext>
-      TDD: mandatory (must fail before fix, pass after)
+## Tasks
+### T1: <title>
+**Status:** [ ]
+**Files:** <paths and what changes>
+**Verify:** <the regression test, run with the project's test command>
 
-[ ] unit: <description> — reproduces the bug conditions
-      Assert: <what proves the fix is correct>
-      File: <the unit tier's test root>/<path>/<file>.test.<ext>
-      TDD: mandatory
-
-### Existing Tests to Fix
-- `tests/path/test_name` — assertion was <wrong thing>, should be <correct thing>
+## Handoff
 ```
 
-### 4.5 ⛔ CHECKPOINT — Present test plan
-
-Present the regression test plan. Ask: *"Will this test catch the bug? Any edge cases I'm missing?"*
-
-Wait for confirmation.
-
----
-
-## Phase 5: Fix Tasks — via the task primitive
-
-With reproduction, root cause, and the regression test plan confirmed, decompose the fix using
-`{{paths.docs}}/workflows/dev-task-primitive.md` — the same atomicity, context-manifest, verification-tier,
-task-template, pre-flight-gate, completion, and compaction-anchor machinery that feature planning
-uses. A bug fix typically needs fewer tasks than a feature:
-
-| Typical fix size | Tasks |
-| ----------------- | ------- |
-| Single-file logic fix | 1 task (test + fix in same layer) |
-| Cross-layer sync with independently passing stages | 2 tasks (lower-layer fix, then upper-layer sync) |
-| Inseparable contract transition | 1 multi-layer task with an atomicity rationale and checks for every affected layer |
-| Missing domain rule + fix | 2-3 tasks (rule → enforcement → consumer handling) |
-
-**Bug-specific inputs to the primitive's gate/ritual:**
-
-- Planning checkpoints to clear: Phase 1 (reproduced + layer), Phase 2 (root cause, `file:line`),
-  Phase 3 (domain rules checked — silent gate), Phase 4 (regression test plan confirmed).
-- Plan location: `{{paths.docs}}/plans/fix/<bug-slug>.md`, saved with status `in-progress`.
-- Completion uses the **fix** lifecycle: the plan file is **deleted** once the regression test and
-  any troubleshooting entry are committed (git history is the archive), plus the post-fix
-  troubleshooting update.
-If a new test file was added, also record it in the layer's testing doc (find it via
-`cinch index`)'s coverage table when that doc maintains one.
-
-The **fast path** (above) is exempt from the primitive's gate and completion ritual — its single
-combined ⛔ checkpoint and the regression test are the whole record, with no persisted plan file.
-
-Task execution — working through `T1`, `T2`, … — happens via `{{paths.docs}}/workflows/dev-execute-plan.md`,
-not inline here.
+Work through the tasks with `{{paths.docs}}/workflows/dev-execute-plan.md`. If the diagnosis was
+non-obvious, record it via `{{paths.docs}}/workflows/docs-sync.md`.
