@@ -58,6 +58,7 @@ func TestStripInlineCode(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-005
 func TestCheckLinksInlineCodeAndTitles(t *testing.T) {
 	cases := []struct {
 		name      string

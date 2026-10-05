@@ -41,9 +41,9 @@ func Cmd(repoRoot string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-// ForeignCmd is Cmd for a repository other than the one cinch runs in (a
+// foreignCmd is Cmd for a repository other than the one cinch runs in (a
 // rules.roots sibling), with the inherited repo-local environment removed.
-func ForeignCmd(repoRoot string, args ...string) *exec.Cmd {
+func foreignCmd(repoRoot string, args ...string) *exec.Cmd {
 	cmd := Cmd(repoRoot, args...)
 	cmd.Env = []string{}
 	for _, entry := range os.Environ() {
@@ -132,9 +132,9 @@ func ScannableFiles(repoRoot string) ([]string, error) {
 }
 
 // ForeignScannableFiles is ScannableFiles for a repository other than the one
-// cinch runs in; see ForeignCmd.
+// cinch runs in; see foreignCmd.
 func ForeignScannableFiles(repoRoot string) ([]string, error) {
-	return commandPaths(ForeignCmd(repoRoot, nulSeparated(scannableFilesArgs)...))
+	return commandPaths(foreignCmd(repoRoot, nulSeparated(scannableFilesArgs)...))
 }
 
 func Show(repoRoot, revisionSpec string) (content []byte, ok bool) {

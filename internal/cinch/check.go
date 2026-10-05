@@ -255,7 +255,7 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 		"links": {relevant(changedMarkdownUnder(changedSet, docsRoot)),
 			scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })},
 		"rules": {relevant(len(changedSet) > 0),
-			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, m.list(rulesRootsKey))) })},
+			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) })},
 		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
 			scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) })},
 		"generated": {relevant(generatedRelevant(roots.fsRoot, docsRoot, m, changedSet)),

@@ -97,7 +97,7 @@ func TestCmdHookPreCommitImpactNeverBlocks(t *testing.T) {
 	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (clean corpus)", got)
 	}
-	hits, err := buildImpact(root, filepath.Join(root, ".docs"), []string{"internal/pkg/impl.go"})
+	hits, err := buildImpact(root, filepath.Join(root, ".docs"), []string{"internal/pkg/impl.go"}, nil)
 	if err != nil || len(hits) == 0 {
 		t.Fatalf("buildImpact = %v, %v, want a nonempty marker hit to make this test meaningful", hits, err)
 	}
@@ -128,7 +128,7 @@ func TestCmdHookPreCommitImpactErrorSwallowed(t *testing.T) {
 	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (malformed frontmatter is invisible to the checks)", got)
 	}
-	if _, err := buildImpact(root, filepath.Join(root, ".docs"), nil); err == nil {
+	if _, err := buildImpact(root, filepath.Join(root, ".docs"), nil, nil); err == nil {
 		t.Fatal("buildImpact = nil error, want an error to make this test meaningful")
 	}
 
@@ -171,8 +171,8 @@ func TestPathListingsReturnVerbatimNames(t *testing.T) {
 			return committedFiles(root)
 		}},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			git := initTestGitRepo(t, root)
 			writeTestFile(t, root, "README.md", "seed\n")
@@ -182,7 +182,7 @@ func TestPathListingsReturnVerbatimNames(t *testing.T) {
 			git("add", "-A")
 			git("commit", "-q", "-m", "seed")
 
-			got, err := c.list(t, root, git)
+			got, err := tc.list(t, root, git)
 			if err != nil {
 				t.Fatal(err)
 			}

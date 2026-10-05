@@ -22,7 +22,7 @@ func TestBuildRulesInventoryRoundTrip(t *testing.T) {
 	}
 	writeTestFile(t, src, "verify.go", "package sig\n\n// cinch:rule SIG-1\nfunc Verify() {}\n")
 
-	inv, err := buildRulesInventory(root, docs, nil)
+	inv, err := buildRulesInventory(root, docs, markerScanOptions{})
 	if err != nil {
 		t.Fatalf("buildRulesInventory: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestBuildRulesInventoryDuplicateIDsIncluded(t *testing.T) {
 	writeTestFile(t, docs, "a.md", "1. **DUP-1** first declaration\n")
 	writeTestFile(t, docs, "b.md", "1. **DUP-1** second declaration\n")
 
-	inv, err := buildRulesInventory(root, docs, nil)
+	inv, err := buildRulesInventory(root, docs, markerScanOptions{})
 	if err != nil {
 		t.Fatalf("buildRulesInventory: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestBuildRulesInventoryDocsExcludesFrontmatterless(t *testing.T) {
 	}
 	writeTestFile(t, docs, "plain.md", "1. **PLAIN-1** no frontmatter here\n")
 
-	inv, err := buildRulesInventory(root, docs, nil)
+	inv, err := buildRulesInventory(root, docs, markerScanOptions{})
 	if err != nil {
 		t.Fatalf("buildRulesInventory: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestBuildRulesInventoryMarkersAttached(t *testing.T) {
 	}
 	writeTestFile(t, src, "impl.go", "package internal\n\n// cinch:rule RUL-1\nfunc F() {}\n")
 
-	inv, err := buildRulesInventory(root, docs, nil)
+	inv, err := buildRulesInventory(root, docs, markerScanOptions{})
 	if err != nil {
 		t.Fatalf("buildRulesInventory: %v", err)
 	}
@@ -115,11 +115,11 @@ func TestBuildRulesInventoryCountMatchesCheckDetail(t *testing.T) {
 	}
 	writeTestFile(t, docs, "a.md", "1. **CNT-1** first\n2. **CNT-2** second\n")
 
-	inv, err := buildRulesInventory(root, docs, nil)
+	inv, err := buildRulesInventory(root, docs, markerScanOptions{})
 	if err != nil {
 		t.Fatalf("buildRulesInventory: %v", err)
 	}
-	report := checkRules(workingTreeRoots(root), docs, nil)
+	report := checkRules(workingTreeRoots(root), docs, markerScanOptions{})
 	if len(inv.Rules) != report.rules {
 		t.Fatalf("len(inv.Rules) = %d, checkRules.rules = %d, want equal", len(inv.Rules), report.rules)
 	}

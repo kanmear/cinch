@@ -1,14 +1,19 @@
 # Git conventions
 
 Branch model, commit-message shapes, and the auto-versioning scheme enforced by
-`.githooks/commit-msg` and `.githooks/post-commit`. Ported from `project_deltadocs`'s
-version-bump hooks, adapted for a single-binary Go repo and wired as plain git hooks
-rather than through cinch's own `hooks.*` dispatch — cinch doesn't dogfood its own
-hook-dispatch mechanism here.
+`scripts/check-squash-merge-msg.sh` and `scripts/post-commit-version-bump.sh`. Ported
+from `project_deltadocs`'s version-bump hooks and adapted for a single-binary Go repo.
+Cinch runs on itself: `.githooks/*` are shims rendered by `cinch init`, and they call
+`cinch hook <event>`. That runs cinch's own checks, then dispatches to the two scripts
+registered under `hooks.commit-msg` and `hooks.post-commit` in `cinch.yml`.
 
 ## Setup
 
-New clone: `make setup-hooks` (`git config core.hooksPath .githooks`).
+New clone: `make setup-hooks`. It installs the current cinch onto `PATH` (the shims
+exec it) and runs `cinch init`, which renders `.docs/workflows/*` and the shims and
+sets `core.hooksPath`. Rendered files are generated. Never edit them by hand. Change
+the templates or `cinch.yml` and re-render. After changing cinch's checks or
+templates, run `make install` again so the hooks use the new build.
 
 ## Branch model
 
@@ -19,7 +24,7 @@ New clone: `make setup-hooks` (`git config core.hooksPath .githooks`).
 
 - **Squash-merge onto `dev`:** `merge: <branch-name>`, where `<branch-name>` must
   start with `feature/`, `refactor/`, `fix/`, `chore/`, or `docs/`. Enforced by
-  `.githooks/commit-msg` only while `$GIT_DIR/SQUASH_MSG` exists (i.e. mid
+  `scripts/check-squash-merge-msg.sh` only while `$GIT_DIR/SQUASH_MSG` exists (i.e. mid
   `git merge --squash`).
 - **Every other commit:** `<type> [<scope>]: <description>` — types: `feat`, `fix`,
   `ui`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`; scope optional.
@@ -47,7 +52,7 @@ people's direct/squash-merge commits on `dev` are later reconciled (rebase/merge
 because git's default 3-line diff context overlaps adjacent single-line edits in a
 small file — two different files can never conflict with each other.
 
-`.githooks/post-commit` reads the commit subject to decide the bump, then folds the
+`scripts/post-commit-version-bump.sh` reads the commit subject to decide the bump, then folds the
 change into the triggering commit via `git commit --amend --no-edit --no-verify`.
 
 | Field | Trigger |

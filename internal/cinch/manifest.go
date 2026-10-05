@@ -3,6 +3,7 @@ package cinch
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -71,7 +72,7 @@ func manifestSetting(m *manifest, key string) (value string, ok bool) {
 
 var repoLocalPathKeys = []string{pathsDocsKey, pathsHooksKey}
 
-func (m *manifest) validate(path string) error {
+func (m *manifest) validate(manifestFile string) error {
 	if m == nil {
 		return nil
 	}
@@ -81,7 +82,7 @@ func (m *manifest) validate(path string) error {
 			continue
 		}
 		if !filepath.IsLocal(value) {
-			return fmt.Errorf("%s: %s: %q must be inside the repository", path, key, value)
+			return fmt.Errorf("%s: %s: %q must be inside the repository", manifestFile, key, value)
 		}
 	}
 	// rules.roots is a read-only scan target, not a write destination like
@@ -92,7 +93,20 @@ func (m *manifest) validate(path string) error {
 	// layout into a file every clone shares.
 	for _, value := range m.lists[rulesRootsKey] {
 		if filepath.IsAbs(value) {
-			return fmt.Errorf("%s: %s: %q must not be absolute", path, rulesRootsKey, value)
+			return fmt.Errorf("%s: %s: %q must not be absolute", manifestFile, rulesRootsKey, value)
+		}
+	}
+	// paths.exclude entries are matched against repo-relative paths, so one
+	// that is absolute or climbs out with ".." could never match anything.
+	for _, value := range m.lists[pathsExcludeKey] {
+		if filepath.IsAbs(value) {
+			return fmt.Errorf("%s: %s: %q must not be absolute", manifestFile, pathsExcludeKey, value)
+		}
+		if !filepath.IsLocal(strings.TrimSuffix(value, "/")) {
+			return fmt.Errorf("%s: %s: %q must be inside the repository", manifestFile, pathsExcludeKey, value)
+		}
+		if _, err := path.Match(value, ""); err != nil {
+			return fmt.Errorf("%s: %s: %q is not a valid pattern: %v", manifestFile, pathsExcludeKey, value, err)
 		}
 	}
 	return nil

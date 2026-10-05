@@ -31,11 +31,16 @@ func cmdHookPreCommit(root string) int {
 
 	ok := stagedPreCommitChecks(root) == 0
 
+	m, err := loadManifestOptional(root)
+	if err != nil {
+		return output.Fail("hook", err)
+	}
+
 	// Only the checks above read the index. buildImpact and dispatchHooks
 	// still see the working tree: impact is advisory, and project hook
 	// scripts read whatever is on disk.
 	if docsRoot, dErr := ResolveDocsRoot(root); dErr == nil {
-		if hits, iErr := buildImpact(root, docsRoot, staged); iErr == nil {
+		if hits, iErr := buildImpact(root, docsRoot, staged, m.list(pathsExcludeKey)); iErr == nil {
 			printImpact(hits)
 		}
 		// iErr is deliberately swallowed: this advisory is a bonus nobody
@@ -44,10 +49,6 @@ func cmdHookPreCommit(root string) int {
 		// would be actively misleading.
 	}
 
-	m, err := loadManifestOptional(root)
-	if err != nil {
-		return output.Fail("hook", err)
-	}
 	if m != nil && !dispatchHooks(root, m, "pre-commit", staged) {
 		ok = false
 	}

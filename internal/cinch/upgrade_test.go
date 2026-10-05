@@ -39,6 +39,30 @@ func TestCmdUpgradeRendersSyncsAndChecksClean(t *testing.T) {
 	}
 }
 
+// A template a newer cinch no longer ships leaves its rendered file behind;
+// upgrade has to remove it or its own closing check fails.
+func TestCmdUpgradeRemovesDroppedTemplate(t *testing.T) {
+	withReleaseCheckDisabled(t)
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "")
+	directory := filepath.Join(root, defaultDocsPath, workflowsSubdir)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	droppedBody := "# Dropped workflow\n"
+	writeTestFile(t, directory, "dropped.md", header("docs/templates/dropped.md", droppedBody, styleMarkdown)+droppedBody)
+
+	if code := CmdUpgrade(root); code != 0 {
+		t.Fatalf("CmdUpgrade = %d, want 0", code)
+	}
+	if _, err := os.Stat(filepath.Join(directory, "dropped.md")); !os.IsNotExist(err) {
+		t.Fatalf("dropped.md stat err = %v, want it removed", err)
+	}
+	if code := runChecks(workingTreeRoots(root), "", false, "generated"); code != 0 {
+		t.Fatalf("generated check = %d, want 0 (clean)", code)
+	}
+}
+
 func TestCmdUpgradeRangePinSatisfiedLeavesPinUnchanged(t *testing.T) {
 	withVersion(t, "1.2.4")
 	withReleaseCheckDisabled(t)
