@@ -69,6 +69,7 @@ func TestSyncRequireCinchAlreadyMatches(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-004
 func TestSyncRequireCinchRewritesExactMismatch(t *testing.T) {
 	withVersion(t, "1.2.4")
 	directory := t.TempDir()
@@ -100,6 +101,7 @@ func TestSyncRequireCinchPreservesQuoteStyle(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-004
 func TestSyncRequireCinchLeavesRangeUntouched(t *testing.T) {
 	withVersion(t, "1.9.9")
 	directory := t.TempDir()
@@ -134,6 +136,7 @@ func TestCmdRenderSyncsRequireCinch(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-002
 func TestCmdRenderRemovesOrphans(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, root, "cinch.yml", "")

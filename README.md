@@ -191,6 +191,11 @@ whether the markers mean anything.
 paths:
   docs: .docs            # docs root; workflows are rendered to <docs>/workflows/
   hooks: .githooks       # where hook shims go; must match core.hooksPath
+  # Optional: files the cinch:rule marker scan skips, such as test fixtures
+  # holding marker-shaped strings. An entry ending in / is a directory prefix;
+  # any other entry is a glob on the repo-relative path (* doesn't cross /).
+  # Docs scanning (links, index, rule docs) is not affected.
+  #exclude: [testdata/, internal/*_test.go]
 
 # Optional: other repos to scan for cinch:rule markers. For a docs repo that
 # sits next to the code it describes. Paths may use "..", but can't be
@@ -236,6 +241,8 @@ hooks:
 make build     # build to bin/cinch and run go vet
 make test      # go test ./...
 ```
+
+Cinch checks itself: this repo has its own `cinch.yml`, and CI runs `go run . check`.
 
 Plans for upcoming work, and notes on features that were removed and why, are
 in [`.docs/plans/`](.docs/plans/00-overview.md).

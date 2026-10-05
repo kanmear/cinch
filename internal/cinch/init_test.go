@@ -47,6 +47,7 @@ func TestCmdInitIdempotentWhenAlreadyMatching(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-003
 func TestCmdInitRefusesToClobberExistingHooksPath(t *testing.T) {
 	root := t.TempDir()
 	git := gitTestHelper(t, root)

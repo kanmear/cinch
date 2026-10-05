@@ -12,8 +12,8 @@ test:
 install:
 	go install -ldflags "$(LDFLAGS)" .
 
-setup-hooks:
-	git config core.hooksPath .githooks
+setup-hooks: install
+	go run . init
 
 version-show:
 	@scripts/update-version.sh show

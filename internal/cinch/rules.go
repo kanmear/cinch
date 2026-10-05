@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -57,6 +58,10 @@ type rulesReport struct {
 // paths.hooks (manifest.go's repoLocalPathKeys), these are read-only scan
 // targets, not write destinations, so leaving the repository is the point.
 const rulesRootsKey = "rules.roots"
+
+func markerScanOptionsFor(m *manifest) markerScanOptions {
+	return markerScanOptions{extraRoots: m.list(rulesRootsKey), exclude: m.list(pathsExcludeKey)}
+}
 
 func ruleItemIDs(items []ruleItem) map[string]bool {
 	ids := make(map[string]bool, len(items))
@@ -227,11 +232,21 @@ func underPath(path, directory string) bool {
 // configured rules.roots entry for a sibling (e.g. "../backend"), so a
 // finding stays navigable from wherever cinch was invoked. files, when
 // non-nil, is the precomputed repo-relative list to scan (the index, in
-// staged mode) instead of asking git or walking path.
+// staged mode) instead of asking git or walking path. exclude holds the
+// paths.exclude entries; only the primary root carries them, since they are
+// written relative to this repository.
 type ruleScanRoot struct {
 	path    string
 	display string
 	files   []string
+	exclude []string
+}
+
+// markerScanOptions is what the manifest contributes to a marker scan:
+// extraRoots from rules.roots, exclude from paths.exclude.
+type markerScanOptions struct {
+	extraRoots []string
+	exclude    []string
 }
 
 // scannedFile pairs where to actually open a candidate file (fsPath) with
@@ -247,9 +262,9 @@ type scannedFile struct {
 // false "no marker found" finding per rule. Siblings resolve against the real
 // repoRoot even in staged mode: they are other repositories, scanned in their
 // current state.
-func resolveRuleScanRoots(roots checkRoots, extraRoots []string) (present []ruleScanRoot, missing []string) {
-	present = append(present, ruleScanRoot{path: roots.fsRoot, files: roots.indexFiles})
-	for _, r := range extraRoots {
+func resolveRuleScanRoots(roots checkRoots, options markerScanOptions) (present []ruleScanRoot, missing []string) {
+	present = append(present, ruleScanRoot{path: roots.fsRoot, files: roots.indexFiles, exclude: options.exclude})
+	for _, r := range options.extraRoots {
 		resolved := filepath.Join(roots.repoRoot, r)
 		if info, err := os.Stat(resolved); err == nil && info.IsDir() {
 			present = append(present, ruleScanRoot{path: resolved, display: r})
@@ -287,7 +302,7 @@ func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) 
 		var out []scannedFile
 		for _, f := range files {
 			sf := toScanned(f)
-			if underPath(sf.fsPath, docsRoot) {
+			if underPath(sf.fsPath, docsRoot) || excludedPath(f, root.exclude) {
 				continue
 			}
 			// git ls-files lists a submodule as one gitlink entry — a path that
@@ -328,6 +343,9 @@ func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) 
 		if err != nil {
 			rel = path
 		}
+		if excludedPath(rel, root.exclude) {
+			return nil
+		}
 		out = append(out, toScanned(rel))
 		return nil
 	})
@@ -335,6 +353,26 @@ func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) 
 		return nil, err
 	}
 	return out, nil
+}
+
+// excludedPath reports whether the root-relative file rel matches a
+// paths.exclude entry: an entry ending in "/" is a directory prefix, any
+// other is a path.Match pattern (so a plain path matches exactly, and "*"
+// never crosses "/").
+func excludedPath(rel string, exclude []string) bool {
+	rel = filepath.ToSlash(rel)
+	for _, entry := range exclude {
+		if strings.HasSuffix(entry, "/") {
+			if strings.HasPrefix(rel, entry) {
+				return true
+			}
+			continue
+		}
+		if ok, _ := path.Match(entry, rel); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func scanMarkers(r io.Reader, path string, fenced bool) (map[string][]markerLoc, error) {
@@ -369,8 +407,8 @@ func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 // markers[id] is not stable run-to-run when the same ID appears in more than
 // one file. missingRoots names any configured extraRoots entry that doesn't
 // exist on disk, so the caller can decide whether to skip rather than report.
-func scanRuleMarkers(roots checkRoots, docsRoot string, extraRoots []string) (markers map[string][]markerLoc, missingRoots []string, err error) {
-	scanRoots, missing := resolveRuleScanRoots(roots, extraRoots)
+func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOptions) (markers map[string][]markerLoc, missingRoots []string, err error) {
+	scanRoots, missing := resolveRuleScanRoots(roots, options)
 
 	var files []scannedFile
 	for _, root := range scanRoots {
@@ -449,16 +487,16 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, extraRoots []string) (ma
 // otherwise report a misleading "no marker found", so the whole check is
 // skipped instead: there's no code available to check against, not a real
 // gap.
-func checkRules(roots checkRoots, docsRoot string, extraRoots []string) rulesReport {
+func checkRules(roots checkRoots, docsRoot string, options markerScanOptions) rulesReport {
 	items, err := scanRuleDocs(docsRoot)
 	if err != nil {
 		return rulesReport{findings: scanErrorFinding("rules", docsRoot, err)}
 	}
-	markers, missingRoots, err := scanRuleMarkers(roots, docsRoot, extraRoots)
+	markers, missingRoots, err := scanRuleMarkers(roots, docsRoot, options)
 	if err != nil {
 		return rulesReport{findings: scanErrorFinding("rules", roots.repoRoot, err)}
 	}
-	if len(extraRoots) > 0 && len(missingRoots) == len(extraRoots) {
+	if len(options.extraRoots) > 0 && len(missingRoots) == len(options.extraRoots) {
 		return rulesReport{skip: "configured code roots not present (" + strings.Join(missingRoots, ", ") + ")"}
 	}
 

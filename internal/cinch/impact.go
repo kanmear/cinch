@@ -97,7 +97,7 @@ func ownsMatches(changed string, owns []string) bool {
 	return false
 }
 
-func buildImpact(repoRoot, docsRoot string, changedFiles []string) ([]impactHit, error) {
+func buildImpact(repoRoot, docsRoot string, changedFiles, exclude []string) ([]impactHit, error) {
 	docs, err := scanDocFrontmatter(docsRoot)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func buildImpact(repoRoot, docsRoot string, changedFiles []string) ([]impactHit,
 	// only ever matches a marker's file against changedFiles, which are
 	// always repoRoot-relative (staged paths or CLI args) — a sibling root's
 	// files can never appear there, so scanning them would be pure overhead.
-	rawMarkers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, nil)
+	rawMarkers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, markerScanOptions{exclude: exclude})
 	if err != nil {
 		return nil, err
 	}
@@ -190,13 +190,17 @@ func CmdImpact(root string, files []string) int {
 	if err != nil {
 		return output.Fail("impact", err)
 	}
+	m, err := loadManifestOptional(root)
+	if err != nil {
+		return output.Fail("impact", err)
+	}
 	if len(files) == 0 {
 		files, err = stagedPaths(root)
 		if err != nil {
 			return output.Fail("impact", err)
 		}
 	}
-	hits, err := buildImpact(root, docsRoot, files)
+	hits, err := buildImpact(root, docsRoot, files, m.list(pathsExcludeKey))
 	if err != nil {
 		return output.Fail("impact", err)
 	}

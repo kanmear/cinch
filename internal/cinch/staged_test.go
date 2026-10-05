@@ -9,9 +9,12 @@ import (
 )
 
 const (
+	// stagedMarker is split so these fixtures never read as markers when
+	// cinch scans its own repository.
+	stagedMarker      = "// cinch:" + "rule "
 	stagedOneRuleDoc  = "# Auth rules\n\n1. **AUTH-001** sessions expire\n"
 	stagedTwoRulesDoc = stagedOneRuleDoc + "2. **AUTH-005** tokens rotate\n"
-	stagedMarkedCode  = "package auth\n\n// cinch:rule AUTH-001\n"
+	stagedMarkedCode  = "package auth\n\n" + stagedMarker + "AUTH-001\n"
 )
 
 // stagedTestRepo commits a clean corpus — one rule doc and the code marking
@@ -38,9 +41,10 @@ func stageRuleHiddenByUnstagedMarker(t *testing.T, root string, git func(args ..
 	t.Helper()
 	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", stagedTwoRulesDoc)
 	git("add", ".docs/rules.md")
-	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", stagedMarkedCode+"// cinch:rule AUTH-005\n")
+	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", stagedMarkedCode+stagedMarker+"AUTH-005\n")
 }
 
+// cinch:rule CINCH-006
 func TestStagedChecksIgnoreUnstagedRuleEdit(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
@@ -57,6 +61,7 @@ func TestStagedChecksIgnoreUnstagedRuleEdit(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-006
 func TestStagedChecksCatchRuleHiddenByUnstagedMarker(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
@@ -75,12 +80,13 @@ func TestStagedChecksCatchRuleHiddenByUnstagedMarker(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-006
 func TestStagedChecksIgnoreMarkerInUntrackedFile(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
 	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", stagedTwoRulesDoc)
 	git("add", ".docs/rules.md")
-	writeTestFile(t, filepath.Join(root, "internal"), "rotate.go", "package auth\n\n// cinch:rule AUTH-005\n")
+	writeTestFile(t, filepath.Join(root, "internal"), "rotate.go", "package auth\n\n"+stagedMarker+"AUTH-005\n")
 
 	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("working-tree preCommitChecks = %d, want 0 (the untracked file holds the marker)", got)
@@ -185,7 +191,7 @@ func TestStagedChecksResolveSiblingRootAgainstRepo(t *testing.T) {
 		}
 	}
 	gitSibling := initTestGitRepo(t, sibling)
-	writeTestFile(t, sibling, "rotate.go", "package rotate\n\n// cinch:rule AUTH-005\n")
+	writeTestFile(t, sibling, "rotate.go", "package rotate\n\n"+stagedMarker+"AUTH-005\n")
 	gitSibling("add", "-A")
 	gitSibling("commit", "-q", "-m", "seed")
 
@@ -205,7 +211,7 @@ func TestStagedChecksResolveSiblingRootAgainstRepo(t *testing.T) {
 	}
 	// An all-roots-missing skip would also exit 0, so check the report
 	// itself: the sibling must have been found and scanned.
-	report := checkRules(roots, filepath.Join(roots.fsRoot, defaultDocsPath), []string{"../sib"})
+	report := checkRules(roots, filepath.Join(roots.fsRoot, defaultDocsPath), markerScanOptions{extraRoots: []string{"../sib"}})
 	if report.skip != "" || len(report.findings) != 0 || report.rules != 2 {
 		t.Fatalf("report = %+v, want 2 rules, no findings, no skip (AUTH-005 is marked in ../sib)", report)
 	}
@@ -222,7 +228,7 @@ func TestStagedChecksFindMarkerInNonASCIIPath(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
 	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", stagedTwoRulesDoc)
-	writeTestFile(t, filepath.Join(root, "internal"), "rötate.go", "package auth\n\n// cinch:rule AUTH-005\n")
+	writeTestFile(t, filepath.Join(root, "internal"), "rötate.go", "package auth\n\n"+stagedMarker+"AUTH-005\n")
 	git("add", "-A")
 
 	if got := stagedPreCommitChecks(root); got != 0 {

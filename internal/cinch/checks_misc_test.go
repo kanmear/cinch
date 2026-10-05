@@ -274,6 +274,7 @@ func renderedFixture(t *testing.T) (root string, m *manifest, files []renderFile
 	return root, m, files
 }
 
+// cinch:rule CINCH-001
 func TestSeededDefectGeneratedHandEdited(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]
@@ -319,6 +320,7 @@ func TestSeededDefectGeneratedMissingFile(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-002
 func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]
