@@ -53,6 +53,7 @@ const (
 	defaultDocsPath  = ".docs"
 	pathsHooksKey    = "paths.hooks"
 	defaultHooksPath = ".githooks"
+	pathsExcludeKey  = "paths.exclude"
 )
 
 func docsPathValue(m *manifest) string {

@@ -42,12 +42,12 @@ type rulesInventoryJSON struct {
 
 // buildRulesInventory includes duplicate rule IDs rather than deduping —
 // duplication is itself the signal the rules check reports on.
-func buildRulesInventory(repoRoot, docsRoot string, extraRoots []string) (rulesInventoryJSON, error) {
+func buildRulesInventory(repoRoot, docsRoot string, options markerScanOptions) (rulesInventoryJSON, error) {
 	items, err := scanRuleDocs(docsRoot)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
-	markers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, extraRoots)
+	markers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, options)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
@@ -112,7 +112,7 @@ func CmdRules(root string, jsonOut bool) int {
 	if err != nil {
 		return output.Fail("rules", err)
 	}
-	inv, err := buildRulesInventory(root, docsRoot, m.list(rulesRootsKey))
+	inv, err := buildRulesInventory(root, docsRoot, markerScanOptionsFor(m))
 	if err != nil {
 		return output.Fail("rules", err)
 	}

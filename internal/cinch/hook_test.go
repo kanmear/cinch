@@ -97,7 +97,7 @@ func TestCmdHookPreCommitImpactNeverBlocks(t *testing.T) {
 	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (clean corpus)", got)
 	}
-	hits, err := buildImpact(root, filepath.Join(root, ".docs"), []string{"internal/pkg/impl.go"})
+	hits, err := buildImpact(root, filepath.Join(root, ".docs"), []string{"internal/pkg/impl.go"}, nil)
 	if err != nil || len(hits) == 0 {
 		t.Fatalf("buildImpact = %v, %v, want a nonempty marker hit to make this test meaningful", hits, err)
 	}
@@ -128,7 +128,7 @@ func TestCmdHookPreCommitImpactErrorSwallowed(t *testing.T) {
 	if got := preCommitChecks(workingTreeRoots(root)); got != 0 {
 		t.Fatalf("preCommitChecks = %d, want 0 (malformed frontmatter is invisible to the checks)", got)
 	}
-	if _, err := buildImpact(root, filepath.Join(root, ".docs"), nil); err == nil {
+	if _, err := buildImpact(root, filepath.Join(root, ".docs"), nil, nil); err == nil {
 		t.Fatal("buildImpact = nil error, want an error to make this test meaningful")
 	}
 
