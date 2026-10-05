@@ -20,8 +20,8 @@ tier three is small in isolation but compounds.
 | 4 | [Measure binding strength before designing for it](04-measure-binding-strength.md) | 2 — make green mean something | Open |
 | 5 | [Navigability as one check class](05-navigability-check-class.md) | 2 — make green mean something | H1 half shipped (`2925bf4`); the reachability half was dropped — see the item's resolution and the comment in `TestSeededDefectLinksTargetUnreachableFromRoot` |
 | 6 | [The machine surface: `rules --json` + `owns:` → `cinch impact`](06-machine-surface-rules-json-impact.md) | 2 — make green mean something | **Shipped** (`f7f94ac`) |
-| 7 | [Workflow prose value and F1's scope](07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | Open, reframed |
-| 8 | [`paths.exclude`, then dogfood](08-paths-exclude-and-dogfood.md) | 3 — decide before investing | Open |
+| 7 | [Workflow prose value and F1's scope](07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | Cheap half effectively done by the workflow-template trim (`09ef586`); expensive half still open |
+| 8 | [`paths.exclude`, then dogfood](08-paths-exclude-and-dogfood.md) | 3 — decide before investing | **Shipped** (`9830825`) |
 | 9 | [Calibrate every heuristic against real history](09-calibrate-heuristics-against-history.md) | 3 — decide before investing | Open |
 | 10 | [`kind:` — normative versus descriptive](10-kind-normative-vs-descriptive.md) | 3 — decide before investing | Open |
 | 11 | [`rules.roots` and hook-baseline overrides](11-sibling-code-roots.md) | 1 — trust the checker | **Shipped** (`7e5c70d`) — kept for provenance |
@@ -88,7 +88,11 @@ condition is ever met.
   degrades here, since `58e7457` dropped the self-host files and none of the plans in
   this directory carry a `Status:` line. **Reopen only if** item 8 lands and cinch
   self-hosts again *and* a consumer's `plans/` grows past roughly a dozen files with
-  subdirectory grouping — until then `ls` is enough. Note that
+  subdirectory grouping — until then `ls` is enough. The first half is now met
+  (`9830825`: cinch self-hosts via its own `cinch.yml`, with `paths.exclude` and
+  `cinch check` in CI); the `plans/` half is not. The condition names a consumer's
+  `plans/`, and this repo's own `.docs/plans/` is 13 flat files with no subdirectory
+  grouping. Note that
   `05-navigability-check-class.md`'s resolution still names "eventually `cinch
   context`" as a canonical entry point; that is an aside written before this decision,
   not a commitment.
