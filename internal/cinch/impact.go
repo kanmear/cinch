@@ -97,28 +97,31 @@ func ownsMatches(changed string, owns []string) bool {
 	return false
 }
 
-func buildImpact(repoRoot, docsRoot string, changedFiles, exclude []string) ([]impactHit, error) {
+// buildImpact reads content from roots.fsRoot, so docsRoot must sit under it:
+// the hook passes an index snapshot and CmdImpact the working tree.
+func buildImpact(roots checkRoots, docsRoot string, changedFiles, exclude []string) ([]impactHit, error) {
 	docs, err := scanDocFrontmatter(docsRoot)
 	if err != nil {
 		return nil, err
 	}
 	// extraRoots (rules.roots) is deliberately not threaded in here: impact
 	// only ever matches a marker's file against changedFiles, which are
-	// always repoRoot-relative (staged paths or CLI args) — a sibling root's
+	// always repo-relative (staged paths or CLI args) — a sibling root's
 	// files can never appear there, so scanning them would be pure overhead.
-	rawMarkers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, markerScanOptions{exclude: exclude})
+	rawMarkers, _, err := scanRuleMarkers(roots, docsRoot, markerScanOptions{exclude: exclude})
 	if err != nil {
 		return nil, err
 	}
-	// scanRuleMarkers's file locations are joined against repoRoot; changed
-	// files (from git or from CLI args) are always repoRoot-relative, so
-	// normalize before matching. A no-op when repoRoot is "." (every real
-	// caller here — CmdImpact and the pre-commit hook both pass root=".").
+	// scanRuleMarkers's file locations are joined against fsRoot; changed
+	// files (from git or from CLI args) are always repo-relative, so
+	// normalize before matching. This also keeps a snapshot's temporary
+	// directory out of the output. A no-op when fsRoot is "." (CmdImpact and
+	// the pre-commit hook's fast path both pass root=".").
 	markers := make(map[string][]markerLoc, len(rawMarkers))
 	for id, locs := range rawMarkers {
 		normalized := make([]markerLoc, len(locs))
 		for i, loc := range locs {
-			normalized[i] = markerLoc{file: filepath.ToSlash(mdscan.RelTo(repoRoot, loc.file)), line: loc.line}
+			normalized[i] = markerLoc{file: filepath.ToSlash(mdscan.RelTo(roots.fsRoot, loc.file)), line: loc.line}
 		}
 		markers[id] = normalized
 	}
@@ -140,7 +143,7 @@ func buildImpact(repoRoot, docsRoot string, changedFiles, exclude []string) ([]i
 	hits := impactFor(changedFiles, docs, markers, rulesByDoc)
 	for i := range hits {
 		if hits[i].kind == "owns" {
-			hits[i].doc = filepath.ToSlash(mdscan.RelTo(repoRoot, hits[i].doc))
+			hits[i].doc = filepath.ToSlash(mdscan.RelTo(roots.fsRoot, hits[i].doc))
 		}
 	}
 	return hits, nil
@@ -200,7 +203,7 @@ func CmdImpact(root string, files []string) int {
 			return output.Fail("impact", err)
 		}
 	}
-	hits, err := buildImpact(root, docsRoot, files, m.list(pathsExcludeKey))
+	hits, err := buildImpact(workingTreeRoots(root), docsRoot, files, m.list(pathsExcludeKey))
 	if err != nil {
 		return output.Fail("impact", err)
 	}
