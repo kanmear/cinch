@@ -168,19 +168,19 @@ A few notes:
 
 `cinch render` writes these into `<paths.docs>/workflows/`, filling in values
 from `cinch.yml`. The `generated` check fails if you edit them by hand. To
-change them, change `cinch.yml`.
+change them, change `cinch.yml`. Render removes files it generated earlier
+that it no longer produces; files without cinch's header are never touched.
 
 | workflow | use it when | what it does |
 |---|---|---|
-| `dev-plan-feature.md` | starting a non-trivial feature | Lists the rules the feature touches, plans one test per rule, splits the work into small tasks. Writes a plan under `<docs>/plans/`. No code yet. |
-| `dev-fix-bug.md` | a bug is reported | Reproduce, find the cause, write a regression test, plan the fix. Writes `<docs>/plans/fix/<slug>.md`. |
-| `dev-task-primitive.md` | (used by the two above) | How to split tasks, what context each task lists, how to verify it, how to close it out. |
-| `dev-execute-plan.md` | a plan exists | Work through the plan one task per session, leaving notes so the next session can pick up. |
-| `docs-maintain-domain.md` | adding or editing rules | Where rules go, how to number them, how to write them. |
-| `docs-sync.md` | after a code change | Bring the non-rule docs (API, models, architecture, `cinch.yml`) in line with the code. |
-| `docs-audit-coverage.md` | periodically | Go rule by rule and check whether a test really enforces it. Reports each as covered, contradicted, missing, or not applicable, with evidence. |
-| `docs-audit-quality.md` | periodically | Review the docs for bloat, staleness, and departures from `docs-philosophy.md`. |
-| `docs-philosophy.md` | (reference) | The principles the quality audit checks against. |
+| `dev-plan-feature.md` | the change spans more than one layer or session, or adds or changes a rule | Finds the rules the feature touches, names the invariants no rule states yet, plans a test per rule, and splits the work into tasks. One checkpoint before any code. Writes `<docs>/plans/<slug>.md`. Smaller changes skip it but still do the missing-rule step. |
+| `dev-fix-bug.md` | a bug crosses layers or sessions, or comes from a missing or ambiguous rule | Reproduce, find the root cause, write the missing rule if there is one, plan a regression test that carries its marker. One checkpoint before the fix. Writes `<docs>/plans/fix/<slug>.md`. Smaller bugs are fixed directly. |
+| `dev-execute-plan.md` | a plan exists | Work through the tasks in order, verifying each with the project's own test command and leaving a handoff note so the next session can pick up. |
+| `docs-maintain-domain.md` | adding, changing, retiring, or moving a rule | Where a rule goes, how to number it, how to mark or ignore it, how to retire it. |
+| `docs-sync.md` | after a code change | Checks the rules `cinch impact` names, then updates the non-rule docs that own what changed. |
+| `docs-audit-coverage.md` | periodically | Starts from `cinch rules --json`, derives which test enforces which rule before reading the markers, and reports each rule as covered, contradicted, missing, or not applicable, with evidence. |
+| `docs-audit-quality.md` | periodically | Prunes what fails the Admission Test, then reviews the docs for duplication, bloat, and staleness. |
+| `docs-philosophy.md` | (reference) | The Admission Test and the principles the other workflows cite. |
 
 The marker check can be satisfied mechanically. The audits exist to check
 whether the markers mean anything.

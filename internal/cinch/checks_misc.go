@@ -124,14 +124,9 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 		return checkResult{noOp: "cinch render has not run — nothing to verify"}
 	}
 
-	expected := map[string]bool{}
-	renderDirectories := map[string]bool{}
 	var findings []finding
 	for _, f := range files {
 		destination := filepath.Join(roots.fsRoot, f.destination)
-		expected[destination] = true
-		renderDirectories[filepath.Dir(destination)] = true
-
 		want := header(f.source, f.body, f.style) + f.body
 		got, err := os.ReadFile(destination)
 		switch {
@@ -148,6 +143,32 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 		}
 	}
 
+	for _, rel := range orphanedGeneratedFiles(roots, files) {
+		findings = append(findings, finding{
+			check: "generated", level: "error", file: rel, line: 1,
+			message: "orphaned generated file, no longer produced by cinch render — run 'cinch render' to remove it",
+		})
+	}
+
+	sort.Slice(findings, func(i, j int) bool { return findings[i].file < findings[j].file })
+	return checkResult{findings: findings}
+}
+
+// orphanedGeneratedFiles returns fsRoot-relative paths of files that carry
+// cinch's generated header but aren't among files. It looks only
+// at the top level of the current render directories plus those HEAD's
+// cinch.yml implies, so a docs or hooks path change still finds what the
+// old path left behind. HEAD comes from repoRoot: a staged snapshot under
+// fsRoot isn't a repository.
+func orphanedGeneratedFiles(roots checkRoots, files []renderFile) []string {
+	expected := map[string]bool{}
+	renderDirectories := map[string]bool{}
+	for _, f := range files {
+		destination := filepath.Join(roots.fsRoot, f.destination)
+		expected[destination] = true
+		renderDirectories[filepath.Dir(destination)] = true
+	}
+
 	if previousData, ok := gitutil.Show(roots.repoRoot, "HEAD:"+manifestPath); ok {
 		if previousManifest, err := parseManifestBytes(previousData, manifestPath+"@HEAD"); err == nil {
 			renderDirectories[filepath.Join(roots.fsRoot, docsPathValue(previousManifest), workflowsSubdir)] = true
@@ -155,13 +176,14 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 		}
 	}
 
+	var orphans []string
 	for directory := range renderDirectories {
 		entries, err := os.ReadDir(directory)
 		if err != nil {
 			continue
 		}
 		for _, e := range entries {
-			if e.IsDir() {
+			if !e.Type().IsRegular() {
 				continue
 			}
 			path := filepath.Join(directory, e.Name())
@@ -172,14 +194,9 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 			if err != nil || !hasGeneratedHeader(string(data)) {
 				continue
 			}
-			rel := mdscan.RelTo(roots.fsRoot, path)
-			findings = append(findings, finding{
-				check: "generated", level: "error", file: rel, line: 1,
-				message: "orphaned generated file, no longer produced by cinch render — delete it (cinch render never removes files)",
-			})
+			orphans = append(orphans, mdscan.RelTo(roots.fsRoot, path))
 		}
 	}
-
-	sort.Slice(findings, func(i, j int) bool { return findings[i].file < findings[j].file })
-	return checkResult{findings: findings}
+	sort.Strings(orphans)
+	return orphans
 }

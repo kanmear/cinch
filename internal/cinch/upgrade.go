@@ -28,6 +28,10 @@ func CmdUpgrade(root string) int {
 		return output.Fail("upgrade", err)
 	}
 
+	if err := removeOrphanedFiles(root, files); err != nil {
+		return output.Fail("upgrade", err)
+	}
+
 	reportPinStatus(m)
 	if err := syncRequireCinch(root); err != nil {
 		return output.Fail("upgrade", err)

@@ -1,138 +1,55 @@
-# Domain Rule Maintenance
+# Rule Maintenance
 
-Add, edit, or reorganize domain rules in `{{paths.docs}}/`.
+Use this when adding, changing, retiring, or moving a rule.
 
-Read [Doc Philosophy](docs-philosophy.md) before proceeding.
+A rule doc is any doc under `{{paths.docs}}/` with numbered `ID-NNN` items; `cinch rules --json`
+lists every rule with its file, line, and markers. Updates to other docs after a code change go
+through `{{paths.docs}}/workflows/docs-sync.md`.
 
-## Usage
+## 1. Is it a rule?
 
-Update domain documentation to reflect domain or product changes, including:
-- New constraints or invariants discovered
-- Existing rules clarified or corrected
-- New API resource added (needs a matching `domain/<resource>.md`)
-- Domain doc reorganization (moving facts to the right file)
+Apply the Admission Test ([Doc Philosophy](docs-philosophy.md)). A rule states what is constrained,
+not how the system reports it: "only the editor can cancel" is a rule, while "returns 404 if the
+caller is not the editor" is an API detail. Keep each rule to one sentence where you can.
 
-**This workflow is not triggered by code changes.** For code-driven doc updates, use the docs-sync
-workflow (`{{paths.docs}}/workflows/docs-sync.md`).
+## 2. Search before adding
 
-## Instructions
+Search the rule docs for the fact. If the same doc already states it, edit it in place. If another
+doc does, keep the fact in the more specific doc and replace the other copy with a link. Never
+leave two copies.
 
-### 1. Understand what changed
+## 3. Write it
 
-Determine the nature of the change:
-- **New rule** — a constraint that wasn't previously documented
-- **Updated rule** — an existing rule that needs correction or clarification
-- **New resource** — a new API resource was added that needs a domain file
-- **Reorganization** — facts are in the wrong file (split, merged, or misplaced)
+- Put the rule in the doc whose rules cover the same code. That doc's `owns:` front matter names the
+  code, and `cinch impact` uses it to tell a change which rules it may affect. Create a new doc only
+  when no existing one fits.
+- A new rule gets the doc's next free ID: its `rule_prefix` plus one past the highest number in
+  use. Append it. Never renumber and never reuse an ID, because markers and plans point at IDs.
+- The test that enforces a rule carries a `cinch:rule <ID>` comment above it. A rule that can't be
+  tested gets `<!-- cinch:ignore: <reason> -->` directly under its item instead. The reason is
+  what tells a real exception apart from a skipped test.
+- When you change a rule's meaning, check that its marked test still enforces the new meaning.
+- To retire a rule, keep its item, state that it is retired, and put
+  `<!-- cinch:ignore: retired — <why> -->` under it. The ID stays taken.
 
-### 2. Locate the right file
+A new rule doc:
 
-Domain files mirror `api/` files 1:1: `api/<resource>.md` → `<resource>.md` under the project's
-domain-rules directory (found via `cinch index` — its name and depth under `{{paths.docs}}/` vary
-per project; not necessarily `{{paths.docs}}/` itself). If the project keeps an orientation doc
-(find it via `cinch index`), its structure-convention section is where the exact rule lives, along
-with the current list of API resources that have no domain-file counterpart (read-only/aggregation
-endpoints with no independent domain rules of their own).
-
-Rules:
-- One file per API resource — do not consolidate multiple resources
-- `{{paths.docs}}/overview.md` documents key concepts and domain relationships, not rules — do not add rules there
-- If no matching domain file exists for a resource with non-trivial rules → create one
-
-### 3. Check one-fact-one-place
-
-Before adding anything, search existing domain docs for the fact:
-
-```
-Grep `{{paths.docs}}/` for keywords from the rule
-```
-
-If the fact already exists elsewhere:
-- **Same file, same rule** → edit in place, don't add a duplicate
-- **Different file** → move it to the correct file; replace with a cross-reference in the original
-- **Partially stated in multiple files** → consolidate in the most specific file; cross-reference from others
-
-### 4. Edit or create
-
-**Editing an existing file:**
-- Add the rule to the numbered list in the relevant section
-- Give the new rule the **next free ID**: the bold `**<PREFIX>-0NN**` token at the start of each
-  item, prefixed from the doc's `rule_prefix` front-matter (e.g. the next rule in a doc whose
-  last rule is `**SIG-019**` gets `**SIG-020**`). Append with a new number — **never renumber or
-  reuse**: rule numbers and IDs are permanent (once a rule is retired it keeps its ID with a
-  retirement note, and the number is never reused)
-- Keep each rule to one sentence where possible
-- Don't include endpoint contracts, struct fields, or SQL schema — those belong in `api/` and `models/`
-- When the test enforcing the rule exists, place `// cinch:rule <ID>` above that test function so
-  the marker closure holds; a rule that cannot be tested — display behavior or a future-decision
-  constraint — declares `<!-- cinch:ignore: <reason> -->` directly under the rule item instead, and
-  the reason is what tells a genuine N/A apart from a dodged check
-
-**Creating a new file:**
-Use this template:
 ```markdown
 ---
 rule_prefix: <PREFIX>
 owns:
-  - <code paths that enforce these rules>
+  - <code paths these rules cover>
 ---
 
-# <Resource> Domain Rules
+# <Area> Rules
 
 1. **<PREFIX>-001** <Rule one.>
 2. **<PREFIX>-002** <Rule two.>
-...
-
-## Related Documentation
-
-- [<Resource> API](../api/<resource>.md) — endpoint contracts
-- [<Resource> Model](../models/<resource>.md) — schema
-- [<Related> Rules](<related>.md) — <brief reason for the link>
-```
-The prefix must be unique across `{{paths.docs}}/` and never change — it is the namespace the
-rule IDs hang off.
-
-What belongs in domain docs:
-- ✅ Domain constraints and invariants ("at most one per...", "cannot be shared across...")
-- ✅ Cascade effects ("deleting X cascades to delete Y")
-- ✅ Role/permission constraints ("only the designated signer can...")
-- ✅ Workflow rules ("a tab with a pending signature cannot be edited")
-
-What does NOT belong here:
-- ❌ Endpoint contracts or HTTP status codes (→ `api/<resource>.md`)
-- ❌ Struct fields, SQL schema, or model implementation (→ `models/<resource>.md`)
-- ❌ Error handling specifics (→ `api/<resource>.md`)
-- ❌ Implementation details visible in the code
-
-### 5. Fix cross-references
-
-After editing, check both directions:
-
-**Outgoing** — does this file's Related Documentation section link to the right files?
-
-**Incoming** — do other files that reference this topic now need updating?
-- Search for references to the old location of any moved facts
-- Replace stale references with cross-references to the new location
-
-Nothing to regenerate — `cinch index` (or `ls -1R {{paths.docs}}`) is always current.
-
-## Decision Tree
-
-```
-Domain/product rule changed
-    ↓
-Does a domain file exist for this resource?
-    ├─ NO  → Does it have non-trivial rules? → YES → Create new file
-    │                                        → NO  → Add to closest related file
-    └─ YES → Is the fact already documented somewhere?
-              ├─ YES, same file → Edit in place
-              ├─ YES, wrong file → Move + cross-reference
-              └─ NO → Add to the correct file
 ```
 
-## Common Pitfalls
+The prefix must be unique across `{{paths.docs}}/` and must never change.
 
-- **Duplicating endpoint info** — Domain rules describe *what* is constrained, not *how* the API signals it. "Only the editor can cancel" belongs here; "returns 404 if caller is not the editor" belongs in `api/<resource>.md`.
-- **Adding rules to overview.md** — `overview.md` is a domain map, not a rule list. Rules go in the resource-specific file.
-- **Renumbering rules** — numbers and IDs are permanent. A new rule appends with the next free ID; a retired rule keeps its ID with a retirement note. Renumbering silently breaks every `(rule N)` cross-reference and every `// cinch:rule` marker.
-- **Skipping cross-reference cleanup** — When moving a fact, always replace it with a reference; never leave two copies.
+## 4. Fix references
+
+After moving a rule, run `cinch index --links-to <doc>` and update the docs that pointed at its old
+location. Search docs and plans for the rule's ID too. Finish with a green `cinch check`.

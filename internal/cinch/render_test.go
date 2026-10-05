@@ -133,3 +133,26 @@ func TestCmdRenderSyncsRequireCinch(t *testing.T) {
 		t.Fatalf("expected hook shim to be rendered: %v", err)
 	}
 }
+
+func TestCmdRenderRemovesOrphans(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "")
+	directory := filepath.Join(root, defaultDocsPath, workflowsSubdir)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	staleBody := "# Retired workflow\n"
+	writeTestFile(t, directory, "retired.md", header("docs/templates/retired.md", staleBody, styleMarkdown)+staleBody)
+	writeTestFile(t, directory, "hand-written.md", "# Ours\n")
+
+	if code := CmdRender(root); code != 0 {
+		t.Fatalf("CmdRender = %d, want 0", code)
+	}
+
+	if _, err := os.Stat(filepath.Join(directory, "retired.md")); !os.IsNotExist(err) {
+		t.Fatalf("retired.md stat err = %v, want it removed", err)
+	}
+	if got := readTestFile(t, directory, "hand-written.md"); got != "# Ours\n" {
+		t.Fatalf("hand-written.md = %q, want it untouched", got)
+	}
+}

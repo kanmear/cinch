@@ -334,7 +334,7 @@ func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 
 	ok := false
 	for _, f := range result.findings {
-		if strings.Contains(f.file, "orphan-leftover.md") && strings.Contains(f.message, "orphaned generated file") {
+		if strings.Contains(f.file, "orphan-leftover.md") && strings.Contains(f.message, "orphaned generated file, no longer produced by cinch render — run 'cinch render' to remove it") {
 			ok = true
 		}
 	}
