@@ -26,6 +26,12 @@ tier three is small in isolation but compounds.
 | 10 | [`kind:` — normative versus descriptive](10-kind-normative-vs-descriptive.md) | 3 — decide before investing | Open |
 | 11 | [`rules.roots` and hook-baseline overrides](11-sibling-code-roots.md) | 1 — trust the checker | **Shipped** (`7e5c70d`) — kept for provenance |
 | 12 | [Skip directory entries (submodule gitlinks) in the primary marker scan](12-skip-directory-entries-marker-scan.md) | 1 — trust the checker | **Shipped** (`92b99d4`) — kept for provenance |
+| 13 | [Housekeeping: link parser, one prompt, stable output order, docs resync](13-housekeeping.md) | 1 — trust the checker | **Shipped** (`1bcd33c`) — kept for provenance |
+| 14 | [Pre-commit checks what's staged, not the working tree](14-pre-commit-checks-index.md) | 1 — trust the checker | **Shipped** (`1af2986`) — kept for provenance |
+| 15 | [`cinch impact`: one line per doc, not one per rule](15-impact-one-line-per-doc.md) | 2 — make green mean something | **Shipped** (`ed08e9e`) — kept for provenance |
+| 16 | [`cinch init` writes the AGENTS.md pointer](16-init-agents-pointer.md) | 2 — make green mean something | **Shipped** (`5121e4e`) — kept for provenance |
+| 17 | [Cut the workflow pack; render removes stale generated files](17-trim-workflow-pack.md) | 3 — decide before investing | **Shipped** (`09ef586`) — kept for provenance |
+| 18 | [`paths.exclude`, then dogfood — the hand-off plan](18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **Shipped** (`9830825`) — implements item 8 |
 
 ## Reading order vs. build order
 
