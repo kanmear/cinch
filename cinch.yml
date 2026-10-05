@@ -12,6 +12,8 @@ hooks:
   # generated is left out locally: the shims exec the installed cinch, whose
   # embedded templates can lag the source being edited. CI runs the full set from source.
   pre-commit-checks: [links, rules, index, core]
+  # commit.pattern is unset: scripts/check-squash-merge-msg.sh checks messages instead.
+  commit-msg-checks: []
   commit-msg:
     conventions:
       run: scripts/check-squash-merge-msg.sh
