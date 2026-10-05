@@ -17,7 +17,7 @@ func TestImpactOwnsMatch(t *testing.T) {
 	writeTestFile(t, docs, "sig.md", "---\nowns:\n  - internal/sig\nrule_prefix: SIG-\n---\n"+
 		"# Signatures\n\n1. **SIG-019** verify the signature\n")
 
-	hits, err := buildImpact(root, docs, []string{"internal/sig/verify.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"internal/sig/verify.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestImpactMarkerMatch(t *testing.T) {
 	}
 	writeTestFile(t, src, "verify.go", "package sig\n\n// cinch:rule SIG-020\nfunc Verify() {}\n")
 
-	hits, err := buildImpact(root, docs, []string{"internal/sig/verify.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"internal/sig/verify.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestImpactBothInSameDiff(t *testing.T) {
 	}
 	writeTestFile(t, src, "verify.go", "package sig\n\n// cinch:rule SIG-020\nfunc Verify() {}\n")
 
-	hits, err := buildImpact(root, docs, []string{"internal/sig/verify.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"internal/sig/verify.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestImpactNoMatchIsSilent(t *testing.T) {
 	writeTestFile(t, docs, "sig.md", "---\nowns:\n  - internal/sig\nrule_prefix: SIG-\n---\n"+
 		"# Signatures\n\n1. **SIG-019** verify the signature\n")
 
-	hits, err := buildImpact(root, docs, []string{"internal/unrelated/file.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"internal/unrelated/file.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestImpactPrefixNotGlob(t *testing.T) {
 	writeTestFile(t, docs, "sig.md", "---\nowns:\n  - internal/sig/*\nrule_prefix: SIG-\n---\n"+
 		"# Signatures\n\n1. **SIG-019** verify the signature\n")
 
-	hits, err := buildImpact(root, docs, []string{"internal/sig/verify.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"internal/sig/verify.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestImpactCollapsesPerDoc(t *testing.T) {
 	}
 	writeOwnsDoc(t, docs, "auth.md", "AUTH", []string{"src/auth"}, 10)
 
-	hits, err := buildImpact(root, docs, []string{"src/auth/util.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"src/auth/util.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestImpactAttributesByDocNotPrefix(t *testing.T) {
 	writeOwnsDoc(t, docs, "auth.md", "AUTH", []string{"src/auth"}, 2)
 	writeOwnsDoc(t, docs, "authz.md", "AUTHZ", []string{"src/authz"}, 2)
 
-	hits, err := buildImpact(root, docs, []string{"src/auth/x.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"src/auth/x.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestImpactOwnsWithoutRulesIsSilent(t *testing.T) {
 	}
 	writeTestFile(t, docs, "empty.md", "---\nowns:\n  - src/auth\n---\n# No rules\n")
 
-	hits, err := buildImpact(root, docs, []string{"src/auth/x.go"}, nil)
+	hits, err := buildImpact(workingTreeRoots(root), docs, []string{"src/auth/x.go"}, nil)
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}

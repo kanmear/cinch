@@ -117,7 +117,7 @@ func TestPathsExcludeAppliesToRulesJSONAndImpact(t *testing.T) {
 		t.Fatalf("rules = %+v, want AUTH-001 marked only in internal/auth.go", inv.Rules)
 	}
 
-	hits, err := buildImpact(root, docsRoot, []string{"fixtures/f.go"}, m.list(pathsExcludeKey))
+	hits, err := buildImpact(workingTreeRoots(root), docsRoot, []string{"fixtures/f.go"}, m.list(pathsExcludeKey))
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}

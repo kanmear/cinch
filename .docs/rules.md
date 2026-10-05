@@ -1,7 +1,11 @@
 ---
 rule_prefix: CINCH
 owns:
-  - internal/cinch
+  - internal/cinch/checks_misc.go
+  - internal/cinch/render.go
+  - internal/cinch/init.go
+  - internal/cinch/links.go
+  - internal/cinch/staged.go
 ---
 
 # Cinch rules

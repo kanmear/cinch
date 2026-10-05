@@ -86,6 +86,16 @@ value becomes the existing render-time error) or make the instruction conditiona
 rather than assumed. This doesn't require the longitudinal study; it's tightening what already
 ships to actually get the render-time guarantee F1 wants, for the specific gap F1 named.
 
+**Resolution (effectively done, `09ef586`).** The workflow-template trim removed the
+`manifest.yml`, taxonomy, `development.commands` and `dev-task-primitive` references from the
+shipped prose, leaving `{{paths.docs}}` as the only substituted variable.
+`TestWorkflowsNameNoUncreatedConfig` fails if any of those strings returns, and
+`TestWorkflowReferencesResolve` fails if a template names a `workflows/*.md` the render
+doesn't produce (both in `internal/cinch/templates_test.go`). It differs from the definition
+of done below in two ways: the guard is a denylist of the known-bad strings plus workflow
+cross-reference resolution, not a general check for hardcoded structural assumptions, and no
+seeded-defect case was added to item 3's battery. The expensive half is untouched.
+
 ## Why tier 3, and why it stays open
 
 This is the item the roadmap explicitly frames as "decide before investing" — the expensive
