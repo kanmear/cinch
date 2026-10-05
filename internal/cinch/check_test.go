@@ -128,6 +128,55 @@ func TestCommitMsgChecksHonorsManifestOverride(t *testing.T) {
 	}
 }
 
+// TestPreCommitChecksExplicitEmptyRunsNothing pins that
+// hooks.pre-commit-checks: [] turns the built-in checks off, rather than
+// being treated like an absent key and falling back to the defaults.
+func TestPreCommitChecksExplicitEmptyRunsNothing(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "a.md", "[broken](missing.md)\n")
+	writeTestFile(t, root, "cinch.yml", "hooks:\n  pre-commit-checks: []\n")
+
+	var got int
+	stdout := captureStdout(t, func() {
+		got = preCommitChecks(workingTreeRoots(root))
+	})
+	if got != 0 {
+		t.Fatalf("preCommitChecks = %d, want 0 (empty list disables the built-in checks)", got)
+	}
+	if strings.Contains(stdout, "missing.md") {
+		t.Fatalf("a link finding printed despite pre-commit-checks: []:\n%s", stdout)
+	}
+}
+
+// TestCommitMsgChecksExplicitEmptyRunsNothing is the commit-msg counterpart:
+// with commit-msg-checks: [], a message violating an active commit.pattern
+// must neither fail the hook nor print a commit finding.
+func TestCommitMsgChecksExplicitEmptyRunsNothing(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "commit:\n  pattern: '^docs: .+'\nhooks:\n  commit-msg-checks: []\n")
+	msg := writeTestFile(t, root, "msg.txt", "not-matching-at-all\n")
+
+	var got int
+	stdout := captureStdout(t, func() {
+		stderr := captureStderr(t, func() {
+			got = commitMsgChecks(root, msg)
+		})
+		if strings.Contains(stderr, "commit") {
+			t.Errorf("a commit status line printed despite commit-msg-checks: []:\n%s", stderr)
+		}
+	})
+	if got != 0 {
+		t.Fatalf("commitMsgChecks = %d, want 0 (empty list disables the built-in checks)", got)
+	}
+	if strings.Contains(stdout, "not-matching-at-all") || strings.Contains(stdout, "pattern") {
+		t.Fatalf("a commit finding printed despite commit-msg-checks: []:\n%s", stdout)
+	}
+}
+
 // TestCheckChangedFiltersLinksToChangedFiles pins the core --changed
 // behavior: a pre-existing broken link in a doc that wasn't touched must not
 // surface, but the same broken link does surface once its doc is the one
