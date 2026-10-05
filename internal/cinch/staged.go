@@ -27,6 +27,12 @@ import (
 // changes pays for one full checkout-index. The fast path skips that whenever
 // the working tree already equals the index.
 //
+// checkout-index applies the repository's checkout filters (git-lfs,
+// git-crypt), so in an LFS repository the slow path could pull every LFS
+// object through its smudge filter on each commit made with unstaged or
+// untracked changes. This is untested, and no known consumer uses LFS. If one
+// does, write the snapshot from raw blobs (git cat-file --batch) instead.
+//
 // One asymmetry between the two paths: gitignored files exist in the working
 // tree but never in a snapshot, so a doc link that only resolves to an
 // ignored file passes on the fast path and fails on the slow one. A fresh

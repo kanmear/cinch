@@ -29,18 +29,23 @@ func cmdHookPreCommit(root string) int {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
-	ok := stagedPreCommitChecks(root) == 0
+	roots, cleanup, err := stagedSnapshot(root)
+	defer cleanup()
+	if err != nil {
+		return output.Fail("hook", err)
+	}
+	ok := preCommitChecks(roots) == 0
 
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
 
-	// Only the checks above read the index. buildImpact and dispatchHooks
-	// still see the working tree: impact is advisory, and project hook
-	// scripts read whatever is on disk.
-	if docsRoot, dErr := ResolveDocsRoot(root); dErr == nil {
-		if hits, iErr := buildImpact(root, docsRoot, staged, m.list(pathsExcludeKey)); iErr == nil {
+	// The checks and the impact advisory read the same index snapshot, so
+	// the advisory describes what is being committed. Only dispatchHooks
+	// (project scripts) sees the working tree: they read whatever is on disk.
+	if docsRoot, dErr := ResolveDocsRoot(roots.fsRoot); dErr == nil {
+		if hits, iErr := buildImpact(roots, docsRoot, staged, m.list(pathsExcludeKey)); iErr == nil {
 			printImpact(hits)
 		}
 		// iErr is deliberately swallowed: this advisory is a bonus nobody

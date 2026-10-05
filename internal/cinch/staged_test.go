@@ -132,6 +132,57 @@ func TestStagedSnapshotHonorsGitIndexFile(t *testing.T) {
 	}
 }
 
+// Impact is advisory, but it must describe the commit, not the working tree:
+// a rule that exists only in unstaged edits is not part of what is committed.
+func TestImpactReadsStagedSnapshot(t *testing.T) {
+	root := t.TempDir()
+	git := stagedTestRepo(t, root)
+	ownedDoc := "---\nowns:\n  - internal\nrule_prefix: AUTH-\n---\n" + stagedOneRuleDoc
+	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", ownedDoc)
+	git("add", "-A")
+	git("commit", "-q", "-m", "own internal")
+
+	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", stagedMarkedCode+"\nfunc Staged() {}\n")
+	git("add", "internal/auth.go")
+	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", ownedDoc+"2. **AUTH-002** tokens rotate\n")
+	writeTestFile(t, filepath.Join(root, "internal"), "auth.go",
+		stagedMarkedCode+"\nfunc Staged() {}\n"+stagedMarker+"AUTH-002\n")
+
+	roots, cleanup, err := stagedSnapshot(root)
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("stagedSnapshot: %v", err)
+	}
+	if roots.fsRoot == root {
+		t.Fatal("fsRoot = repoRoot, want a snapshot (the doc and code have unstaged edits)")
+	}
+	docsRoot, err := ResolveDocsRoot(roots.fsRoot)
+	if err != nil {
+		t.Fatalf("ResolveDocsRoot: %v", err)
+	}
+	hits, err := buildImpact(roots, docsRoot, []string{"internal/auth.go"}, nil)
+	if err != nil {
+		t.Fatalf("buildImpact: %v", err)
+	}
+
+	var sawMarker, sawOwns bool
+	for _, h := range hits {
+		if h.ruleID == "AUTH-002" || slices.Contains(h.ruleIDs, "AUTH-002") {
+			t.Fatalf("hit %+v names AUTH-002, which exists only in unstaged edits", h)
+		}
+		switch h.kind {
+		case "marker":
+			sawMarker = h.ruleID == "AUTH-001" && len(h.markers) == 1 &&
+				h.markers[0] == markerLoc{file: "internal/auth.go", line: 3}
+		case "owns":
+			sawOwns = h.doc == ".docs/rules.md" && slices.Equal(h.ruleIDs, []string{"AUTH-001"})
+		}
+	}
+	if !sawMarker || !sawOwns {
+		t.Fatalf("hits = %+v, want an AUTH-001 marker hit at internal/auth.go:3 and an owns hit on .docs/rules.md", hits)
+	}
+}
+
 func TestStagedChecksReportRepoRelativePaths(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
