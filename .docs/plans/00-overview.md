@@ -35,7 +35,7 @@ tier three is small in isolation but compounds.
 | 19 | [Field log during the DeltaDocs MVP push](19-field-log.md) | 4 — evidence | Installed 2026-10-06 in four repos; collecting |
 | 20 | [Replay history for rule growth](20-rule-growth-replay.md) | 4 — evidence | Open — run at the end of the push |
 | 21 | [A benchmark suite worth publishing](21-benchmark-suite.md) | 4 — evidence | Open — umbrella for 22–25 |
-| 22 | [Catch matrix and cost curve](22-catch-matrix-and-cost-curve.md) | 4 — evidence | Open — do first |
+| 22 | [Catch matrix and cost curve](22-catch-matrix-and-cost-curve.md) | 4 — evidence | Done; follow-up: single, prefiltered marker scan |
 | 23 | [A public fixture](23-public-fixture.md) | 4 — evidence | Open |
 | 24 | [Leak replay](24-leak-replay.md) | 4 — evidence | Open — waits for 23 and `~/code/cinch_bench` |
 | 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Open — waits for 23 and `~/code/cinch_bench` |

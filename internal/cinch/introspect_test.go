@@ -54,6 +54,7 @@ func TestCheckIndexExcludesPlans(t *testing.T) {
 
 // --- Seeded defect battery: index.go ---
 
+// catch-matrix: index | caught | doc with no H1, silently dropped from cinch index
 func TestSeededDefectIndexMissingH1(t *testing.T) {
 	docsRoot := t.TempDir()
 	// Looks like a complete doc — real content, just no leading "# " line.

@@ -45,6 +45,7 @@ func stageRuleHiddenByUnstagedMarker(t *testing.T, root string, git func(args ..
 }
 
 // cinch:rule CINCH-006
+// catch-matrix: rules | not a defect | unstaged edit to a rule doc during a commit (CINCH-006)
 func TestStagedChecksIgnoreUnstagedRuleEdit(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
@@ -62,6 +63,7 @@ func TestStagedChecksIgnoreUnstagedRuleEdit(t *testing.T) {
 }
 
 // cinch:rule CINCH-006
+// catch-matrix: rules | caught | staged rule whose only marker is an unstaged edit (CINCH-006)
 func TestStagedChecksCatchRuleHiddenByUnstagedMarker(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
@@ -81,6 +83,7 @@ func TestStagedChecksCatchRuleHiddenByUnstagedMarker(t *testing.T) {
 }
 
 // cinch:rule CINCH-006
+// catch-matrix: rules | caught | staged rule whose only marker is in an untracked file (CINCH-006)
 func TestStagedChecksIgnoreMarkerInUntrackedFile(t *testing.T) {
 	root := t.TempDir()
 	git := stagedTestRepo(t, root)
