@@ -32,7 +32,10 @@ The seeded-defect tests already exist (`TestSeededDefect*` in `internal/cinch/ru
 ## Cost curve (claim #6: cheap enough for every commit)
 
 1. Generate synthetic repos at 1k, 10k and 100k files with a fixed share of docs, rules and
-   markers.
+   markers. Add tracked binary size as a second dimension (none / 10 MB / 100 MB). The first
+   real data point came from it: a 12 MB tracked binary took DeltaDocs' `rules` check from
+   50 ms to 850 ms until cinch 0.9.1 skipped binary files (CINCH-009). Measure both
+   versions, so the published curve shows that fix as a before/after.
 2. Time `cinch hook pre-commit` on each one, on both paths of `stagedSnapshot`
    (`internal/cinch/staged.go`): the fast path (clean worktree, so `fsRoot == repoRoot`) and the
    snapshot path (an unstaged or untracked change forces `git checkout-index`).

@@ -31,6 +31,10 @@ This is the "walk history, run at each commit" mechanism from item
 calibration replays and claim #7 (history replay) in [21](21-benchmark-suite.md) can reuse it,
 rather than writing three bespoke loops.
 
+Run the replay with cinch 0.9.2 or later. Before that, `rules --json` listed an ID's marker
+locations in whatever order the scan's workers finished, so two runs on the same tree could
+differ and step 4's diff would report changes that never happened. CINCH-010 pins the order.
+
 ## Headline number
 
 The share of `feature/` and `fix/` merges that touched product code **and** added or changed a

@@ -148,9 +148,19 @@ Lessons from the install:
   commit-msg can still reject the commit afterwards. Only a non-zero pre-commit exit counts
   as cinch blocking. budgetron's row at 2026-10-06T21:46:02 is an example: an empty commit
   attempt.
-- **Latency differs by repo.** DeltaDocs takes about 0.9–1.0 s per run, while the other three
-  take 40–100 ms. That's well above the "tens of milliseconds" assumed above. Find the
-  cause in [22](22-catch-matrix-and-cost-curve.md)'s cost curve.
+- **DeltaDocs' early `ms` values are inflated.** It took about 0.9–1.0 s per run, while the
+  other three took 40–100 ms. The cause was a tracked 12 MB binary (`backend/bin/server`)
+  that the marker scan read line by line. Cinch 0.9.1 skips binary files (CINCH-009) and
+  brought DeltaDocs to about 100 ms. Rows before 2026-10-07 carry the extra ~800 ms, so
+  exclude them from any cost figure.
+
+## Pins (2026-10-07)
+
+All four repos pin `require.cinch: '>=0.9.0'`, a floor. Installing 0.9.1 showed the
+problem with exact pins: `0.9.0` in DeltaDocs `dev` and odin-docs (and `0.9.1` on DeltaDocs'
+feature branch) made `core` block every commit until someone re-pinned. lucky_to_have_you
+was moved to a floor outside this session. DeltaDocs: `cde4bd3` on `dev`, merged into
+`feature/tab-editor-live-editing` as `293e3a0`. odin-docs: `ae7ef80`.
 
 ## 2. Weekly labeling (~10 minutes)
 
