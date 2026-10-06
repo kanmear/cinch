@@ -6,6 +6,7 @@ owns:
   - internal/cinch/init.go
   - internal/cinch/links.go
   - internal/cinch/staged.go
+  - internal/cinch/rules.go
 ---
 
 # Cinch rules
@@ -29,3 +30,5 @@ repository, so an unbound rule or a stray marker fails CI.
 8. **CINCH-008** `cinch init` writes a `>=` floor pin at the installed
    version. `cinch upgrade` raises a floor only when its rendered output
    changed, and never lowers one.
+9. **CINCH-009** The marker scan skips binary files (a NUL byte in the first
+   8 KB, git's own test), so a marker-shaped string inside one binds nothing.
