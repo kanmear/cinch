@@ -44,7 +44,8 @@ otherwise. It won't overwrite a `core.hooksPath` that another tool already set.
 
 From then on, every commit runs the checks. To update later, run
 `cinch upgrade`. It offers to install the latest release, re-renders, updates
-an exact `require.cinch` pin, and runs the checks.
+an exact `require.cinch` pin (or raises a `>=` floor when the rendered files
+changed), and runs the checks.
 
 ## Rules and markers
 
@@ -114,7 +115,7 @@ code review and the `docs-audit-coverage` workflow.
 | `generated` | a rendered workflow or hook shim differs from what `cinch render` would write now |
 | `hooks` | `core.hooksPath` isn't set to `paths.hooks` |
 | `commit` | (opt-in) the commit subject doesn't match `commit.pattern` |
-| `core` | (opt-in) the installed cinch doesn't satisfy `require.cinch` |
+| `core` | the installed cinch doesn't satisfy `require.cinch` (`init` writes a `>=` floor; `any` disables) |
 
 The pre-commit hook and `cinch check --staged` check the content being
 committed, not your working tree: an unstaged edit can't block a commit, and
@@ -231,7 +232,9 @@ hooks:
 #agents:
 #  pointer: false
 
-# Optional: required cinch version, exact (0.1.0) or minimum (>=0.1.0).
+# Required cinch version: a floor ('>=0.1.0', what `cinch init` writes),
+# exact (0.1.0), or any to disable the check. Quote a floor: a bare > starts
+# a YAML block scalar.
 #require:
 #  cinch: '>=0.1.0'
 ```
