@@ -89,3 +89,30 @@ This item is done when the aggregate number exists and is written down (a short 
 not necessarily a huge report — the roadmap and `FINDINGS.md` are the right home for it), and
 the design decision for typed bindings / mutation verification is made *with that number cited*
 rather than deferred indefinitely or decided from the single T3 anecdote alone.
+
+## Refined method (2026-10)
+
+Recorded with items 19–25, which put this measurement in the evidence tier as claim #2 of
+[21](21-benchmark-suite.md). It replaces the hand-chosen mutations in steps 2–4 above:
+
+1. For each bound rule, take the rule text, the marked test and the code it covers from
+   `cinch rules --json`.
+2. A local model (pi with Qwen; the `~/code/cinch_bench` harness already does most of this)
+   proposes the smallest code change that violates that rule. The model only proposes the
+   change.
+3. Apply it and run the **full** test suite. Record one of three outcomes: the marked test
+   failed / only some other test failed / nothing failed. Then revert.
+4. Check about 15 of the mutations by hand to confirm they really violate the rule. A mutation
+   that doesn't break the rule would make the result look worse than it is.
+
+The headline number is how many bindings bite. The "nothing failed" list is the most valuable
+output: those are rules that a passing check presents as protected but that no test enforces.
+All of DeltaDocs' markers are in Go, so frontend rules show up as having no binding at all.
+Report them separately rather than as failures.
+
+**Decision rule (pre-registered, also in [19](19-field-log.md)).** Above about 90% biting,
+close the question. Below about 70%, build a mutation-check step into the coverage audit.
+Between the two, decide using the "nothing failed" list itself.
+
+**State (2026-10-06):** `~/code/cinch_bench/` is not on this machine yet; it will be available
+later. This run is blocked until it is, because it reuses that harness.
