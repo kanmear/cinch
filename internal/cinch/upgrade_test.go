@@ -63,11 +63,16 @@ func TestCmdUpgradeRemovesDroppedTemplate(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-008
 func TestCmdUpgradeRangePinSatisfiedLeavesPinUnchanged(t *testing.T) {
 	withVersion(t, "1.2.4")
 	withReleaseCheckDisabled(t)
 	root := t.TempDir()
 	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
+	// already rendered: this upgrade produces the same bytes
+	if code := CmdRender(root); code != 0 {
+		t.Fatalf("CmdRender = %d, want 0", code)
+	}
 
 	if code := CmdUpgrade(root); code != 0 {
 		t.Fatalf("CmdUpgrade = %d, want 0", code)
@@ -87,5 +92,27 @@ func TestCmdUpgradeRangePinUnsatisfiedSurfacesCheckFailure(t *testing.T) {
 
 	if code := CmdUpgrade(root); code == 0 {
 		t.Fatalf("CmdUpgrade = %d, want nonzero (installed version does not satisfy range pin)", code)
+	}
+}
+
+// cinch:rule CINCH-008
+func TestCmdUpgradeRaisesFloorWhenOutputChanged(t *testing.T) {
+	withVersion(t, "1.2.4")
+	withReleaseCheckDisabled(t)
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
+	if code := CmdRender(root); code != 0 {
+		t.Fatalf("CmdRender = %d, want 0", code)
+	}
+	// stand in for an older cinch's output
+	writeTestFile(t, filepath.Join(root, defaultHooksPath), "pre-commit", "#!/bin/sh\nold\n")
+
+	if code := CmdUpgrade(root); code != 0 {
+		t.Fatalf("CmdUpgrade = %d, want 0", code)
+	}
+
+	m := loadTestManifest(t, root)
+	if got, ok := manifestSetting(m, requireCinchKey); !ok || got != ">=1.2.4" {
+		t.Fatalf("require.cinch = %q, ok=%v, want raised to >=1.2.4", got, ok)
 	}
 }

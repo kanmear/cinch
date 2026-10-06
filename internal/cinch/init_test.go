@@ -28,6 +28,34 @@ func TestCmdInitActivatesHooksWhenUnset(t *testing.T) {
 	}
 }
 
+// cinch:rule CINCH-008
+func TestCmdInitWritesFloorPin(t *testing.T) {
+	for _, tc := range []struct {
+		version string
+		want    string
+		pinned  bool
+	}{
+		{version: "1.2.3", want: ">=1.2.3", pinned: true},
+		{version: "dev", pinned: false},
+	} {
+		t.Run(tc.version, func(t *testing.T) {
+			withVersion(t, tc.version)
+			root := t.TempDir()
+			git := gitTestHelper(t, root)
+			git("init", "-q")
+
+			if code := CmdInit(root); code != 0 {
+				t.Fatalf("CmdInit = %d, want 0", code)
+			}
+
+			got, ok := manifestSetting(loadTestManifest(t, root), requireCinchKey)
+			if ok != tc.pinned || got != tc.want {
+				t.Fatalf("require.cinch = %q, ok=%v, want %q, ok=%v", got, ok, tc.want, tc.pinned)
+			}
+		})
+	}
+}
+
 func TestCmdInitIdempotentWhenAlreadyMatching(t *testing.T) {
 	root := t.TempDir()
 	git := gitTestHelper(t, root)

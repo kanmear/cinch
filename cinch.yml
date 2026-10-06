@@ -20,3 +20,8 @@ hooks:
   post-commit:
     version-bump:
       run: scripts/post-commit-version-bump.sh
+
+# any: hooks run the installed binary while CI runs from source, so a
+# version pin here would only churn.
+require:
+  cinch: any

@@ -24,16 +24,21 @@ func CmdUpgrade(root string) int {
 		return output.Fail("upgrade", err)
 	}
 
-	if err := writeRenderedFiles(root, files); err != nil {
+	wrote, err := writeRenderedFiles(root, files)
+	if err != nil {
 		return output.Fail("upgrade", err)
 	}
 
-	if err := removeOrphanedFiles(root, files); err != nil {
+	removed, err := removeOrphanedFiles(root, files)
+	if err != nil {
 		return output.Fail("upgrade", err)
 	}
 
-	reportPinStatus(m)
-	if err := syncRequireCinch(root); err != nil {
+	// A floor rises only when this version's output differs from what was
+	// committed: a release that renders the same bytes doesn't need one.
+	changed := wrote || removed
+	reportPinStatus(m, changed)
+	if err := syncRequireCinch(root, changed); err != nil {
 		return output.Fail("upgrade", err)
 	}
 
@@ -42,12 +47,12 @@ func CmdUpgrade(root string) int {
 	return preCommitChecks(workingTreeRoots(root))
 }
 
-// reportPinStatus surfaces the one case syncRequireCinch leaves silent: a
-// ">=" range pin. syncRequireCinch itself already reports an exact-pin
-// rewrite via its own output.Step, and stays silent when unset, on a dev
-// build, or already matching — reportPinStatus mirrors that silence for
-// those cases and only speaks up for ranges.
-func reportPinStatus(m *manifest) {
+// reportPinStatus surfaces the ">=" floor cases syncRequireCinch leaves
+// silent: a floor it won't raise, either because it's already satisfied with
+// no rendered change or because the installed binary is below it.
+// syncRequireCinch reports its own rewrites, and both stay silent when unset,
+// any, on a dev build, or for an exact pin that already matches.
+func reportPinStatus(m *manifest, changed bool) {
 	want, ok := manifestSetting(m, requireCinchKey)
 	if !ok || Version == "dev" {
 		return
@@ -58,7 +63,9 @@ func reportPinStatus(m *manifest) {
 	}
 	minimum = strings.TrimSpace(minimum)
 	if semver.AtLeast(Version, minimum) {
-		output.Step("range pin >=%s is satisfied by installed %s; no change", minimum, Version)
+		if !changed || semver.Equal(Version, minimum) {
+			output.Step("range pin >=%s is satisfied by installed %s; no change", minimum, Version)
+		}
 		return
 	}
 	output.Step("range pin >=%s is NOT satisfied by installed %s — reinstall a newer cinch binary", minimum, Version)
