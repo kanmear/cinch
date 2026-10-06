@@ -1,6 +1,7 @@
 package cinch
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -391,13 +392,31 @@ func scanMarkers(r io.Reader, path string, fenced bool) (map[string][]markerLoc,
 	return markers, err
 }
 
+// binarySniffLen is how much of a file git reads to decide it is binary.
+const binarySniffLen = 8 << 10
+
+// scanFileMarkers skips a binary file (a NUL in its first binarySniffLen
+// bytes, git's own test). Markers are comments, which don't survive
+// compilation, and a tracked binary scanned line by line dominates the hook's
+// cost: one 12 MB server binary took a consumer's rules check from 50 ms to
+// 850 ms.
 func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return scanMarkers(f, path, strings.HasSuffix(path, ".md"))
+
+	head := make([]byte, binarySniffLen)
+	n, err := io.ReadFull(f, head)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return nil, err
+	}
+	head = head[:n]
+	if bytes.IndexByte(head, 0) >= 0 {
+		return map[string][]markerLoc{}, nil
+	}
+	return scanMarkers(io.MultiReader(bytes.NewReader(head), f), path, strings.HasSuffix(path, ".md"))
 }
 
 // scanRuleMarkers reads every in-scope file (roots.fsRoot plus any present
