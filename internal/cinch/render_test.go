@@ -24,13 +24,14 @@ func readTestFile(t *testing.T, directory, name string) string {
 	return string(data)
 }
 
+// cinch:rule CINCH-004
 func TestSyncRequireCinchNotConfigured(t *testing.T) {
 	withVersion(t, "1.2.3")
 	directory := t.TempDir()
 	content := "paths:\n  docs: .docs\n"
 	writeTestFile(t, directory, "cinch.yml", content)
 
-	if err := syncRequireCinch(directory); err != nil {
+	if err := syncRequireCinch(directory, true); err != nil {
 		t.Fatalf("syncRequireCinch: %v", err)
 	}
 
@@ -45,7 +46,7 @@ func TestSyncRequireCinchDevBuildSkips(t *testing.T) {
 	content := "require:\n  cinch: 1.2.3\n"
 	writeTestFile(t, directory, "cinch.yml", content)
 
-	if err := syncRequireCinch(directory); err != nil {
+	if err := syncRequireCinch(directory, false); err != nil {
 		t.Fatalf("syncRequireCinch: %v", err)
 	}
 
@@ -60,7 +61,7 @@ func TestSyncRequireCinchAlreadyMatches(t *testing.T) {
 	content := "require:\n  cinch: 1.2.3\n"
 	writeTestFile(t, directory, "cinch.yml", content)
 
-	if err := syncRequireCinch(directory); err != nil {
+	if err := syncRequireCinch(directory, false); err != nil {
 		t.Fatalf("syncRequireCinch: %v", err)
 	}
 
@@ -76,7 +77,7 @@ func TestSyncRequireCinchRewritesExactMismatch(t *testing.T) {
 	original := "paths:\n  docs: .docs\n  hooks: .githooks\n\n# pin the tool version\nrequire:\n  cinch: 1.2.3\n"
 	writeTestFile(t, directory, "cinch.yml", original)
 
-	if err := syncRequireCinch(directory); err != nil {
+	if err := syncRequireCinch(directory, false); err != nil {
 		t.Fatalf("syncRequireCinch: %v", err)
 	}
 
@@ -91,7 +92,7 @@ func TestSyncRequireCinchPreservesQuoteStyle(t *testing.T) {
 	directory := t.TempDir()
 	writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: '1.2.3'  # keep me quoted\n")
 
-	if err := syncRequireCinch(directory); err != nil {
+	if err := syncRequireCinch(directory, false); err != nil {
 		t.Fatalf("syncRequireCinch: %v", err)
 	}
 
@@ -108,13 +109,68 @@ func TestSyncRequireCinchLeavesRangeUntouched(t *testing.T) {
 	content := "require:\n  cinch: '>=2.0.0'\n"
 	writeTestFile(t, directory, "cinch.yml", content)
 
-	if err := syncRequireCinch(directory); err != nil {
+	if err := syncRequireCinch(directory, false); err != nil {
 		t.Fatalf("syncRequireCinch: %v", err)
 	}
 
 	m := loadTestManifest(t, directory)
 	if got, ok := manifestSetting(m, requireCinchKey); !ok || got != ">=2.0.0" {
 		t.Fatalf("require.cinch = %q, ok=%v, want unchanged >=2.0.0", got, ok)
+	}
+}
+
+// cinch:rule CINCH-004
+func TestSyncRequireCinchLeavesAnyUntouched(t *testing.T) {
+	withVersion(t, "1.2.4")
+	directory := t.TempDir()
+	content := "require:\n  cinch: any\n"
+	writeTestFile(t, directory, "cinch.yml", content)
+
+	if err := syncRequireCinch(directory, true); err != nil {
+		t.Fatalf("syncRequireCinch: %v", err)
+	}
+
+	if got := readTestFile(t, directory, "cinch.yml"); got != content {
+		t.Fatalf("cinch.yml = %q, want unchanged %q", got, content)
+	}
+}
+
+// cinch:rule CINCH-008
+func TestSyncRequireCinchRaisesFloorOnlyWhenAsked(t *testing.T) {
+	withVersion(t, "1.2.4")
+	original := "paths:\n  docs: .docs\n\n# floor\nrequire:\n  cinch: '>=1.2.3'  # keep\n"
+
+	directory := t.TempDir()
+	writeTestFile(t, directory, "cinch.yml", original)
+	if err := syncRequireCinch(directory, false); err != nil {
+		t.Fatalf("syncRequireCinch: %v", err)
+	}
+	if got := readTestFile(t, directory, "cinch.yml"); got != original {
+		t.Fatalf("cinch.yml = %q, want unchanged %q without raiseFloor", got, original)
+	}
+
+	if err := syncRequireCinch(directory, true); err != nil {
+		t.Fatalf("syncRequireCinch: %v", err)
+	}
+	want := "paths:\n  docs: .docs\n\n# floor\nrequire:\n  cinch: '>=1.2.4'  # keep\n"
+	if got := readTestFile(t, directory, "cinch.yml"); got != want {
+		t.Fatalf("cinch.yml = %q, want %q (only the floor should change)", got, want)
+	}
+}
+
+// cinch:rule CINCH-008
+func TestSyncRequireCinchNeverLowersFloor(t *testing.T) {
+	withVersion(t, "1.9.9")
+	directory := t.TempDir()
+	content := "require:\n  cinch: '>=2.0.0'\n"
+	writeTestFile(t, directory, "cinch.yml", content)
+
+	if err := syncRequireCinch(directory, true); err != nil {
+		t.Fatalf("syncRequireCinch: %v", err)
+	}
+
+	if got := readTestFile(t, directory, "cinch.yml"); got != content {
+		t.Fatalf("cinch.yml = %q, want unchanged %q", got, content)
 	}
 }
 

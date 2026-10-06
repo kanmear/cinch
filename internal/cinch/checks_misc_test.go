@@ -233,6 +233,20 @@ func TestCheckPin(t *testing.T) {
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
+		for _, want := range []string{"'>=1.0.0'", "any"} {
+			if !strings.Contains(r.noOp, want) {
+				t.Fatalf("noOp = %q, want it to contain %q", r.noOp, want)
+			}
+		}
+	})
+
+	t.Run("any disables the check", func(t *testing.T) {
+		directory := t.TempDir()
+		writeTestFile(t, directory, "cinch.yml", "require:\n  cinch: any\n")
+		r := checkPin("1.0.0", loadTestManifest(t, directory))
+		if !strings.Contains(r.noOp, "disabled") || len(r.findings) != 0 {
+			t.Fatalf("result = %+v, want a disabled noOp", r)
+		}
 	})
 
 	t.Run("dev build skips the check", func(t *testing.T) {
