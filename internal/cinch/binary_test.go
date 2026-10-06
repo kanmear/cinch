@@ -12,6 +12,7 @@ import (
 const binaryMarker = "// cinch:" + "rule "
 
 // cinch:rule CINCH-009
+// catch-matrix: rules | not a defect | marker-shaped string inside a binary file (CINCH-009)
 func TestScanRuleMarkersSkipsBinaryFiles(t *testing.T) {
 	root := t.TempDir()
 	write := func(name, body string) {

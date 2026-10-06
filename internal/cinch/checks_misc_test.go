@@ -33,6 +33,7 @@ func TestCheckHooksNoManifest(t *testing.T) {
 	}
 }
 
+// catch-matrix: hooks | warns | core.hooksPath unset, so no hook runs
 func TestCheckHooksUnset(t *testing.T) {
 	root := t.TempDir()
 	git := gitTestHelper(t, root)
@@ -45,6 +46,7 @@ func TestCheckHooksUnset(t *testing.T) {
 	}
 }
 
+// catch-matrix: hooks | warns | core.hooksPath points somewhere other than paths.hooks
 func TestCheckHooksMismatch(t *testing.T) {
 	root := t.TempDir()
 	git := gitTestHelper(t, root)
@@ -166,6 +168,7 @@ func loadTestManifest(t *testing.T, directory string) *manifest {
 	return m
 }
 
+// catch-matrix: commit | caught | commit message doesn't match commit.pattern
 func TestCheckCommit(t *testing.T) {
 	t.Run("no message file", func(t *testing.T) {
 		directory := t.TempDir()
@@ -226,6 +229,7 @@ func TestCheckCommit(t *testing.T) {
 	})
 }
 
+// catch-matrix: core | caught | installed cinch doesn't match an exact pin or is below a floor
 func TestCheckPin(t *testing.T) {
 	t.Run("not configured", func(t *testing.T) {
 		directory := t.TempDir()
@@ -333,6 +337,7 @@ func renderedFixture(t *testing.T) (root string, m *manifest, files []renderFile
 }
 
 // cinch:rule CINCH-001
+// catch-matrix: generated | caught | hand-edited rendered file (CINCH-001)
 func TestSeededDefectGeneratedHandEdited(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]
@@ -356,6 +361,7 @@ func TestSeededDefectGeneratedHandEdited(t *testing.T) {
 	}
 }
 
+// catch-matrix: generated | caught | rendered file deleted
 func TestSeededDefectGeneratedMissingFile(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]
@@ -379,6 +385,7 @@ func TestSeededDefectGeneratedMissingFile(t *testing.T) {
 }
 
 // cinch:rule CINCH-002
+// catch-matrix: generated | caught | generated file the current render no longer produces (CINCH-002)
 func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 	root, m, files := renderedFixture(t)
 	target := files[0]

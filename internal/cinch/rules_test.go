@@ -220,6 +220,7 @@ func TestScanRuleMarkersLargeFile(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | not a defect | marker shown inside a markdown code fence
 func TestScanMarkersFenceOnlyForMarkdown(t *testing.T) {
 	root := t.TempDir()
 	write := func(name, body string) {
@@ -464,6 +465,7 @@ func TestCheckRulesFromTripleDuplicate(t *testing.T) {
 // checker's own regression suite — see
 // .docs/plans/03-rule-grammar-holes-and-seed-defects.md.
 
+// catch-matrix: rules | caught | rule with no marker and no cinch:ignore
 func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -481,6 +483,7 @@ func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | gap | marked test whose body no longer exercises the rule
 func TestSeededDefectRulesHollowedTest(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -506,6 +509,55 @@ func TestSeededDefectRulesHollowedTest(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | marker naming a rule that doesn't exist
+func TestSeededDefectRulesStrayMarker(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-001** some rule\n<!-- cinch:ignore: fixture -->\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The rule this marker named was renamed or deleted; nothing is near it.
+	if err := os.WriteFile(filepath.Join(root, "a_test.go"), []byte("// cinch:rule PAY-700\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(workingTreeRoots(root), docsRoot, markerScanOptions{})
+
+	if len(report.findings) != 1 || !strings.Contains(report.findings[0].message, "PAY-700") ||
+		!strings.Contains(report.findings[0].message, "does not resolve to any rule ID") {
+		t.Fatalf("findings = %+v, want a single 'does not resolve' finding for PAY-700", report.findings)
+	}
+}
+
+// catch-matrix: rules | gap | rule marked only on production code, with no test
+func TestSeededDefectRulesMarkerOnNonTestCode(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-001** some rule\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The only marker sits on production code; no test anywhere names SIG-001.
+	if err := os.WriteFile(filepath.Join(root, "server.go"), []byte("// cinch:rule SIG-001\nfunc handle() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(workingTreeRoots(root), docsRoot, markerScanOptions{})
+
+	// GAP: a marker binds wherever it sits. cinch can't tell a test from
+	// production code across languages, so a rule "bound" only to the code
+	// it describes passes with no test enforcing it.
+	if len(report.findings) != 0 {
+		t.Fatalf("findings = %+v, want none (marker placement is not checked)", report.findings)
+	}
+}
+
+// catch-matrix: rules | gap | two rules whose texts contradict each other
 func TestSeededDefectRulesContradictingNeighbor(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -530,6 +582,7 @@ func TestSeededDefectRulesContradictingNeighbor(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | same rule ID declared in two docs
 func TestSeededDefectRulesDuplicateID(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -560,6 +613,7 @@ func TestSeededDefectRulesDuplicateID(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | marker one typo from a real rule ID (with a did-you-mean)
 func TestSeededDefectRulesNearMissID(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -586,6 +640,7 @@ func TestSeededDefectRulesNearMissID(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | cinch:ignore with no reason
 func TestSeededDefectRulesIgnoreNoReason(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -610,6 +665,7 @@ func TestSeededDefectRulesIgnoreNoReason(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | rule both ignored and marked
 func TestSeededDefectRulesIgnoreWithMarker(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
