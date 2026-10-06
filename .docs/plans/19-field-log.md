@@ -38,7 +38,9 @@ blocked attempts get logged too.
 event=$1
 gitdir=$(git rev-parse --git-common-dir)
 log="$gitdir/cinch-log.tsv"
-checks=links,rules,index,generated
+# The hook's default baseline (no hooks.pre-commit-checks override here), so a
+# logged pass or fail is the same verdict the hook gave.
+checks=links,rules,index,generated,core
 
 start=$(date +%s%3N)                     # GNU date
 if [ "$event" = post-commit ]; then
@@ -100,6 +102,55 @@ consumes cinch (only `~/code/odin-landing` is checked out locally).
 Set `CINCH_ACTOR` when launching each agent, for example `alias pi='CINCH_ACTOR=pi pi'`, and the
 same for Claude Code. The log then separates human commits from agent commits without
 guessing from environment variables.
+
+## Installed (2026-10-06)
+
+| Repo | Commit | Before installing |
+|---|---|---|
+| `~/code/project_deltadocs` | `e9df406 merge: chore/cinch-field-log` on `dev` | `cinch upgrade`, pin 0.6.1 → 0.9.0 plus re-render (`45e1275`) |
+| `~/code/lucky_to_have_you` | `27bc718 merge: chore/cinch-field-log` on `dev` | none, already pinned to 0.9.0 |
+| `~/code/budgetron` | swept into an agent's `8934fd8 test [rules]: …` on `main` (see below) | none |
+| `~/work/fsed-odin-docs` | `70b4d55` on `main` | `cinch upgrade`, pin 0.8.3 → 0.9.0 (`0b0ebe5`) |
+
+Nothing is pushed. `~/work/fsed-odin-mono` is left out: its `core.hooksPath` is unset, so
+cinch doesn't run there at all, and turning hooks on would change enforcement, not just
+observe it. Before the upgrades, DeltaDocs and odin-docs failed `core` on every commit
+(DeltaDocs also failed `generated`), so every commit there was blocked or bypassed. That
+was the "version pin" Noise this item predicted, cleared before logging started rather
+than logged.
+
+Changes from the design above, and why:
+
+- **`core` is in the logged checks.** It's in the hook's default baseline, and none of the four
+  repos override `hooks.pre-commit-checks`. Without it, a commit blocked by the pin would be
+  logged as a pass.
+- **Actor tagging** is a fish `conf.d` file, `~/.config/fish/conf.d/cinch-actor.fish`, that wraps
+  `pi` and `claude` and sets `CINCH_ACTOR`. Rows before about 21:50 on 2026-10-06 are all
+  `human`, including eight budgetron commits that were made by an agent.
+
+Lessons from the install:
+
+- **Don't stage into a checkout an agent is using.** In budgetron, an agent session's
+  `git commit` picked up the staged `cinch.yml` and script into its own commit. Use a
+  worktree.
+- **Worktrees don't work for repos that use `rules.roots` with nested repos.**
+  `fsed-odin-docs` keeps its markers in nested `backend`/`frontend`/`mobile` repos that a
+  fresh worktree doesn't contain, so every rule shows as unmarked there. Work in the main
+  checkout.
+
+## Reading caveats found on day one
+
+- **Duplicate post-commit rows.** In DeltaDocs and lucky_to_have_you, the `version-bump`
+  script amends the commit with `--no-verify`, which fires post-commit again. A bumped
+  commit therefore logs two post-commit rows with the same `head`. Dedupe by `head`.
+- **A pre-commit row with exit 0 and no post-commit after it is not a cinch block.** Git
+  runs pre-commit before it checks for an empty commit, and a project hook script or
+  commit-msg can still reject the commit afterwards. Only a non-zero pre-commit exit counts
+  as cinch blocking. budgetron's row at 2026-10-06T21:46:02 is an example: an empty commit
+  attempt.
+- **Latency differs by repo.** DeltaDocs takes about 0.9–1.0 s per run, while the other three
+  take 40–100 ms. That's well above the "tens of milliseconds" assumed above. Find the
+  cause in [22](22-catch-matrix-and-cost-curve.md)'s cost curve.
 
 ## 2. Weekly labeling (~10 minutes)
 

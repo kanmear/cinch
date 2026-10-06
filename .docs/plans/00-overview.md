@@ -32,7 +32,7 @@ tier three is small in isolation but compounds.
 | 16 | [`cinch init` writes the AGENTS.md pointer](16-init-agents-pointer.md) | 2 — make green mean something | **Shipped** (`5121e4e`) — kept for provenance |
 | 17 | [Cut the workflow pack; render removes stale generated files](17-trim-workflow-pack.md) | 3 — decide before investing | **Shipped** (`09ef586`) — kept for provenance |
 | 18 | [`paths.exclude`, then dogfood — the hand-off plan](18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **Shipped** (`9830825`) — implements item 8 |
-| 19 | [Field log during the DeltaDocs MVP push](19-field-log.md) | 4 — evidence | Open — install now |
+| 19 | [Field log during the DeltaDocs MVP push](19-field-log.md) | 4 — evidence | Installed 2026-10-06 in four repos; collecting |
 | 20 | [Replay history for rule growth](20-rule-growth-replay.md) | 4 — evidence | Open — run at the end of the push |
 | 21 | [A benchmark suite worth publishing](21-benchmark-suite.md) | 4 — evidence | Open — umbrella for 22–25 |
 | 22 | [Catch matrix and cost curve](22-catch-matrix-and-cost-curve.md) | 4 — evidence | Open — do first |
