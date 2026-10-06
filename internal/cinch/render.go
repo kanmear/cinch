@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"cinch/internal/output"
+	"cinch/internal/semver"
 
 	"gopkg.in/yaml.v3"
 )
@@ -142,56 +143,63 @@ func CmdRender(root string) int {
 		return output.Fail("render", err)
 	}
 
-	if err := writeRenderedFiles(root, files); err != nil {
+	if _, err := writeRenderedFiles(root, files); err != nil {
 		return output.Fail("render", err)
 	}
 
-	if err := removeOrphanedFiles(root, files); err != nil {
+	if _, err := removeOrphanedFiles(root, files); err != nil {
 		return output.Fail("render", err)
 	}
 
-	if err := syncRequireCinch(root); err != nil {
+	if err := syncRequireCinch(root, false); err != nil {
 		return output.Fail("render", err)
 	}
 
 	return 0
 }
 
-func writeRenderedFiles(root string, files []renderFile) error {
+// writeRenderedFiles reports changed when any file's bytes differ from what
+// was on disk, including files that didn't exist yet.
+func writeRenderedFiles(root string, files []renderFile) (changed bool, err error) {
 	for _, f := range files {
 		destination := filepath.Join(root, f.destination)
 		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return err
+			return changed, err
 		}
 		content := header(f.source, f.body, f.style) + f.body
 		mode := f.mode
 		if mode == 0 {
 			mode = 0o644
 		}
+		if existing, err := os.ReadFile(destination); err != nil || string(existing) != content {
+			changed = true
+		}
 		if err := os.WriteFile(destination, []byte(content), mode); err != nil {
-			return err
+			return changed, err
 		}
 		output.Step("rendered %s", f.destination)
 	}
-	return nil
+	return changed, nil
 }
 
 // removeOrphanedFiles deletes only what orphanedGeneratedFiles reports, so a
 // file without cinch's generated header is never touched.
-func removeOrphanedFiles(root string, files []renderFile) error {
+func removeOrphanedFiles(root string, files []renderFile) (removed bool, err error) {
 	for _, rel := range orphanedGeneratedFiles(workingTreeRoots(root), files) {
 		if err := os.Remove(filepath.Join(root, rel)); err != nil {
-			return err
+			return removed, err
 		}
+		removed = true
 		output.Step("removed orphaned %s", rel)
 	}
-	return nil
+	return removed, nil
 }
 
 // syncRequireCinch keeps checkPin's "reinstall and re-run cinch render"
 // remediation true: it updates an exact require.cinch pin to match the
-// installed version, leaving unset pins, ">=" ranges, and dev builds alone.
-func syncRequireCinch(root string) error {
+// installed version. A ">=" floor moves only when raiseFloor is set, and only
+// upward. Unset pins, any, and dev builds are left alone.
+func syncRequireCinch(root string, raiseFloor bool) error {
 	if Version == "dev" {
 		return nil
 	}
@@ -214,7 +222,19 @@ func syncRequireCinch(root string) error {
 	if node == nil {
 		return nil
 	}
-	if strings.HasPrefix(strings.TrimSpace(node.Value), ">=") {
+	value := strings.TrimSpace(node.Value)
+	if value == requireCinchAny {
+		return nil
+	}
+	if floor, isFloor := strings.CutPrefix(value, ">="); isFloor {
+		floor = strings.TrimSpace(floor)
+		if !raiseFloor || semver.Equal(Version, floor) || !semver.AtLeast(Version, floor) {
+			return nil
+		}
+		if err := rewriteRequireCinch(path, data, node, ">="+Version); err != nil {
+			return err
+		}
+		output.Step("raised require.cinch floor: >=%s -> >=%s", floor, Version)
 		return nil
 	}
 	if node.Value == Version {
@@ -222,15 +242,19 @@ func syncRequireCinch(root string) error {
 	}
 
 	old := node.Value
-	patched, err := patchScalarLine(string(data), node, Version)
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
+	if err := rewriteRequireCinch(path, data, node, Version); err != nil {
 		return err
 	}
 	output.Step("synced require.cinch: %s -> %s", old, Version)
 	return nil
+}
+
+func rewriteRequireCinch(path string, data []byte, node *yaml.Node, value string) error {
+	patched, err := patchScalarLine(string(data), node, value)
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	return os.WriteFile(path, []byte(patched), 0o644)
 }
 
 func patchScalarLine(content string, node *yaml.Node, newValue string) (string, error) {

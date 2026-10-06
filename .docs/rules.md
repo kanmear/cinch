@@ -20,9 +20,12 @@ repository, so an unbound rule or a stray marker fails CI.
 3. **CINCH-003** `cinch init` never overwrites a `core.hooksPath` another tool
    set.
 4. **CINCH-004** Render rewrites an exact `require.cinch` pin and never
-   rewrites a range pin.
+   changes a range pin, `any`, or an unset pin.
 5. **CINCH-005** Link syntax inside inline code is not a link.
 6. **CINCH-006** The pre-commit hook checks staged content; unstaged edits
    neither block nor excuse a commit.
 7. **CINCH-007** Cinch sends no repository content over the network.
    <!-- cinch:ignore: a negative property; the only network call is the release lookup in selfupdate.go, verified by review -->
+8. **CINCH-008** `cinch init` writes a `>=` floor pin at the installed
+   version. `cinch upgrade` raises a floor only when its rendered output
+   changed, and never lowers one.

@@ -91,10 +91,21 @@ var Version = "dev"
 
 const requireCinchKey = "require.cinch"
 
+// requireCinchAny is the explicit opt-out: the repo deliberately accepts any
+// cinch version, and neither checkPin nor syncRequireCinch acts on it.
+const requireCinchAny = "any"
+
 func checkPin(version string, m *manifest) checkResult {
 	want, ok := manifestSetting(m, requireCinchKey)
 	if !ok {
-		return checkResult{noOp: "require.cinch is not set in cinch.yml — opt-in, not configured"}
+		suggestion := "'>=<version>'"
+		if version != "dev" {
+			suggestion = "'>=" + version + "'"
+		}
+		return checkResult{noOp: "require.cinch is not set — add require: {cinch: " + suggestion + "} to guard against older binaries, or set it to any"}
+	}
+	if strings.TrimSpace(want) == requireCinchAny {
+		return checkResult{noOp: "require.cinch is any — version pin disabled"}
 	}
 	if version == "dev" {
 		return checkResult{noOp: "binary is an unreleased (dev) build — require.cinch is not checked"}

@@ -8,6 +8,8 @@ import (
 
 	"cinch/internal/gitutil"
 	"cinch/internal/output"
+
+	"gopkg.in/yaml.v3"
 )
 
 type initAnswers struct {
@@ -31,6 +33,12 @@ func CmdInit(root string) int {
 			answers = askInit()
 		} else {
 			answers = initAnswers{docsPath: defaultDocsPath, hooksPath: defaultHooksPath}
+		}
+		// A floor, not an exact pin: it turns an older binary's confusing
+		// generated drift into "reinstall", and never forces a commit on
+		// every release.
+		if Version != "dev" {
+			answers.require = ">=" + Version
 		}
 		if err := writeInitManifest(root, answers); err != nil {
 			return output.Fail("init", err)
@@ -86,10 +94,6 @@ func askInit() initAnswers {
 		answers.commitPattern = askLine("commit.pattern", "")
 	}
 
-	if Version != "dev" && output.AskYesNo(fmt.Sprintf("require cinch %s?", Version)) {
-		answers.require = Version
-	}
-
 	for {
 		name := askLine("pre-commit hook name (blank to finish)", "")
 		if name == "" {
@@ -139,7 +143,7 @@ func writeInitManifest(root string, a initAnswers) error {
 		fmt.Fprintf(&b, "\ncommit:\n  pattern: '%s'\n", a.commitPattern)
 	}
 	if a.require != "" {
-		fmt.Fprintf(&b, "\nrequire:\n  cinch: %s\n", a.require)
+		fmt.Fprintf(&b, "\nrequire:\n  cinch: %s\n", formatScalar(a.require, yaml.SingleQuotedStyle))
 	}
 	if len(a.preCommits) > 0 {
 		b.WriteString("\nhooks:\n  pre-commit:\n")
