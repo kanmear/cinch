@@ -32,3 +32,5 @@ repository, so an unbound rule or a stray marker fails CI.
    changed, and never lowers one.
 9. **CINCH-009** The marker scan skips binary files (a NUL byte in the first
    8 KB, git's own test), so a marker-shaped string inside one binds nothing.
+10. **CINCH-010** Marker locations are reported in file-then-line order, so
+    the same tree always gives the same `cinch rules --json` output.
