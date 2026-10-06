@@ -421,11 +421,11 @@ func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 
 // scanRuleMarkers reads every in-scope file (roots.fsRoot plus any present
 // rules.roots sibling) looking for // cinch:rule markers, using a bounded
-// worker pool since each file is an independent os.Open + scan. The merge
-// order across files is not guaranteed, so the location order within
-// markers[id] is not stable run-to-run when the same ID appears in more than
-// one file. missingRoots names any configured extraRoots entry that doesn't
-// exist on disk, so the caller can decide whether to skip rather than report.
+// worker pool since each file is an independent os.Open + scan. Workers
+// finish in any order, so each markers[id] is sorted by file, then line,
+// before returning: the same tree must give the same output. missingRoots
+// names any configured extraRoots entry that doesn't exist on disk, so the
+// caller can decide whether to skip rather than report.
 func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOptions) (markers map[string][]markerLoc, missingRoots []string, err error) {
 	scanRoots, missing := resolveRuleScanRoots(roots, options)
 
@@ -495,6 +495,14 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 	}
 	if firstErr != nil {
 		return nil, nil, firstErr
+	}
+	for _, locs := range out {
+		sort.Slice(locs, func(i, j int) bool {
+			if locs[i].file != locs[j].file {
+				return locs[i].file < locs[j].file
+			}
+			return locs[i].line < locs[j].line
+		})
 	}
 	return out, missing, nil
 }
