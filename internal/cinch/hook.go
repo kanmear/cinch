@@ -34,6 +34,9 @@ func cmdHookPreCommit(root string) int {
 	if err != nil {
 		return output.Fail("hook", err)
 	}
+	// The rules check and the impact advisory below both scan for markers;
+	// one cache makes that a single pass over the tree.
+	roots.scans = newMarkerScanCache()
 	ok := preCommitChecks(roots) == 0
 
 	m, err := loadManifestOptional(root)

@@ -26,9 +26,10 @@ type checkResult struct {
 // checkRoots separates where git runs from where checked content is read.
 // git never runs inside an index snapshot; stagedSnapshot says why.
 type checkRoots struct {
-	repoRoot   string   // real repository: git commands, rules.roots siblings, core.hooksPath
-	fsRoot     string   // where file content is read: == repoRoot, or an index snapshot
-	indexFiles []string // staged mode only: `git ls-files --cached`, repo-relative
+	repoRoot   string           // real repository: git commands, rules.roots siblings, core.hooksPath
+	fsRoot     string           // where file content is read: == repoRoot, or an index snapshot
+	indexFiles []string         // staged mode only: `git ls-files --cached`, repo-relative
+	scans      *markerScanCache // optional: lets checks in one run share marker scans
 }
 
 func scanErrorFinding(check, scope string, err error) []finding {
