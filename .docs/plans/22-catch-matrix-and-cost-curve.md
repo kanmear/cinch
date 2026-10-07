@@ -38,14 +38,13 @@ The seeded-defect tests already exist (`TestSeededDefect*` in `internal/cinch/ru
 
 ## Cost curve (claim #6: cheap enough for every commit)
 
-**Status: measured (2026-10-07).** The result is in `bench/cost-curve.csv`, from
-`bench/costcurve` via `make cost-curve`, written up in `bench/README.md`. The claim holds to
-about 10k files (under 1 s) and fails at 100k (7.3 s). Cost is linear at about 73 µs per
-file. Nearly all of it is the marker scan, which the hook runs twice (once for `rules`, once
-for the impact advisory), and which allocates about 136 KB per file. In a trial build,
-reading each file once and skipping files without `cinch:rule` took the 100k-file hook from
-7.0 s to 2.8 s; sharing the one scan should roughly halve it again. That fix is the open
-follow-up. Re-run the curve after it ships.
+**Status: done (2026-10-07).** The result is in `bench/cost-curve.csv`, from
+`bench/costcurve` via `make cost-curve`, written up in `bench/README.md`. The first run (0.9.2)
+failed the claim at 100k files (7.3 s): the hook scanned every file twice and line-scanned
+files with no marker. The fix in 0.10.1 reads each file once, line-scans only files that
+contain `cinch:rule`, and shares one scan across the hook run (`TestPreCommitHookScansEachFileOnce`).
+Re-run: 31 ms at 1k files, 215 ms at 10k, 1.8 s at 100k (3.2 s on the snapshot path, which is
+now the larger cost at scale).
 
 1. Generate synthetic repos at 1k, 10k and 100k files with a fixed share of docs, rules and
    markers. Add tracked binary size as a second dimension (none / 10 MB / 100 MB). The first
