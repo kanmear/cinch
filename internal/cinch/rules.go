@@ -395,50 +395,127 @@ func scanMarkers(r io.Reader, path string, fenced bool) (map[string][]markerLoc,
 // binarySniffLen is how much of a file git reads to decide it is binary.
 const binarySniffLen = 8 << 10
 
-// scanFileMarkers skips a binary file (a NUL in its first binarySniffLen
-// bytes, git's own test). Markers are comments, which don't survive
-// compilation, and a tracked binary scanned line by line dominates the hook's
-// cost: one 12 MB server binary took a consumer's rules check from 50 ms to
-// 850 ms.
+// markerNeedle is the literal every marker contains: markerRe allows nothing
+// between "cinch:" and "rule". A file without it can't hold a marker.
+var markerNeedle = []byte("cinch:rule")
+
+// scanFileMarkers reads a file once and line-scans it only when it can hold
+// a marker. A binary file (a NUL in its first binarySniffLen bytes, git's own
+// test) is skipped before the rest of it is read: markers are comments, which
+// don't survive compilation, and one 12 MB server binary scanned line by line
+// took a consumer's rules check from 50 ms to 850 ms. Most text files hold no
+// marker, so the needle check spares them the line scan, which was most of
+// the hook's cost on large repos.
 func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-
-	head := make([]byte, binarySniffLen)
-	n, err := io.ReadFull(f, head)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	info, err := f.Stat()
+	if err != nil {
 		return nil, err
 	}
-	head = head[:n]
-	if bytes.IndexByte(head, 0) >= 0 {
+
+	buf := bytes.NewBuffer(make([]byte, 0, info.Size()+bytes.MinRead))
+	if _, err := io.CopyN(buf, f, binarySniffLen); err != nil && err != io.EOF {
+		return nil, err
+	}
+	if bytes.IndexByte(buf.Bytes(), 0) >= 0 {
 		return map[string][]markerLoc{}, nil
 	}
-	return scanMarkers(io.MultiReader(bytes.NewReader(head), f), path, strings.HasSuffix(path, ".md"))
+	if _, err := buf.ReadFrom(f); err != nil {
+		return nil, err
+	}
+	if !bytes.Contains(buf.Bytes(), markerNeedle) {
+		return map[string][]markerLoc{}, nil
+	}
+	return scanMarkers(bytes.NewReader(buf.Bytes()), path, strings.HasSuffix(path, ".md"))
+}
+
+// scanFileMarkersFunc is the per-file scan the worker pool calls; tests wrap
+// it to count scans.
+var scanFileMarkersFunc = scanFileMarkers
+
+// markerScanCache keeps each root's marker scan for the length of one run,
+// so the pre-commit hook's rules check and impact advisory share one pass
+// over the tree instead of reading every file twice. It's keyed per scan
+// root because the two scan different root sets: impact leaves out
+// rules.roots siblings. A nil cache scans every time.
+type markerScanCache struct {
+	mu    sync.Mutex
+	roots map[string]map[string][]markerLoc
+}
+
+func newMarkerScanCache() *markerScanCache {
+	return &markerScanCache{roots: map[string]map[string][]markerLoc{}}
+}
+
+// scan returns root's markers. Callers must not modify the result: it may be
+// the cached map another check also reads.
+func (c *markerScanCache) scan(root ruleScanRoot, docsRoot string) (map[string][]markerLoc, error) {
+	if c == nil {
+		return scanRootMarkers(root, docsRoot)
+	}
+	key := strings.Join(append([]string{root.path, root.display, docsRoot}, root.exclude...), "\x00")
+	c.mu.Lock()
+	found, ok := c.roots[key]
+	c.mu.Unlock()
+	if ok {
+		return found, nil
+	}
+	found, err := scanRootMarkers(root, docsRoot)
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	c.roots[key] = found
+	c.mu.Unlock()
+	return found, nil
 }
 
 // scanRuleMarkers reads every in-scope file (roots.fsRoot plus any present
-// rules.roots sibling) looking for // cinch:rule markers, using a bounded
-// worker pool since each file is an independent os.Open + scan. Workers
-// finish in any order, so each markers[id] is sorted by file, then line,
-// before returning: the same tree must give the same output. missingRoots
-// names any configured extraRoots entry that doesn't exist on disk, so the
-// caller can decide whether to skip rather than report.
+// rules.roots sibling) looking for // cinch:rule markers, reusing a root's
+// scan from roots.scans when an earlier check already did it. Each markers[id]
+// is a fresh slice, sorted by file, then line: the same tree must give the
+// same output. missingRoots names any configured extraRoots entry that
+// doesn't exist on disk, so the caller can decide whether to skip rather than
+// report.
 func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOptions) (markers map[string][]markerLoc, missingRoots []string, err error) {
 	scanRoots, missing := resolveRuleScanRoots(roots, options)
 
-	var files []scannedFile
+	out := map[string][]markerLoc{}
 	for _, root := range scanRoots {
-		rootFiles, ferr := markerScanFiles(root, docsRoot)
-		if ferr != nil {
-			return nil, nil, ferr
+		found, err := roots.scans.scan(root, docsRoot)
+		if err != nil {
+			return nil, nil, err
 		}
-		files = append(files, rootFiles...)
+		for id, locs := range found {
+			out[id] = append(out[id], locs...)
+		}
 	}
+	for _, locs := range out {
+		sort.Slice(locs, func(i, j int) bool {
+			if locs[i].file != locs[j].file {
+				return locs[i].file < locs[j].file
+			}
+			return locs[i].line < locs[j].line
+		})
+	}
+	return out, missing, nil
+}
+
+// scanRootMarkers scans one root's candidate files with a bounded worker
+// pool, since each file is an independent open and scan. Workers finish in
+// any order; scanRuleMarkers sorts the merged result.
+func scanRootMarkers(root ruleScanRoot, docsRoot string) (map[string][]markerLoc, error) {
+	files, err := markerScanFiles(root, docsRoot)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]markerLoc{}
 	if len(files) == 0 {
-		return map[string][]markerLoc{}, missing, nil
+		return out, nil
 	}
 
 	type fileResult struct {
@@ -455,7 +532,7 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 		go func() {
 			defer wg.Done()
 			for f := range jobs {
-				m, ferr := scanFileMarkers(f.fsPath)
+				m, ferr := scanFileMarkersFunc(f.fsPath)
 				if ferr == nil {
 					for id, locs := range m {
 						relabeled := make([]markerLoc, len(locs))
@@ -480,7 +557,6 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 		close(results)
 	}()
 
-	out := map[string][]markerLoc{}
 	var firstErr error
 	for r := range results {
 		if r.err != nil {
@@ -494,17 +570,9 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 		}
 	}
 	if firstErr != nil {
-		return nil, nil, firstErr
+		return nil, firstErr
 	}
-	for _, locs := range out {
-		sort.Slice(locs, func(i, j int) bool {
-			if locs[i].file != locs[j].file {
-				return locs[i].file < locs[j].file
-			}
-			return locs[i].line < locs[j].line
-		})
-	}
-	return out, missing, nil
+	return out, nil
 }
 
 // checkRules cross-references documented rule IDs under docsRoot against
