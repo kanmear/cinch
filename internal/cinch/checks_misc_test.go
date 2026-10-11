@@ -226,6 +226,41 @@ func TestCheckCommit(t *testing.T) {
 		if f.check != "commit" || f.level != "error" || f.file != msg || f.line != 1 {
 			t.Fatalf("finding = %+v", f)
 		}
+		if strings.Contains(f.message, "default merge message") {
+			t.Fatalf("message = %q, want no merge hint for a non-merge subject", f.message)
+		}
+	})
+
+	t.Run("git default merge message gets a hint", func(t *testing.T) {
+		directory := t.TempDir()
+		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^(merge: dev|feat: .+)'\n")
+		for _, subject := range []string{
+			"Merge branch 'dev'",
+			"Merge remote-tracking branch 'origin/dev'",
+			"Merge tag 'v1.0.0'",
+			"Merge commit 'abc123'",
+		} {
+			msg := writeTestFile(t, directory, "msg.txt", subject+"\n")
+			r := checkCommit(msg, loadTestManifest(t, directory))
+			if len(r.findings) != 1 {
+				t.Fatalf("%q: result = %+v, want one finding", subject, r)
+			}
+			for _, want := range []string{subject, "default merge message", "-m '<a subject matching commit.pattern>'"} {
+				if !strings.Contains(r.findings[0].message, want) {
+					t.Fatalf("message = %q, want it to contain %q", r.findings[0].message, want)
+				}
+			}
+		}
+	})
+
+	t.Run("merge message the pattern allows", func(t *testing.T) {
+		directory := t.TempDir()
+		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^(Merge branch |feat: .+)'\n")
+		msg := writeTestFile(t, directory, "msg.txt", "Merge branch 'dev'\n")
+		r := checkCommit(msg, loadTestManifest(t, directory))
+		if len(r.findings) != 0 || r.noOp != "" {
+			t.Fatalf("result = %+v, want ok", r)
+		}
 	})
 }
 
