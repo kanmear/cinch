@@ -81,9 +81,15 @@ func checkCommit(messageFile string, m *manifest) checkResult {
 	if re.MatchString(subject) {
 		return checkResult{}
 	}
+	message := "commit message does not match commit.pattern (" + pattern + "): " + subject
+	// git's default merge subjects ("Merge branch …", "Merge tag …") are easy to
+	// produce by accident; say where the subject came from and how to override it.
+	if strings.HasPrefix(subject, "Merge ") {
+		message += " — this is git's default merge message; commit the merge with -m '<a subject matching commit.pattern>'"
+	}
 	return checkResult{findings: []finding{{
 		check: "commit", level: "error", file: messageFile, line: 1,
-		message: "commit message does not match commit.pattern (" + pattern + "): " + subject,
+		message: message,
 	}}}
 }
 
