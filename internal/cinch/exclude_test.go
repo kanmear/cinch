@@ -131,7 +131,7 @@ func TestPathsExcludeAppliesToStagedChecks(t *testing.T) {
 	_, git := excludeTestRepo(t, root, []string{"fixtures/"}, nil)
 	writeTestFile(t, filepath.Join(root, "fixtures"), "f.go", "package f\n\n"+excludeMarker+"STRAY-1\n")
 	git("add", "fixtures/f.go")
-	writeTestFile(t, root, "untracked.txt", "forces a snapshot\n")
+	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", "package auth\n\n"+excludeMarker+"AUTH-001\n\nfunc Unstaged() {}\n")
 
 	var got int
 	out := captureStdout(t, func() { got = stagedPreCommitChecks(root) })

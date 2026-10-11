@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -43,15 +42,16 @@ type rulesInventoryJSON struct {
 // buildRulesInventory includes duplicate rule IDs rather than deduping —
 // duplication is itself the signal the rules check reports on.
 func buildRulesInventory(repoRoot, docsRoot string, options markerScanOptions) (rulesInventoryJSON, error) {
-	items, err := scanRuleDocs(docsRoot)
+	roots := workingTreeRoots(repoRoot)
+	items, err := scanRuleDocs(roots, docsRoot)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
-	markers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, options)
+	markers, _, err := scanRuleMarkers(roots, docsRoot, options)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
-	docs, err := scanDocFrontmatter(docsRoot)
+	docs, err := scanDocFrontmatter(roots, docsRoot)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
@@ -74,8 +74,8 @@ func buildRulesInventory(repoRoot, docsRoot string, options markerScanOptions) (
 
 // scanDocFrontmatter returns an entry only for docs that declare owns:
 // and/or rule_prefix: — most docs have neither and are silently excluded.
-func scanDocFrontmatter(docsRoot string) ([]docFrontmatterJSON, error) {
-	return mdscan.Collect(docsRoot, func(path string) ([]docFrontmatterJSON, error) {
+func scanDocFrontmatter(roots checkRoots, docsRoot string) ([]docFrontmatterJSON, error) {
+	return collectDocs(roots, docsRoot, func(path string) ([]docFrontmatterJSON, error) {
 		fm, err := parseFrontmatterFile(path)
 		if err != nil {
 			return nil, err

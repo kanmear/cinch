@@ -207,8 +207,8 @@ func parseRuleDoc(path string) ([]ruleItem, error) {
 	return parseRuleItems(path, data), nil
 }
 
-func scanRuleDocs(docsRoot string) ([]ruleItem, error) {
-	return mdscan.Collect(docsRoot, parseRuleDoc)
+func scanRuleDocs(roots checkRoots, docsRoot string) ([]ruleItem, error) {
+	return collectDocs(roots, docsRoot, parseRuleDoc)
 }
 
 func underPath(path, directory string) bool {
@@ -583,7 +583,7 @@ func scanRootMarkers(root ruleScanRoot, docsRoot string) (map[string][]markerLoc
 // skipped instead: there's no code available to check against, not a real
 // gap.
 func checkRules(roots checkRoots, docsRoot string, options markerScanOptions) rulesReport {
-	items, err := scanRuleDocs(docsRoot)
+	items, err := scanRuleDocs(roots, docsRoot)
 	if err != nil {
 		return rulesReport{findings: scanErrorFinding("rules", docsRoot, err)}
 	}
@@ -693,7 +693,7 @@ func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesRepor
 }
 
 func CmdIgnores(docsRoot string) int {
-	items, err := scanRuleDocs(docsRoot)
+	items, err := scanRuleDocs(workingTreeRoots(docsRoot), docsRoot)
 	if err != nil {
 		return output.Fail("ignores", err)
 	}

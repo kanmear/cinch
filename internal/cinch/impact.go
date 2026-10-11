@@ -100,7 +100,7 @@ func ownsMatches(changed string, owns []string) bool {
 // buildImpact reads content from roots.fsRoot, so docsRoot must sit under it:
 // the hook passes an index snapshot and CmdImpact the working tree.
 func buildImpact(roots checkRoots, docsRoot string, changedFiles, exclude []string) ([]impactHit, error) {
-	docs, err := scanDocFrontmatter(docsRoot)
+	docs, err := scanDocFrontmatter(roots, docsRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func buildImpact(roots checkRoots, docsRoot string, changedFiles, exclude []stri
 		}
 		markers[id] = normalized
 	}
-	items, err := scanRuleDocs(docsRoot)
+	items, err := scanRuleDocs(roots, docsRoot)
 	if err != nil {
 		return nil, err
 	}

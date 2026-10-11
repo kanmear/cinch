@@ -57,9 +57,9 @@ type indexReport struct {
 	docs     int
 }
 
-func checkIndex(docsRoot string) indexReport {
+func checkIndex(roots checkRoots, docsRoot string) indexReport {
 	var report indexReport
-	err := mdscan.WalkMarkdownFiles(docsRoot, func(path string) error {
+	err := roots.walkDocs(docsRoot, func(path string) error {
 		rel := filepath.ToSlash(mdscan.RelTo(docsRoot, path))
 		if strings.HasPrefix(rel, "plans/") {
 			return nil

@@ -2,10 +2,14 @@ package cinch
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -29,6 +33,7 @@ type checkRoots struct {
 	repoRoot   string           // real repository: git commands, rules.roots siblings, core.hooksPath
 	fsRoot     string           // where file content is read: == repoRoot, or an index snapshot
 	indexFiles []string         // staged mode only: `git ls-files --cached`, repo-relative
+	index      *indexSet        // staged mode only: indexFiles plus their directories; nil reads everything
 	scans      *markerScanCache // optional: lets checks in one run share marker scans
 }
 
@@ -53,6 +58,55 @@ func CmdCheck(messageFile string, changed, staged bool, only []string) int {
 
 func workingTreeRoots(repoRoot string) checkRoots {
 	return checkRoots{repoRoot: repoRoot, fsRoot: repoRoot}
+}
+
+// inCommit reports whether a staged check may read path, one joined onto
+// fsRoot (a filesystem walk's output, or filepath.Join(fsRoot, ...)). In
+// staged mode the working tree can hold files the commit doesn't — untracked,
+// ignored — so a check that walks or stats the disk asks here first. A path
+// outside fsRoot is not the index's to judge: linkTargetExists resolves it.
+func (roots checkRoots) inCommit(path string) bool {
+	if roots.index == nil {
+		return true
+	}
+	rel, err := filepath.Rel(roots.fsRoot, path)
+	if err != nil {
+		return true
+	}
+	rel = filepath.ToSlash(rel)
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") {
+		return true
+	}
+	return roots.index.files[rel] || roots.index.directories[rel]
+}
+
+// walkDocs walks the markdown under docsRoot that the commit contains. A
+// docsRoot the commit lacks entirely fails the way a snapshot, which has no
+// such directory, would.
+func (roots checkRoots) walkDocs(docsRoot string, fn func(path string) error) error {
+	if !roots.inCommit(docsRoot) {
+		return &fs.PathError{Op: "lstat", Path: docsRoot, Err: syscall.ENOENT}
+	}
+	return mdscan.WalkMarkdownFilesIf(docsRoot, roots.inCommit, fn)
+}
+
+// collectDocs is mdscan.Collect over walkDocs.
+func collectDocs[T any](roots checkRoots, docsRoot string, fn func(path string) ([]T, error)) ([]T, error) {
+	var out []T
+	err := roots.walkDocs(docsRoot, func(path string) error {
+		more, err := fn(path)
+		out = append(out, more...)
+		return err
+	})
+	return out, err
+}
+
+// readFile reads path unless the commit lacks it, which reads as absent.
+func (roots checkRoots) readFile(path string) ([]byte, error) {
+	if !roots.inCommit(path) {
+		return nil, fs.ErrNotExist
+	}
+	return os.ReadFile(path)
 }
 
 // relabel maps a finding read from an index snapshot back to the path it
@@ -264,11 +318,11 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 
 	planned := map[string]plannedCheck{
 		"links": {relevant(changedMarkdownUnder(changedSet, docsRoot)),
-			scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })},
+			scoped(func() checkResult { return linksCheckResult(checkLinks(roots, docsRoot)) })},
 		"rules": {relevant(len(changedSet) > 0),
 			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) })},
 		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
-			scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) })},
+			scoped(func() checkResult { return indexCheckResult(checkIndex(roots, docsRoot)) })},
 		"generated": {relevant(generatedRelevant(roots.fsRoot, docsRoot, m, changedSet)),
 			func() checkResult { return checkGenerated(roots, m, mErr) }},
 		// commit is unconditionally suppressed without a MSGFILE, not just under

@@ -11,7 +11,7 @@ func TestCheckIndexMissingTitle(t *testing.T) {
 	docsRoot := t.TempDir()
 	writeTestFile(t, docsRoot, "a.md", "Just some prose, no heading.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 1 {
 		t.Fatalf("findings = %+v, want exactly one", report.findings)
@@ -25,7 +25,7 @@ func TestCheckIndexTitled(t *testing.T) {
 	docsRoot := t.TempDir()
 	writeTestFile(t, docsRoot, "a.md", "# A\nSome prose.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none (doc has a title)", report.findings)
@@ -42,7 +42,7 @@ func TestCheckIndexExcludesPlans(t *testing.T) {
 	}
 	writeTestFile(t, filepath.Join(docsRoot, "plans"), "00-draft.md", "Untitled planning notes.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none (plans/ is excluded, same as indexList)", report.findings)
@@ -63,7 +63,7 @@ func TestSeededDefectIndexMissingH1(t *testing.T) {
 	// and before this check there was no path to a finding at all.
 	writeTestFile(t, docsRoot, "orphaned-heading.md", "## Not an H1\n\nThis doc has real content but no top-level heading.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	ok := false
 	for _, f := range report.findings {
