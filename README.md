@@ -155,7 +155,13 @@ A few notes:
   every script registered under `hooks.<event>` in `cinch.yml` whose `when`
   prefixes match the changed files. cinch only runs these scripts; whether
   they're correct is up to you. The checks and the hook's `impact` list read
-  the staged content; these scripts see your working tree.
+  the staged content; these scripts see your working tree. When the tree
+  differs from the commit, `pre-commit` warns once, with the file counts.
+  Scripts get `CINCH_HOOK=<event>` in their environment, and inside
+  `pre-commit` a plain `cinch check` then checks the staged content, as
+  `--staged` does (`--changed` still reads the working tree). A failing script
+  doesn't stop the ones after it; the hook ends with one line per step,
+  `checks` first, so a failure can't be buried under a later script's output.
 - **`impact`**: lists rules from docs whose `owns` covers a changed file, plus
   rules whose marker is in a changed file. Run directly, it lists every changed
   file and every rule ID. The pre-commit hook prints the same list as a

@@ -56,6 +56,23 @@ func Failf(cmd, format string, args ...any) int {
 	return 1
 }
 
+func Warn(cmd, format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "cinch: %s: %s %s\n", cmd, paint(stderrColor, colorYellow, "warning:"), fmt.Sprintf(format, args...))
+}
+
+// Note is a plain informational line, shaped like Failf and Warn without a label.
+func Note(cmd, format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "cinch: %s: %s\n", cmd, fmt.Sprintf(format, args...))
+}
+
+// StatusText colors text green when good and red otherwise, for stderr.
+func StatusText(good bool, text string) string {
+	if good {
+		return paint(stderrColor, colorGreen, text)
+	}
+	return paint(stderrColor, colorRed, text)
+}
+
 func Skip(checker, msg string) {
 	fmt.Fprintf(os.Stderr, "%s: %s\n", checker, paint(stderrColor, colorYellow, "skip: "+msg))
 }

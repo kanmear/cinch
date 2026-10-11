@@ -4,7 +4,7 @@
 
 Every defect class cinch's checks are tested against, and what each check does with it. Each row is one test in `internal/cinch`, which passes in `go test ./...`; the row is generated from that test, so the table and the suite can't disagree.
 
-**43 defect classes:** 19 caught, 2 warns, 5 gap, 16 not a defect, 1 control.
+**44 defect classes:** 20 caught, 2 warns, 5 gap, 16 not a defect, 1 control.
 
 | Verdict | Meaning |
 |---|---|
@@ -33,6 +33,7 @@ Every defect class cinch's checks are tested against, and what each check does w
 
 | Defect | Verdict | Test |
 |---|---|---|
+| staged rule whose only marker is an unstaged edit, in a hook script's plain 'cinch check' (CINCH-012) | caught | `TestPlainCheckInsidePreCommitHookChecksStagedContent` (`hook_context_test.go`) |
 | rule with no marker and no cinch:ignore | caught | `TestSeededDefectRulesMarkerDeleted` (`rules_test.go`) |
 | marker naming a rule that doesn't exist | caught | `TestSeededDefectRulesStrayMarker` (`rules_test.go`) |
 | same rule ID declared in two docs | caught | `TestSeededDefectRulesDuplicateID` (`rules_test.go`) |
