@@ -34,3 +34,5 @@ repository, so an unbound rule or a stray marker fails CI.
    8 KB, git's own test), so a marker-shaped string inside one binds nothing.
 10. **CINCH-010** Marker locations are reported in file-then-line order, so
     the same tree always gives the same `cinch rules --json` output.
+11. **CINCH-011** `cinch check` scans the working tree as it is: a tracked file
+    deleted from disk is skipped, not a scan error.
