@@ -44,6 +44,10 @@ a revised test plan.
 
 Then write the confirmed new or changed rules via `{{paths.docs}}/workflows/docs-maintain-domain.md`.
 
+A new rule has no test yet, and `cinch check` fails a rule without a marker. Put
+`<!-- cinch:ignore: test lands in <plan> T<n> -->` directly under it; the task that adds the test
+removes that line (details in docs-maintain-domain.md, "Write it").
+
 ## 5. Tasks
 
 A task is atomic when it is one concern and independently verifiable: once it is done, the
