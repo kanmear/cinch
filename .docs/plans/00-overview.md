@@ -31,7 +31,8 @@ tier three is small in isolation but compounds.
 | 16 | [`cinch init` writes the AGENTS.md pointer](16-init-agents-pointer.md) | 2 — make green mean something | **Shipped** (`5121e4e`) — kept for provenance |
 | 17 | [Cut the workflow pack; render removes stale generated files](17-trim-workflow-pack.md) | 3 — decide before investing | **Shipped** (`09ef586`) — kept for provenance |
 | 18 | [`paths.exclude`, then dogfood — the hand-off plan](18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **Shipped** (`9830825`) — implements item 8 |
-| 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** on `fix/snapshot-flagged-entries` |
+| 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** (`a937164`) — kept for provenance |
+| 27 | [Budgetron field report, 2026-10-11](27-budgetron-field-report.md) | 4 — evidence | **Shipped** (`1edf5a2`–`0ade181`) — kept for provenance |
 
 ## Reading order vs. build order
 
