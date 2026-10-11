@@ -82,9 +82,22 @@ func ForEachFencedLineBytes(data []byte, fn func(lineNumber int, line string)) e
 }
 
 func WalkMarkdownFiles(root string, fn func(path string) error) error {
+	return WalkMarkdownFilesIf(root, nil, fn)
+}
+
+// WalkMarkdownFilesIf walks like WalkMarkdownFiles but visits only paths that
+// include accepts, and doesn't descend into a directory it rejects. A nil
+// include accepts everything.
+func WalkMarkdownFilesIf(root string, include func(path string) bool, fn func(path string) error) error {
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if include != nil && !include(path) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".md") {
 			return nil

@@ -4,7 +4,7 @@
 
 Every defect class cinch's checks are tested against, and what each check does with it. Each row is one test in `internal/cinch`, which passes in `go test ./...`; the row is generated from that test, so the table and the suite can't disagree.
 
-**28 defect classes:** 15 caught, 2 warns, 5 gap, 5 not a defect, 1 control.
+**42 defect classes:** 19 caught, 2 warns, 5 gap, 15 not a defect, 1 control.
 
 | Verdict | Meaning |
 |---|---|
@@ -19,10 +19,14 @@ Every defect class cinch's checks are tested against, and what each check does w
 | Defect | Verdict | Test |
 |---|---|---|
 | relative link to a moved or deleted doc | caught | `TestSeededDefectLinksTargetMoved` (`links_test.go`) |
+| link to a missing file outside the repository, on both paths (CINCH-006) | caught | `TestStagedLinksCatchMissingOutOfRepoTarget` (`staged_test.go`) |
+| doc link to a file or directory that is only untracked, on the fast path (CINCH-006) | caught | `TestStagedFastPathCatchesLinkToUntrackedFile` (`staged_test.go`) |
 | #anchor to a renamed or missing heading | gap | `TestSeededDefectLinksBrokenAnchor` (`links_test.go`) |
 | dead external URL (by design: no network, CINCH-007) | gap | `TestSeededDefectLinksExternalURL` (`links_test.go`) |
 | link syntax inside inline code (CINCH-005) | not a defect | `TestCheckLinksInlineCodeAndTitles` (`links_test.go`) |
 | titled doc with no inbound links (listed by cinch index) | not a defect | `TestSeededDefectLinksTargetUnreachableFromRoot` (`links_test.go`) |
+| link to a file outside the repository, checked from an index snapshot (CINCH-006) | not a defect | `TestStagedLinksResolveOutOfRepoTargetFromRepo` (`staged_test.go`) |
+| untracked and ignored docs and link targets, fast path against snapshot (CINCH-006) | not a defect | `TestStagedFastAndSlowPathsPrintTheSame` (`staged_test.go`) |
 | relative link to an existing doc | control | `TestSeededDefectLinksTargetResolves` (`links_test.go`) |
 
 ## `rules`
@@ -37,12 +41,19 @@ Every defect class cinch's checks are tested against, and what each check does w
 | rule both ignored and marked | caught | `TestSeededDefectRulesIgnoreWithMarker` (`rules_test.go`) |
 | staged rule whose only marker is an unstaged edit (CINCH-006) | caught | `TestStagedChecksCatchRuleHiddenByUnstagedMarker` (`staged_test.go`) |
 | staged rule whose only marker is in an untracked file (CINCH-006) | caught | `TestStagedChecksIgnoreMarkerInUntrackedFile` (`staged_test.go`) |
+| staged rule whose only marker is an unstaged edit to an assume-unchanged file (CINCH-006) | caught | `TestStagedChecksCatchMarkerHiddenByAssumeUnchanged` (`staged_test.go`) |
 | marked test whose body no longer exercises the rule | gap | `TestSeededDefectRulesHollowedTest` (`rules_test.go`) |
 | rule marked only on production code, with no test | gap | `TestSeededDefectRulesMarkerOnNonTestCode` (`rules_test.go`) |
 | two rules whose texts contradict each other | gap | `TestSeededDefectRulesContradictingNeighbor` (`rules_test.go`) |
 | marker-shaped string inside a binary file (CINCH-009) | not a defect | `TestScanRuleMarkersSkipsBinaryFiles` (`binary_test.go`) |
 | marker shown inside a markdown code fence | not a defect | `TestScanMarkersFenceOnlyForMarkdown` (`rules_test.go`) |
 | unstaged edit to a rule doc during a commit (CINCH-006) | not a defect | `TestStagedChecksIgnoreUnstagedRuleEdit` (`staged_test.go`) |
+| marker in a skip-worktree file a sparse checkout left off disk (CINCH-006) | not a defect | `TestStagedChecksFindMarkerInSkipWorktreeFile` (`staged_test.go`) |
+| gitignored doc with an unmarked rule, with nothing else unstaged or untracked (CINCH-006) | not a defect | `TestStagedChecksIgnoreGitignoredDoc` (`staged_test.go`) |
+| file in the working tree that the commit does not contain (CINCH-006) | not a defect | `TestStagedUntrackedFileKeepsFastPath` (`staged_test.go`) |
+| untracked doc with an unmarked rule, on the fast path (CINCH-006) | not a defect | `TestStagedFastPathIgnoresUntrackedDoc` (`staged_test.go`) |
+| untracked cinch.yml that would redirect the docs root (CINCH-006) | not a defect | `TestStagedUntrackedManifestForcesSnapshot` (`staged_test.go`) |
+| docs directory that exists only in the working tree, fast path against snapshot (CINCH-006) | not a defect | `TestStagedFastAndSlowPathsAgreeOnUntrackedDocsDirectory` (`staged_test.go`) |
 
 ## `index`
 
@@ -57,6 +68,9 @@ Every defect class cinch's checks are tested against, and what each check does w
 | hand-edited rendered file (CINCH-001) | caught | `TestSeededDefectGeneratedHandEdited` (`checks_misc_test.go`) |
 | rendered file deleted | caught | `TestSeededDefectGeneratedMissingFile` (`checks_misc_test.go`) |
 | generated file the current render no longer produces (CINCH-002) | caught | `TestSeededDefectGeneratedOrphanFile` (`checks_misc_test.go`) |
+| commit that leaves out a rendered file, on the fast path (CINCH-006) | caught | `TestStagedFastPathCatchesRenderedFileLeftOutOfCommit` (`staged_test.go`) |
+| untracked file with cinch's generated header in a rendered directory, on the fast path (CINCH-006) | not a defect | `TestStagedFastPathIgnoresUntrackedGeneratedLookalike` (`staged_test.go`) |
+| rendered output present only in the working tree, on the fast path (CINCH-006) | not a defect | `TestStagedFastPathTreatsUntrackedRenderAsNotRendered` (`staged_test.go`) |
 
 ## `core`
 

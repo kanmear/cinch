@@ -18,7 +18,7 @@ and each benchmark has its own plan item.
 
 | Claim | Benchmark | Result | Reproduce |
 |---|---|---|---|
-| #1 The checker catches what it says it catches | [Catch matrix](catch-matrix.md) | 28 defect classes: 15 caught, 2 warn, 5 gaps, 5 correctly pass, 1 control | `make catch-matrix` |
+| #1 The checker catches what it says it catches | [Catch matrix](catch-matrix.md) | 42 defect classes: 19 caught, 2 warn, 5 gaps, 15 correctly pass, 1 control | `make catch-matrix` |
 | #6 It's cheap enough to run on every commit | [Cost curve](cost-curve.csv) | Holds: 31 ms at 1k files, 215 ms at 10k, 1.8 s at 100k (was 7.3 s before 0.10.1) | `make cost-curve` |
 
 Claims #2–#5, #7 and #8 are listed in plan 21 and land here as they run.

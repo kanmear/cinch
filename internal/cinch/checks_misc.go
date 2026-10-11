@@ -131,8 +131,9 @@ func checkPin(version string, m *manifest) checkResult {
 	}}}
 }
 
-// checkGenerated reads rendered output under roots.fsRoot but asks git for
-// HEAD's cinch.yml in roots.repoRoot: the snapshot directory isn't a
+// checkGenerated reads rendered output under roots.fsRoot, and only what the
+// commit contains: a destination that isn't indexed counts as absent. It asks
+// git for HEAD's cinch.yml in roots.repoRoot: the snapshot directory isn't a
 // repository.
 func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 	if mErr != nil || m == nil {
@@ -149,7 +150,8 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 
 	rendered := false
 	for _, f := range files {
-		if _, err := os.Stat(filepath.Join(roots.fsRoot, f.destination)); err == nil {
+		destination := filepath.Join(roots.fsRoot, f.destination)
+		if _, err := os.Stat(destination); err == nil && roots.inCommit(destination) {
 			rendered = true
 			break
 		}
@@ -162,7 +164,7 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 	for _, f := range files {
 		destination := filepath.Join(roots.fsRoot, f.destination)
 		want := header(f.source, f.body, f.style) + f.body
-		got, err := os.ReadFile(destination)
+		got, err := roots.readFile(destination)
 		switch {
 		case err != nil:
 			findings = append(findings, finding{
@@ -221,7 +223,7 @@ func orphanedGeneratedFiles(roots checkRoots, files []renderFile) []string {
 				continue
 			}
 			path := filepath.Join(directory, e.Name())
-			if expected[path] {
+			if expected[path] || !roots.inCommit(path) {
 				continue
 			}
 			data, err := os.ReadFile(path)

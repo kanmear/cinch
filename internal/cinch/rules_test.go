@@ -132,7 +132,7 @@ func TestParseRuleDocReadError(t *testing.T) {
 
 func TestScanRuleDocsPropagatesWalkError(t *testing.T) {
 	root := unreadableTree(t)
-	if _, err := scanRuleDocs(root); err == nil {
+	if _, err := scanRuleDocs(workingTreeRoots(root), root); err == nil {
 		t.Fatal("scanRuleDocs = nil error, want error for unreadable subdirectory")
 	}
 }
@@ -924,7 +924,7 @@ func TestMarkerScanSkipsSubmoduleGitlink(t *testing.T) {
 
 func TestCheckLinksReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
-	report := checkLinks(root)
+	report := checkLinks(workingTreeRoots(root), root)
 	if len(report.findings) == 0 {
 		t.Fatal("checkLinks = no findings, want error finding for unreadable subdirectory")
 	}
