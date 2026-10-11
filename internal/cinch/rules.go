@@ -2,8 +2,10 @@ package cinch
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -257,6 +259,17 @@ type scannedFile struct {
 	display string
 }
 
+// scanFileError is a per-file scan failure. It keeps the file's display path
+// so checkRules can report the finding at the file that failed instead of at
+// the repository root.
+type scanFileError struct {
+	display string
+	err     error
+}
+
+func (e *scanFileError) Error() string { return e.err.Error() }
+func (e *scanFileError) Unwrap() error { return e.err }
+
 // resolveRuleScanRoots turns rules.roots entries into scan roots, splitting
 // out any that don't exist on disk (a docs-only clone, or a CI job that only
 // checked out one repo) so checkRules can report a clean skip instead of one
@@ -306,19 +319,30 @@ func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) 
 			if underPath(sf.fsPath, docsRoot) || excludedPath(f, root.exclude) {
 				continue
 			}
-			// git ls-files lists a submodule as one gitlink entry — a path that
-			// is actually a directory on disk, not a blob. Opening it as a file
-			// below would succeed (Linux permits open() on a directory) but
-			// fail on the first read with EISDIR, surfacing as a bogus scan
-			// error. Skip it; rules.roots is the supported way to also scan a
-			// submodule's own content. An index snapshot holds no entry at all
-			// for a gitlink (checkout-index doesn't write one), so a missing
-			// precomputed entry is skipped for the same reason.
+			// Skip a candidate with no file content to scan:
+			//  - A directory. git ls-files lists a submodule as one gitlink
+			//    entry, a path that is a directory on disk, not a blob. Opening
+			//    it would succeed (Linux permits open() on a directory) but
+			//    fail on the first read with EISDIR, surfacing as a bogus scan
+			//    error. rules.roots is the supported way to also scan a
+			//    submodule's own content. A symlink to a directory fails the
+			//    same way, so os.Stat follows the link.
+			//  - A path missing from disk. ls-files --cached still lists a
+			//    tracked file that was deleted but not staged, and an index
+			//    snapshot holds no entry for a gitlink (checkout-index doesn't
+			//    write one). Either way the working tree has nothing to read.
+			// A dangling symlink is not missing: Lstat sees the link itself,
+			// so it stays a candidate and fails visibly when opened.
 			info, statErr := os.Lstat(sf.fsPath)
-			if statErr == nil && info.IsDir() {
+			if errors.Is(statErr, fs.ErrNotExist) {
 				continue
 			}
-			if statErr != nil && root.files != nil {
+			if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+				if target, err := os.Stat(sf.fsPath); err == nil {
+					info = target
+				}
+			}
+			if statErr == nil && info.IsDir() {
 				continue
 			}
 			out = append(out, sf)
@@ -542,6 +566,9 @@ func scanRootMarkers(root ruleScanRoot, docsRoot string) (map[string][]markerLoc
 						m[id] = relabeled
 					}
 				}
+				if ferr != nil {
+					ferr = &scanFileError{display: f.display, err: ferr}
+				}
 				results <- fileResult{markers: m, err: ferr}
 			}
 		}()
@@ -589,7 +616,14 @@ func checkRules(roots checkRoots, docsRoot string, options markerScanOptions) ru
 	}
 	markers, missingRoots, err := scanRuleMarkers(roots, docsRoot, options)
 	if err != nil {
-		return rulesReport{findings: scanErrorFinding("rules", roots.repoRoot, err)}
+		// A failure reading one file is reported at that file; anything else
+		// (git failing, a walk error) has no file to name.
+		scope := roots.repoRoot
+		var fileErr *scanFileError
+		if errors.As(err, &fileErr) {
+			scope = fileErr.display
+		}
+		return rulesReport{findings: scanErrorFinding("rules", scope, err)}
 	}
 	if len(options.extraRoots) > 0 && len(missingRoots) == len(options.extraRoots) {
 		return rulesReport{skip: "configured code roots not present (" + strings.Join(missingRoots, ", ") + ")"}

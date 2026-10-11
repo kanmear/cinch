@@ -4,7 +4,7 @@
 
 Every defect class cinch's checks are tested against, and what each check does with it. Each row is one test in `internal/cinch`, which passes in `go test ./...`; the row is generated from that test, so the table and the suite can't disagree.
 
-**42 defect classes:** 19 caught, 2 warns, 5 gap, 15 not a defect, 1 control.
+**43 defect classes:** 19 caught, 2 warns, 5 gap, 16 not a defect, 1 control.
 
 | Verdict | Meaning |
 |---|---|
@@ -47,6 +47,7 @@ Every defect class cinch's checks are tested against, and what each check does w
 | two rules whose texts contradict each other | gap | `TestSeededDefectRulesContradictingNeighbor` (`rules_test.go`) |
 | marker-shaped string inside a binary file (CINCH-009) | not a defect | `TestScanRuleMarkersSkipsBinaryFiles` (`binary_test.go`) |
 | marker shown inside a markdown code fence | not a defect | `TestScanMarkersFenceOnlyForMarkdown` (`rules_test.go`) |
+| tracked file deleted from disk but not staged (CINCH-011) | not a defect | `TestRulesCheckSkipsTrackedFileDeletedFromDisk` (`scan_errors_test.go`) |
 | unstaged edit to a rule doc during a commit (CINCH-006) | not a defect | `TestStagedChecksIgnoreUnstagedRuleEdit` (`staged_test.go`) |
 | marker in a skip-worktree file a sparse checkout left off disk (CINCH-006) | not a defect | `TestStagedChecksFindMarkerInSkipWorktreeFile` (`staged_test.go`) |
 | gitignored doc with an unmarked rule, with nothing else unstaged or untracked (CINCH-006) | not a defect | `TestStagedChecksIgnoreGitignoredDoc` (`staged_test.go`) |
