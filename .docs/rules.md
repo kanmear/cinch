@@ -6,6 +6,7 @@ owns:
   - internal/cinch/init.go
   - internal/cinch/links.go
   - internal/cinch/staged.go
+  - internal/cinch/hook.go
   - internal/cinch/rules.go
 ---
 
@@ -36,3 +37,7 @@ repository, so an unbound rule or a stray marker fails CI.
     the same tree always gives the same `cinch rules --json` output.
 11. **CINCH-011** `cinch check` scans the working tree as it is: a tracked file
     deleted from disk is skipped, not a scan error.
+12. **CINCH-012** Inside a pre-commit hook, a script's plain `cinch check`
+    checks the staged content.
+13. **CINCH-013** A failing hook step doesn't stop later steps, and the hook's
+    last lines name every step's result.

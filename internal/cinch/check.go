@@ -45,6 +45,12 @@ func scanErrorFinding(check, scope string, err error) []finding {
 }
 
 func CmdCheck(messageFile string, changed, staged bool, only []string) int {
+	// A pre-commit script runs against the working tree, but the commit holds
+	// only what is staged (CINCH-012). An explicit --changed keeps its scope.
+	if !staged && !changed && os.Getenv(hookEnvironmentVariable) == "pre-commit" {
+		output.Note("check", "inside the pre-commit hook: checking the staged content (as --staged)")
+		staged = true
+	}
 	if !staged {
 		return runChecks(workingTreeRoots("."), messageFile, changed, only...)
 	}
