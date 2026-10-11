@@ -39,7 +39,8 @@ tier three is small in isolation but compounds.
 | 23 | [A public fixture](23-public-fixture.md) | 4 — evidence | Open |
 | 24 | [Leak replay](24-leak-replay.md) | 4 — evidence | Open — waits for 23 and `~/code/cinch_bench` |
 | 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Open — waits for 23 and `~/code/cinch_bench` |
-| 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** on `fix/snapshot-flagged-entries` |
+| 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** (`a937164`) — kept for provenance |
+| 27 | [Budgetron field report, 2026-10-11](27-budgetron-field-report.md) | 4 — evidence | **Shipped** (`1edf5a2`–`0ade181`) — kept for provenance |
 
 ## Reading order vs. build order
 

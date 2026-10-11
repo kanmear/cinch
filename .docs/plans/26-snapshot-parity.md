@@ -85,4 +85,4 @@ snapshot.**
 
 ## Status
 
-Shipped on `fix/snapshot-flagged-entries`.
+Shipped in `a937164` (`fix/snapshot-flagged-entries`). Kept for provenance.
