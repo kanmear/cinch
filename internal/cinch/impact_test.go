@@ -98,7 +98,7 @@ func TestImpactNoMatchIsSilent(t *testing.T) {
 	}
 	// printImpact on an empty slice must not panic and, by construction
 	// (the len(hits)==0 early return), writes nothing.
-	printImpact(hits)
+	printImpact(hits, true)
 }
 
 func TestImpactPrefixNotGlob(t *testing.T) {
@@ -184,7 +184,7 @@ func TestImpactCollapsesPerDoc(t *testing.T) {
 	if len(hits) != 1 || len(hits[0].ruleIDs) != 10 {
 		t.Fatalf("hits = %+v, want exactly one owns hit with 10 rules", hits)
 	}
-	out := captureStderr(t, func() { printImpact(hits) })
+	out := captureStderr(t, func() { printImpact(hits, true) })
 	if n := strings.Count(out, " owns "); n != 1 {
 		t.Fatalf("output has %d owns lines, want 1:\n%s", n, out)
 	}
@@ -206,7 +206,7 @@ func TestImpactAttributesByDocNotPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildImpact: %v", err)
 	}
-	out := captureStderr(t, func() { printImpact(hits) })
+	out := captureStderr(t, func() { printImpact(hits, true) })
 	if !strings.Contains(out, "AUTH-001") {
 		t.Fatalf("output = %q, want AUTH rules named", out)
 	}
@@ -234,14 +234,55 @@ func TestImpactOwnsWithoutRulesIsSilent(t *testing.T) {
 
 func TestImpactMarkerLineHasFileAndLine(t *testing.T) {
 	hits := []impactHit{{kind: "marker", ruleID: "SIG-020", markers: []markerLoc{{file: "internal/sig/verify.go", line: 3}}}}
-	out := captureStderr(t, func() { printImpact(hits) })
+	out := captureStderr(t, func() { printImpact(hits, true) })
 	if !strings.Contains(out, "SIG-020 — marker at internal/sig/verify.go:3") {
 		t.Fatalf("output = %q, want file:line on the marker line", out)
 	}
 }
 
 func TestPrintImpactGolden(t *testing.T) {
+	hits := goldenImpactHits()
+	got := captureStderr(t, func() { printImpact(hits, true) })
+	want := "cinch impact: this diff plausibly touches:\n" +
+		"  SIG-020 — marker at internal/sig/verify.go:3\n" +
+		"  SIG-021 — marker at a.go:1, b.go:9\n" +
+		"  .docs/auth.md — owns src/auth/a.go, src/auth/b.go, src/auth/c.go +1 more — rules AUTH-001, AUTH-002, AUTH-003 +1 more\n" +
+		"  .docs/sig.md — owns internal/sig/verify.go — rules SIG-019\n" +
+		"confirm the docs still match (cinch impact lists every ID)\n"
+	if got != want {
+		t.Fatalf("printImpact output:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestPrintImpactGoldenCappedNothingCut(t *testing.T) {
 	hits := []impactHit{
+		{kind: "owns", doc: ".docs/sig.md", files: []string{"internal/sig/verify.go"}, ruleIDs: []string{"SIG-019", "SIG-020", "SIG-021"}},
+	}
+	got := captureStderr(t, func() { printImpact(hits, true) })
+	want := "cinch impact: this diff plausibly touches:\n" +
+		"  .docs/sig.md — owns internal/sig/verify.go — rules SIG-019, SIG-020, SIG-021\n" +
+		"confirm the docs still match\n"
+	if got != want {
+		t.Fatalf("printImpact output:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestPrintImpactGoldenUncapped(t *testing.T) {
+	hits := goldenImpactHits()
+	got := captureStderr(t, func() { printImpact(hits, false) })
+	want := "cinch impact: this diff plausibly touches:\n" +
+		"  SIG-020 — marker at internal/sig/verify.go:3\n" +
+		"  SIG-021 — marker at a.go:1, b.go:9\n" +
+		"  .docs/auth.md — owns src/auth/a.go, src/auth/b.go, src/auth/c.go, src/auth/d.go — rules AUTH-001, AUTH-002, AUTH-003, AUTH-004\n" +
+		"  .docs/sig.md — owns internal/sig/verify.go — rules SIG-019\n" +
+		"confirm the docs still match\n"
+	if got != want {
+		t.Fatalf("printImpact output:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func goldenImpactHits() []impactHit {
+	return []impactHit{
 		{kind: "marker", ruleID: "SIG-020", markers: []markerLoc{{file: "internal/sig/verify.go", line: 3}}},
 		{kind: "marker", ruleID: "SIG-021", markers: []markerLoc{{file: "a.go", line: 1}, {file: "b.go", line: 9}}},
 		{kind: "owns", doc: ".docs/auth.md",
@@ -249,14 +290,33 @@ func TestPrintImpactGolden(t *testing.T) {
 			ruleIDs: []string{"AUTH-001", "AUTH-002", "AUTH-003", "AUTH-004"}},
 		{kind: "owns", doc: ".docs/sig.md", files: []string{"internal/sig/verify.go"}, ruleIDs: []string{"SIG-019"}},
 	}
-	got := captureStderr(t, func() { printImpact(hits) })
-	want := "cinch impact: this diff plausibly touches:\n" +
-		"  SIG-020 — marker at internal/sig/verify.go:3\n" +
-		"  SIG-021 — marker at a.go:1, b.go:9\n" +
-		"  .docs/auth.md — owns src/auth/a.go, src/auth/b.go, src/auth/c.go +1 more — rules AUTH-001, AUTH-002, AUTH-003 +1 more\n" +
-		"  .docs/sig.md — owns internal/sig/verify.go — rules SIG-019\n" +
-		"confirm the docs still match\n"
-	if got != want {
-		t.Fatalf("printImpact output:\n%s\nwant:\n%s", got, want)
+}
+
+// TestCmdImpactListsEveryID: the user asked directly, so nothing is collapsed.
+func TestCmdImpactListsEveryID(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeOwnsDoc(t, docs, "budget.md", "BUDGET", []string{"src/budget"}, 8)
+
+	var code int
+	out := captureStderr(t, func() {
+		code = CmdImpact(root, []string{"src/budget/a.go", "src/budget/b.go", "src/budget/c.go", "src/budget/d.go"})
+	})
+	if code != 0 {
+		t.Fatalf("CmdImpact = %d, want 0; output:\n%s", code, out)
+	}
+	for i := 1; i <= 8; i++ {
+		if id := fmt.Sprintf("BUDGET-%03d", i); !strings.Contains(out, id) {
+			t.Errorf("output missing %s:\n%s", id, out)
+		}
+	}
+	if !strings.Contains(out, "src/budget/d.go") {
+		t.Errorf("output missing fourth changed file:\n%s", out)
+	}
+	if strings.Contains(out, "more") || strings.Contains(out, "lists every ID") {
+		t.Errorf("uncapped output must not collapse or mention capping:\n%s", out)
 	}
 }

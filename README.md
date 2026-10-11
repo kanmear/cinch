@@ -154,11 +154,13 @@ A few notes:
 - **`hook`**: for `pre-commit` and `commit-msg`, it runs the checks and then
   every script registered under `hooks.<event>` in `cinch.yml` whose `when`
   prefixes match the changed files. cinch only runs these scripts; whether
-  they're correct is up to you. The checks read the staged content; these
-  scripts, and the `impact` list, see your working tree.
+  they're correct is up to you. The checks and the hook's `impact` list read
+  the staged content; these scripts see your working tree.
 - **`impact`**: lists rules from docs whose `owns` covers a changed file, plus
-  rules whose marker is in a changed file. The pre-commit hook prints the same
-  list as a reminder. It never fails the commit.
+  rules whose marker is in a changed file. Run directly, it lists every changed
+  file and every rule ID. The pre-commit hook prints the same list as a
+  reminder, capped at three per line with a `+N more`, since it prints on every
+  commit. It never fails the commit.
 - **`index --links-to` / `--links-from`**: reuses the link check's path
   resolution, so it knows which of several `architecture.md` files a given
   `../architecture.md` refers to, which grep can't. A bare basename matches

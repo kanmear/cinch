@@ -49,7 +49,7 @@ func cmdHookPreCommit(root string) int {
 	// (project scripts) sees the working tree: they read whatever is on disk.
 	if docsRoot, dErr := ResolveDocsRoot(roots.fsRoot); dErr == nil {
 		if hits, iErr := buildImpact(roots, docsRoot, staged, m.list(pathsExcludeKey)); iErr == nil {
-			printImpact(hits)
+			printImpact(hits, true)
 		}
 		// iErr is deliberately swallowed: this advisory is a bonus nobody
 		// asked for on this path, and ok must never move because of it —
