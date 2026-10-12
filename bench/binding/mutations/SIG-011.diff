@@ -1,0 +1,16 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..c8b3a0b 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -818,11 +818,6 @@ func (h *TabHandler) CancelSignature(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.SignatureNotFound, http.StatusNotFound)
+ 		return
+ 	}
+-	if existingSig.Status == models.SignatureStatusPending && existingSig.Editor.ID != user.ID {
+-		RespondError(w, apperrors.ApiForbidden, http.StatusForbidden)
+-		return
+-	}
+-
+ 	err = h.tabs.CancelSignatureRequest(signatureID, user.ID, tabID)
+ 	if err != nil {
+ 		if errors.Is(err, apperrors.ErrSignatureNotPending) {

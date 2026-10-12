@@ -1,0 +1,21 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..9a2ce8c 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -302,6 +302,16 @@ func (r *tabRepository) UpdateTab(id int, content string, editorID int) (*Tab, e
+ 		return nil, fmt.Errorf("error updating tab: %w", err)
+ 	}
+ 
++	// The tab's content has moved on, so any open request attests to a stale
++	// snapshot — cancel it so it doesn't linger against the new content.
++	if _, err = tx.Exec(
++		`UPDATE tab_signatures SET status = 'cancelled', resolved_at = $2
++		WHERE tab_id = $1 AND status = 'pending'`,
++		id, now,
++	); err != nil {
++		return nil, fmt.Errorf("error cancelling stale signature request: %w", err)
++	}
++
+ 	// A plain content edit never touches the signed baseline (rule 14) — reread it so the
+ 	// response doesn't clobber the client's badge state with a stale/missing value.
+ 	err = tx.QueryRow(

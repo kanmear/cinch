@@ -1,0 +1,14 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..51dff0c 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -53,8 +53,7 @@ CREATE TABLE IF NOT EXISTS members (
+     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+-    UNIQUE(project_id, user_id)
++    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+ );
+ CREATE INDEX IF NOT EXISTS idx_members_project_id ON members(project_id);
+ CREATE INDEX IF NOT EXISTS idx_members_user_id ON members(user_id);

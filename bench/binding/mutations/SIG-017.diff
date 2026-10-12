@@ -1,0 +1,23 @@
+diff --git c/backend/models/member.go w/backend/models/member.go
+index c96692c..94b9928 100644
+--- c/backend/models/member.go
++++ w/backend/models/member.go
+@@ -148,6 +148,18 @@ func (r *memberRepository) UpdateMemberRole(id, roleID int) (*MemberWithUser, er
+ }
+ 
+ func (r *memberRepository) RemoveMember(id int) error {
++	// Housekeeping: a removed member can no longer sign, so drop the tabs they
++	// were blocking by cancelling their open signature requests.
++	if _, err := r.db.Exec(
++		`UPDATE tab_signatures SET status = 'cancelled'
++		WHERE status = 'pending'
++		  AND id IN (SELECT signature_id FROM signature_signers
++		             WHERE signer_id = (SELECT user_id FROM members WHERE id = $1))`,
++		id,
++	); err != nil {
++		return fmt.Errorf("error clearing pending signatures: %w", err)
++	}
++
+ 	result, err := r.db.Exec("DELETE FROM members WHERE id = $1", id)
+ 	if err != nil {
+ 		return fmt.Errorf("error removing member: %w", err)

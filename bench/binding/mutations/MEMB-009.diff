@@ -1,0 +1,21 @@
+diff --git c/backend/handlers/member.go w/backend/handlers/member.go
+index 443d7ea..aceb296 100644
+--- c/backend/handlers/member.go
++++ w/backend/handlers/member.go
+@@ -236,15 +236,11 @@ func (h *MemberHandler) Remove(w http.ResponseWriter, r *http.Request) {
+ 	}
+ 
+ 	currentUser := middleware.GetUserFromContext(r)
+-	currentUserMember, err := h.members.GetMemberByProjectAndUser(projectID, currentUser.ID)
++	_, err := h.members.GetMemberByProjectAndUser(projectID, currentUser.ID)
+ 	if err != nil {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 		return
+ 	}
+-	if currentUserMember.ID == id {
+-		RespondError(w, apperrors.MemberCannotRemoveSelf, http.StatusForbidden)
+-		return
+-	}
+ 
+ 	if !req.Confirm {
+ 		targetMember, err := h.findMemberByID(projectID, id)

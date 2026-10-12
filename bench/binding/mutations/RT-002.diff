@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/publish_helpers.go w/backend/handlers/publish_helpers.go
+index d623da7..e538c72 100644
+--- c/backend/handlers/publish_helpers.go
++++ w/backend/handlers/publish_helpers.go
+@@ -60,7 +60,7 @@ func collectRoleTargetUserIDs(members models.MemberRepository, projectID, roleID
+ 	}
+ 	targets := make([]int, 0, len(list))
+ 	for _, m := range list {
+-		if m.RoleID == roleID && m.UserID != actorUserID {
++		if m.RoleID != roleID && m.UserID != actorUserID {
+ 			targets = append(targets, m.UserID)
+ 		}
+ 	}

@@ -1,0 +1,19 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..fdb1d1d 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -307,6 +307,14 @@ func (h *TabHandler) Update(w http.ResponseWriter, r *http.Request) {
+ 
+ 	user := middleware.GetUserFromContext(r)
+ 
++	if sig, err := h.tabs.GetPendingSignature(id); err != nil {
++		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
++		return
++	} else if sig != nil {
++		RespondError(w, apperrors.SignaturePending, http.StatusConflict)
++		return
++	}
++
+ 	tab, err := h.tabs.UpdateTab(id, req.Content, user.ID)
+ 	if err != nil {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)

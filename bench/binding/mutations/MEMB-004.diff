@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/member.go w/backend/handlers/member.go
+index 443d7ea..19ba2d7 100644
+--- c/backend/handlers/member.go
++++ w/backend/handlers/member.go
+@@ -148,7 +148,7 @@ func (h *MemberHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 		return
+ 	}
+-	if role == nil || role.ProjectID != projectID {
++	if role == nil {
+ 		RespondError(w, apperrors.RoleNotFound, http.StatusNotFound)
+ 		return
+ 	}

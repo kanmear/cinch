@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..c861964 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -296,7 +296,7 @@ func (h *TabHandler) Update(w http.ResponseWriter, r *http.Request) {
+ 		return
+ 	}
+ 
+-	if !h.requireEdit(w, access, tab.CategoryID) {
++	if !h.requireSign(w, access, tab.CategoryID) {
+ 		return
+ 	}
+ 

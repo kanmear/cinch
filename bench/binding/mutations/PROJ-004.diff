@@ -1,0 +1,18 @@
+diff --git c/backend/models/project.go w/backend/models/project.go
+index 9900439..a759d9e 100644
+--- c/backend/models/project.go
++++ w/backend/models/project.go
+@@ -182,10 +182,10 @@ func (r *projectRepository) TransferProjectOwnership(projectID, newOwnerID, oldO
+ 
+ 	var project Project
+ 	err = tx.QueryRow(
+-		`UPDATE projects SET owner_id = $1, updated_at = NOW()
+-		WHERE id = $2 AND deleted_at IS NULL
++		`UPDATE projects SET updated_at = NOW()
++		WHERE id = $1 AND deleted_at IS NULL
+ 		RETURNING id, name, owner_id, created_at, updated_at`,
+-		newOwnerID, projectID,
++		projectID,
+ 	).Scan(&project.ID, &project.Name, &project.OwnerID, &project.CreatedAt, &project.UpdatedAt)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error updating project owner: %w", err)

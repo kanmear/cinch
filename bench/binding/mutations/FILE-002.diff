@@ -1,0 +1,13 @@
+diff --git c/backend/models/file.go w/backend/models/file.go
+index dd972fd..b3f0c1c 100644
+--- c/backend/models/file.go
++++ w/backend/models/file.go
+@@ -46,7 +46,7 @@ func (r *fileRepository) CreateFile(projectID int, parentID *int, name string, f
+ 		`INSERT INTO files (project_id, parent_id, name, type, position)
+ 		VALUES ($1, $2, $3, $4, $5)
+ 		RETURNING id, project_id, parent_id, name, type, position, created_at, updated_at`,
+-		projectID, parentID, name, fileType, position,
++		projectID, nil, name, fileType, position,
+ 	).Scan(&file.ID, &file.ProjectID, &nullInt64Field{dest: &file.ParentID}, &file.Name, &file.Type, &file.Position, &file.CreatedAt, &file.UpdatedAt)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error creating file: %w", err)

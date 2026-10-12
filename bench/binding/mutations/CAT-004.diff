@@ -1,0 +1,13 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..92b3a93 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -85,7 +85,7 @@ CREATE INDEX IF NOT EXISTS idx_files_parent_id ON files(parent_id);
+ CREATE TABLE IF NOT EXISTS tabs (
+     id SERIAL PRIMARY KEY,
+     page_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+-    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
++    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+     content TEXT DEFAULT '',
+     content_hash TEXT NOT NULL DEFAULT '',
+     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

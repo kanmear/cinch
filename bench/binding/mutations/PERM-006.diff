@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/routes.go w/backend/handlers/routes.go
+index 894f161..cc5d71b 100644
+--- c/backend/handlers/routes.go
++++ w/backend/handlers/routes.go
+@@ -153,7 +153,7 @@ func RegisterRoutes(mux RouteMux, deps RouteDeps) {
+ 	permHandler := NewPermissionHandler(deps.Permissions, deps.Members, deps.Roles, deps.Categories, deps.Tabs, deps.Publisher)
+ 	mux.HandleFunc("GET /api/roles/{roleID}/permissions", auth(middleware.ProjectMember(deps.Members, roleProject, permHandler.ListByRole)))
+ 	mux.HandleFunc("GET /api/roles/{roleID}/permissions/{categoryID}", auth(middleware.ProjectMember(deps.Members, roleProject, permHandler.Get)))
+-	mux.HandleFunc("PATCH /api/roles/{roleID}/permissions/{categoryID}", auth(middleware.ProjectOwner(deps.Members, deps.Roles, roleProject, permHandler.Set)))
++	mux.HandleFunc("PATCH /api/roles/{roleID}/permissions/{categoryID}", auth(middleware.ProjectMember(deps.Members, roleProject, permHandler.Set)))
+ 
+ 	realtimeHandler := NewRealtimeHandler(deps.Hub, deps.FrontendURL)
+ 	mux.HandleFunc("GET /api/projects/{projectID}/ws", auth(member("projectID", realtimeHandler.ServeWS)))

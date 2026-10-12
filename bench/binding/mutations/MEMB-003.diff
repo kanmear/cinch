@@ -1,0 +1,15 @@
+diff --git c/backend/handlers/access_checks.go w/backend/handlers/access_checks.go
+index 2ce8e3c..f3ec6e5 100644
+--- c/backend/handlers/access_checks.go
++++ w/backend/handlers/access_checks.go
+@@ -73,10 +73,6 @@ func (r *CategoryAccessResolver) Resolve(projectID, userID int) (*EffectiveAcces
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	if member == nil {
+-		return nil, fmt.Errorf("%w: not a project member", apperrors.ErrForbidden)
+-	}
+-
+ 	role, err := r.roles.GetRoleByID(member.RoleID)
+ 	if err != nil {
+ 		return nil, err

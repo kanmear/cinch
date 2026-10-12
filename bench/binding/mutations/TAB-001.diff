@@ -1,0 +1,16 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..0f2e819 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -246,11 +246,6 @@ func (h *TabHandler) Create(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.FileNotFound, http.StatusNotFound)
+ 		return
+ 	}
+-	if page.Type != models.FileTypePage {
+-		RespondError(w, apperrors.TabPageInvalidType, http.StatusBadRequest)
+-		return
+-	}
+-
+ 	category, err := h.categories.GetCategoryByID(req.CategoryID)
+ 	if err != nil {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)

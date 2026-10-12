@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/permission.go w/backend/handlers/permission.go
+index 900f13d..4a6b8ce 100644
+--- c/backend/handlers/permission.go
++++ w/backend/handlers/permission.go
+@@ -104,7 +104,7 @@ func (h *PermissionHandler) Set(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 		return
+ 	}
+-	if category == nil || category.ProjectID != role.ProjectID {
++	if category == nil {
+ 		RespondError(w, apperrors.CategoryNotFound, http.StatusNotFound)
+ 		return
+ 	}

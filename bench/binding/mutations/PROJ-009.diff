@@ -1,0 +1,13 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..3965eb0 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -21,7 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+ CREATE TABLE IF NOT EXISTS projects (
+     id SERIAL PRIMARY KEY,
+     name VARCHAR(255) NOT NULL,
+-    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
++    owner_id INTEGER NOT NULL REFERENCES users(id),
+     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+     deleted_at TIMESTAMPTZ

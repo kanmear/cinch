@@ -1,0 +1,14 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..9efd072 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -564,6 +564,9 @@ func (h *TabHandler) GetPendingSignature(w http.ResponseWriter, r *http.Request)
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 		return
+ 	}
++	if sig != nil {
++		sig.Content = tab.Content
++	}
+ 	RespondJSON(w, http.StatusOK, sig)
+ }
+ 

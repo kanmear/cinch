@@ -1,0 +1,12 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..14c7b57 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -976,7 +976,6 @@ func fetchSignature(q querier, sigID int) (*TabSignature, error) {
+ 		return sig, err
+ 	}
+ 	for i := range sig.Signers {
+-		sig.Signers[i].DeclineNote = nil
+ 		sig.Signers[i].ResolvedAt = nil
+ 	}
+ 	return sig, nil

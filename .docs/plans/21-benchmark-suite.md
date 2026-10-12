@@ -27,14 +27,13 @@ proof on its own.
 | 7 | It doesn't cry wolf | History replay: `cinch check` on every historical DeltaDocs commit, how often it went red and why; plus the field log | One script | Medium | Deferred, below |
 | 8 | The workflows produce a better corpus over time | Longitudinal run: N tasks in sequence, with and without workflows, then grade the accumulated corpus | Expensive | Later, if ever | Deferred, below |
 
-## Current state (2026-10-06)
+## Current state (2026-10-12)
 
-`~/code/cinch_bench/` (the harness, `FINDINGS.md`, `results.csv`, `retrieval.csv`) is not on
-this machine yet; it will be available later. Two items don't need it and can start now:
-[22](22-catch-matrix-and-cost-curve.md), which uses only this repo's tests, and
-[23](23-public-fixture.md), which uses only `~/code/project_deltadocs`. Items
-[04](04-measure-binding-strength.md), [24](24-leak-replay.md) and [25](25-upkeep-ablation.md)
-reuse the harness and wait for it.
+`~/code/cinch_bench/` arrived on 2026-10-11. [22](22-catch-matrix-and-cost-curve.md) and
+[04](04-measure-binding-strength.md) are done: claims #1, #2 and #6 hold. Next is
+[23](23-public-fixture.md), which [24](24-leak-replay.md) and [25](25-upkeep-ablation.md)
+both wait for. `bench/binding` is the closest template for their harnesses: a cached clone,
+a fresh database per run, and resumable per-item runs.
 
 ## Rules for publishing
 

@@ -1,0 +1,13 @@
+diff --git c/backend/middleware/owner.go w/backend/middleware/owner.go
+index 492ee99..a943bfa 100644
+--- c/backend/middleware/owner.go
++++ w/backend/middleware/owner.go
+@@ -35,7 +35,7 @@ func ProjectOwner(members models.MemberRepository, roles models.RoleRepository,
+ 			respondAuthError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 			return
+ 		}
+-		if role == nil || !role.IsOwner {
++		if role == nil {
+ 			respondAuthError(w, apperrors.ApiForbidden, http.StatusForbidden)
+ 			return
+ 		}

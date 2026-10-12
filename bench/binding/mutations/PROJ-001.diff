@@ -1,0 +1,16 @@
+diff --git c/backend/handlers/project.go w/backend/handlers/project.go
+index fed7247..be25262 100644
+--- c/backend/handlers/project.go
++++ w/backend/handlers/project.go
+@@ -40,11 +40,6 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
+ 		return
+ 	}
+ 
+-	if req.Name == "" {
+-		RespondError(w, apperrors.ApiNameRequired, http.StatusBadRequest)
+-		return
+-	}
+-
+ 	if len(req.Name) > maxNameLength {
+ 		RespondError(w, apperrors.ApiNameTooLong, http.StatusBadRequest)
+ 		return

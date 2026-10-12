@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/publish_helpers.go w/backend/handlers/publish_helpers.go
+index d623da7..c31a090 100644
+--- c/backend/handlers/publish_helpers.go
++++ w/backend/handlers/publish_helpers.go
+@@ -42,7 +42,7 @@ func collectCategoryViewerTargetUserIDs(members models.MemberRepository, access
+ 		if err != nil {
+ 			continue
+ 		}
+-		if CanView(ea.LevelFor(categoryID)) {
++		if !CanView(ea.LevelFor(categoryID)) {
+ 			targets = append(targets, m.UserID)
+ 		}
+ 	}

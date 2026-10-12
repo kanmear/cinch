@@ -1,0 +1,17 @@
+diff --git c/backend/models/category.go w/backend/models/category.go
+index c5c452b..adb19c7 100644
+--- c/backend/models/category.go
++++ w/backend/models/category.go
+@@ -49,10 +49,8 @@ func (r *categoryRepository) CreateCategory(projectID int, name string) (*Catego
+ func (r *categoryRepository) GetCategoriesByProject(projectID int) ([]Category, error) {
+ 	rows, err := r.db.Query(
+ 		`SELECT id, project_id, name, position, created_at
+-		FROM categories WHERE project_id = $1
+-		ORDER BY position`,
+-		projectID,
+-	)
++		FROM categories
++		ORDER BY position`)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error listing categories: %w", err)
+ 	}

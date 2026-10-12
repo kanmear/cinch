@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/file.go w/backend/handlers/file.go
+index 0c4c664..265bf52 100644
+--- c/backend/handlers/file.go
++++ w/backend/handlers/file.go
+@@ -254,7 +254,7 @@ func (h *FileHandler) Move(w http.ResponseWriter, r *http.Request) {
+ 			RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 			return
+ 		}
+-		if parent == nil || parent.ProjectID != projectID {
++		if parent == nil {
+ 			RespondError(w, apperrors.FileNotFound, http.StatusNotFound)
+ 			return
+ 		}

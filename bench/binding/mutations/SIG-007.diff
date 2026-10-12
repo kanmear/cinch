@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..5f2b08e 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -708,7 +708,7 @@ func (h *TabHandler) RespondToSignature(w http.ResponseWriter, r *http.Request)
+ 		return
+ 	}
+ 
+-	if !req.Accept && strings.TrimSpace(req.Note) == "" {
++	if req.Accept && strings.TrimSpace(req.Note) == "" {
+ 		RespondError(w, apperrors.SignatureDeclineNoteRequired, http.StatusBadRequest)
+ 		return
+ 	}

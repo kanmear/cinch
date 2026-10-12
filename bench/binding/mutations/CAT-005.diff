@@ -1,0 +1,14 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..922d066 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -89,8 +89,7 @@ CREATE TABLE IF NOT EXISTS tabs (
+     content TEXT DEFAULT '',
+     content_hash TEXT NOT NULL DEFAULT '',
+     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+-    UNIQUE(page_id, category_id)
++    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+ );
+ CREATE INDEX IF NOT EXISTS idx_tabs_page_id ON tabs(page_id);
+ 

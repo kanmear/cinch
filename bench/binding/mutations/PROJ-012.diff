@@ -1,0 +1,21 @@
+diff --git c/backend/handlers/project.go w/backend/handlers/project.go
+index fed7247..635e4f6 100644
+--- c/backend/handlers/project.go
++++ w/backend/handlers/project.go
+@@ -211,16 +211,6 @@ func (h *ProjectHandler) TransferOwnership(w http.ResponseWriter, r *http.Reques
+ 		return
+ 	}
+ 
+-	newOwnerMember, err := h.members.GetMemberByProjectAndUser(id, req.NewOwnerID)
+-	if err != nil {
+-		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+-		return
+-	}
+-	if newOwnerMember == nil {
+-		RespondError(w, apperrors.MemberNotFound, http.StatusNotFound)
+-		return
+-	}
+-
+ 	role, err := h.roles.GetRoleByID(req.OldOwnerNewRoleID)
+ 	if err != nil {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)

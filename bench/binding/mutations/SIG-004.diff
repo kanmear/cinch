@@ -1,0 +1,13 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..00bd592 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -1011,7 +1011,7 @@ func fetchSignatureWithDeclineNotes(q querier, sigID int) (*TabSignature, error)
+ func headHistoryID(tx *sql.Tx, tabID int, content string) (int, error) {
+ 	var id int
+ 	err := tx.QueryRow(
+-		`SELECT id FROM tab_history WHERE tab_id = $1 ORDER BY id DESC LIMIT 1`,
++		`SELECT id FROM tab_history WHERE tab_id = $1 ORDER BY id ASC LIMIT 1`,
+ 		tabID,
+ 	).Scan(&id)
+ 	if err == nil {

@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/access_checks.go w/backend/handlers/access_checks.go
+index 2ce8e3c..1698e68 100644
+--- c/backend/handlers/access_checks.go
++++ w/backend/handlers/access_checks.go
+@@ -119,7 +119,7 @@ func (ea *EffectiveAccess) LevelFor(categoryID int) models.PermissionLevel {
+ 			return models.PermissionLevelEdit
+ 		}
+ 	}
+-	return models.PermissionLevelNone
++	return models.PermissionLevelView
+ }
+ 
+ func CanView(level models.PermissionLevel) bool {

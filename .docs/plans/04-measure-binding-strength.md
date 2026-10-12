@@ -116,3 +116,32 @@ Between the two, decide using the "nothing failed" list itself.
 
 **State (2026-10-06):** `~/code/cinch_bench/` is not on this machine yet; it will be available
 later. This run is blocked until it is, because it reuses that harness.
+
+## Result and decision (2026-10-12)
+
+Ran on DeltaDocs `ec4df00`, pre-registered in `0ab4ff8`. The harness is `bench/binding`. The
+method, the full result and the two harness defects found and re-graded are in
+`bench/README.md` § Binding strength.
+
+**72 of 75 bindings bite (96%).** 67 bite through the marked test, 5 only through another
+test, and 3 not at all. The hand-check found no non-violating mutation.
+
+**Decision: close the question.** That's above the pre-registered 90% line, so typed
+bindings and a mutation-check step in the coverage audit aren't built. T3 was an edge case,
+not a pattern: the same model, asked to break SIG-019, rediscovered T3's mutation, and the
+marked test caught it.
+
+What the data does show, for the record rather than for new machinery:
+
+- **A marker on the allowed-case test can't catch a loosening.** All five "other" results
+  were caught by the forbidden-case test, which carries no marker. The fix is in the
+  consumer: move or add the marker. There's no case here for cinch to enforce it.
+- **Three rules are unenforced in DeltaDocs:**
+  - CAT-001: no test lists categories with two projects present.
+  - SIG-004: no test saves twice before requesting.
+  - MEMB-002: the `NOT NULL` on `members.role_id` is latent.
+
+  These are DeltaDocs test gaps, to report there.
+- **Harness lesson for 24 and 25:** recreate the database for every run, because goose
+  won't re-apply an edited migration, and treat a test that never ran as ungraded, not as
+  passed.

@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/access_checks.go w/backend/handlers/access_checks.go
+index 2ce8e3c..d41b374 100644
+--- c/backend/handlers/access_checks.go
++++ w/backend/handlers/access_checks.go
+@@ -139,7 +139,7 @@ func CanManageFiles(ea *EffectiveAccess) bool {
+ 		return true
+ 	}
+ 	for _, level := range ea.PermissionsByCategory {
+-		if CanEdit(level) {
++		if CanView(level) {
+ 			return true
+ 		}
+ 	}

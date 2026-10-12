@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..62659ba 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -517,7 +517,7 @@ func (h *TabHandler) RequestSignature(w http.ResponseWriter, r *http.Request) {
+ 		return
+ 	}
+ 
+-	sig, err := h.tabs.CreateSignatureRequest(id, user.ID, req.SignerIDs, req.Ordered)
++	sig, err := h.tabs.CreateSignatureRequest(id, user.ID, req.SignerIDs, false)
+ 	if err != nil {
+ 		if errors.Is(err, apperrors.ErrSignaturePending) {
+ 			RespondError(w, apperrors.SignaturePending, http.StatusConflict)

@@ -1,0 +1,13 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..d69b3e4 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -487,7 +487,7 @@ func (r *tabRepository) GetActionableDeclinedSignature(tabID, editorID int) (*Ta
+ 		  AND s.status IN ('pending', 'declined')
+ 		  AND EXISTS (SELECT 1 FROM signature_signers ss
+ 		              WHERE ss.signature_id = s.id AND ss.status = 'declined')
+-		ORDER BY s.resolved_at DESC NULLS FIRST, s.id DESC
++		ORDER BY s.resolved_at DESC NULLS LAST, s.id DESC
+ 		LIMIT 1`,
+ 		tabID, editorID,
+ 	).Scan(&sigID)

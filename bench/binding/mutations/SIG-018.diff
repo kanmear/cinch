@@ -1,0 +1,24 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..10f7f61 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -1020,17 +1020,8 @@ func headHistoryID(tx *sql.Tx, tabID int, content string) (int, error) {
+ 	if err != sql.ErrNoRows {
+ 		return 0, fmt.Errorf("error finding head history entry: %w", err)
+ 	}
+-
+-	err = tx.QueryRow(
+-		`INSERT INTO tab_history (tab_id, content, saved_at)
+-		VALUES ($1, $2, $3)
+-		RETURNING id`,
+-		tabID, content, time.Now().UTC(),
+-	).Scan(&id)
+-	if err != nil {
+-		return 0, fmt.Errorf("error synthesizing history entry: %w", err)
+-	}
+-	return id, nil
++	// No history row exists yet — there is nothing to attest.
++	return 0, sql.ErrNoRows
+ }
+ 
+ func signedByFor(q querier, sigID *int) ([]SignedByUser, error) {

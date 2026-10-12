@@ -1,0 +1,13 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..4a81877 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -72,7 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_rcp_role_id ON role_category_permissions(role_id)
+ CREATE TABLE IF NOT EXISTS files (
+     id SERIAL PRIMARY KEY,
+     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+-    parent_id INTEGER REFERENCES files(id) ON DELETE CASCADE,
++    parent_id INTEGER REFERENCES files(id) ON DELETE SET NULL,
+     name VARCHAR(255) NOT NULL,
+     type VARCHAR(10) NOT NULL CHECK (type IN ('folder', 'page')),
+     position INTEGER NOT NULL DEFAULT 0,

@@ -17,7 +17,7 @@ tier three is small in isolation but compounds.
 | 1 | [Strip build metadata before parsing semver](01-strip-build-metadata-semver.md) | 1 — trust the checker | **Shipped** (`a35cbe1`) — kept for provenance |
 | 2 | [`cinch upgrade`](02-cinch-upgrade.md) | 1 — trust the checker | **Shipped** (`cf3edcf`) |
 | 3 | [Close rule-grammar holes, then seed defects](03-rule-grammar-holes-and-seed-defects.md) | 1 — trust the checker | Part A and the seeded battery shipped (`284bf40`) |
-| 4 | [Measure binding strength before designing for it](04-measure-binding-strength.md) | 2 — make green mean something | Open — method refined for tier 4; waits for `~/code/cinch_bench` |
+| 4 | [Measure binding strength before designing for it](04-measure-binding-strength.md) | 2 — make green mean something | **Done** — 72/75 bindings bite (96%); question closed, no typed bindings. See `bench/README.md` |
 | 5 | [Navigability as one check class](05-navigability-check-class.md) | 2 — make green mean something | H1 half shipped (`2925bf4`); the reachability half was dropped — see the item's resolution and the comment in `TestSeededDefectLinksTargetUnreachableFromRoot` |
 | 6 | [The machine surface: `rules --json` + `owns:` → `cinch impact`](06-machine-surface-rules-json-impact.md) | 2 — make green mean something | **Shipped** (`f7f94ac`) |
 | 7 | [Workflow prose value and F1's scope](07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | Cheap half effectively done by the workflow-template trim (`09ef586`); expensive half still open |

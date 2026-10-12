@@ -1,0 +1,16 @@
+diff --git c/backend/handlers/role.go w/backend/handlers/role.go
+index f970a96..5d071bf 100644
+--- c/backend/handlers/role.go
++++ w/backend/handlers/role.go
+@@ -152,11 +152,6 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.RoleNotFound, http.StatusNotFound)
+ 		return
+ 	}
+-	if existing.IsOwner {
+-		RespondError(w, apperrors.RoleOwnerProtected, http.StatusForbidden)
+-		return
+-	}
+-
+ 	if err := h.roles.DeleteRole(id); err != nil {
+ 		if errors.Is(err, sql.ErrNoRows) {
+ 			RespondError(w, apperrors.RoleNotFound, http.StatusNotFound)
