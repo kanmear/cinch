@@ -118,6 +118,77 @@ func TestParseRuleItemsPlainNumberedItemFlushes(t *testing.T) {
 	}
 }
 
+func TestParseRuleItemsEndsAtHeadingOrParagraph(t *testing.T) {
+	t.Run("ignore under a later heading binds nothing", func(t *testing.T) {
+		body := "# Auth\n\n1. **AUTH-001** Sessions expire.\n2. **AUTH-002** Tokens rotate.\n\n" +
+			"## Notes\n\nExample of the syntax:\n<!-- cinch:ignore: just an example in prose -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2", len(got))
+		}
+		for _, it := range got {
+			if it.hasIgnore {
+				t.Fatalf("%s hasIgnore = true, want false", it.id)
+			}
+		}
+	})
+
+	t.Run("text stops at a heading", func(t *testing.T) {
+		got := parseRuleItemsStr(t, "1. **AUTH-001** Tokens rotate.\n## Notes\nExample <!-- cinch:ignore -->\n")
+		if len(got) != 1 || got[0].text != "1. **AUTH-001** Tokens rotate." || got[0].hasIgnore {
+			t.Fatalf("item = %+v, want text cut at the heading and no ignore", got[0])
+		}
+	})
+
+	t.Run("text stops at a heading after a blank line", func(t *testing.T) {
+		got := parseRuleItemsStr(t, "1. **AUTH-001** Tokens rotate.\n\n## Notes\n")
+		if len(got) != 1 || got[0].text != "1. **AUTH-001** Tokens rotate." {
+			t.Fatalf("item = %+v, want text cut at the heading", got[0])
+		}
+	})
+
+	t.Run("indented ignore after a blank line still binds", func(t *testing.T) {
+		for name, indent := range map[string]string{"three spaces": "   ", "two spaces": "  ", "tab": "\t"} {
+			body := "1. **AUTH-001** Tokens rotate.\n\n" + indent + "<!-- cinch:ignore: reviewed by hand -->\n\n## Notes\n"
+			got := parseRuleItemsStr(t, body)
+			if len(got) != 1 || !got[0].hasIgnore || got[0].ignoreReason != "reviewed by hand" || got[0].ignoreLine != 3 {
+				t.Fatalf("%s: item = %+v, want ignore at line 3", name, got[0])
+			}
+		}
+	})
+
+	t.Run("lazy continuation still binds", func(t *testing.T) {
+		body := "1. **AUTH-001** Tokens rotate\nand expire.\n<!-- cinch:ignore: lazy -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 1 || !got[0].hasIgnore || got[0].ignoreLine != 3 {
+			t.Fatalf("item = %+v, want ignore at line 3", got[0])
+		}
+		if want := "1. **AUTH-001** Tokens rotate and expire. <!-- cinch:ignore: lazy -->"; got[0].text != want {
+			t.Fatalf("text = %q, want %q", got[0].text, want)
+		}
+	})
+
+	t.Run("unindented paragraph ends the item", func(t *testing.T) {
+		body := "1. **AUTH-001** Sessions expire.\n2. **AUTH-002** Tokens rotate.\n\n" +
+			"Plain paragraph after the list.\n<!-- cinch:ignore: not about AUTH-002 -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2", len(got))
+		}
+		if got[1].hasIgnore || got[1].text != "2. **AUTH-002** Tokens rotate." {
+			t.Fatalf("AUTH-002 = %+v, want no ignore and text cut at the paragraph", got[1])
+		}
+	})
+
+	t.Run("unindented paragraph ends the item after an indented one", func(t *testing.T) {
+		body := "1. **AUTH-001** Sessions expire.\n\n   More detail.\n\nPlain paragraph.\n<!-- cinch:ignore -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 1 || got[0].hasIgnore || got[0].text != "1. **AUTH-001** Sessions expire. More detail." {
+			t.Fatalf("item = %+v, want detail kept and no ignore", got[0])
+		}
+	})
+}
+
 func TestParseRuleItemsNoRules(t *testing.T) {
 	if got := parseRuleItemsStr(t, "just text\nno rules here\n"); len(got) != 0 {
 		t.Fatalf("parseRuleItems = %v, want none", got)

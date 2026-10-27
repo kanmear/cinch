@@ -41,3 +41,5 @@ repository, so an unbound rule or a stray marker fails CI.
     checks the staged content.
 13. **CINCH-013** A failing hook step doesn't stop later steps, and the hook's
     last lines name every step's result.
+14. **CINCH-014** A rule item ends at the next heading or unindented paragraph,
+    so a `cinch:ignore` outside its rule's item binds nothing.

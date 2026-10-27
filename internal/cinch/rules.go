@@ -23,6 +23,7 @@ import (
 var (
 	ruleItemRe = regexp.MustCompile(`^\s*\d+\.\s+\*\*([A-Z0-9]+-[0-9]+)\*\*`)
 	anyItemRe  = regexp.MustCompile(`^\s*\d+\.\s`)
+	headingRe  = regexp.MustCompile(`^ {0,3}#{1,6}(\s|$)`)
 	ignoreRe   = regexp.MustCompile(`<!--\s*cinch:ignore\s*(?::\s*(.*?))?\s*-->`)
 	markerRe   = regexp.MustCompile(`(?://|#|--|<!--|/\*|%|;)\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)\b`)
 )
@@ -158,10 +159,25 @@ func duplicateLocsMessage(locs []ruleItem) string {
 	return fmt.Sprintf("declared in %d places (%s) — rule IDs must be unique", len(pairs), strings.Join(pairs, ", "))
 }
 
+// indentedContinuation reports whether a line after a blank line still
+// belongs to the list item above it: at least two spaces or a tab. That is
+// an approximation of CommonMark's "as far as the item's content", which
+// would need the marker width; two spaces also admits the common two-space
+// indent under "1.".
+func indentedContinuation(line string) bool {
+	return strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "\t")
+}
+
+// parseRuleItems reads the rule items of one doc. An item runs from its
+// "N. **ID**" line to the next list item, the next ATX heading, or a
+// non-blank line that follows a blank line and isn't indented; a line
+// directly after the item with no blank between is a lazy continuation and
+// stays. Only lines inside that span can supply the item's cinch:ignore.
 func parseRuleItems(file string, content []byte) []ruleItem {
 	var items []ruleItem
 	var cur *ruleItem
 	var textLines []string
+	afterBlank := false
 
 	flush := func() {
 		if cur == nil {
@@ -171,6 +187,7 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		items = append(items, *cur)
 		cur = nil
 		textLines = nil
+		afterBlank = false
 	}
 
 	_ = mdscan.ForEachFencedLineBytes(content, func(lineNumber int, line string) {
@@ -187,6 +204,20 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		if cur == nil {
 			return
 		}
+		if headingRe.MatchString(line) {
+			flush()
+			return
+		}
+		if strings.TrimSpace(line) == "" {
+			afterBlank = true
+			textLines = append(textLines, line)
+			return
+		}
+		if afterBlank && !indentedContinuation(line) {
+			flush()
+			return
+		}
+		afterBlank = false
 		textLines = append(textLines, line)
 		if !cur.hasIgnore {
 			if m := ignoreRe.FindStringSubmatch(line); m != nil {
