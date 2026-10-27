@@ -938,3 +938,26 @@ func TestCheckLinksReportsScanError(t *testing.T) {
 		t.Fatalf("checkLinks findings %v do not include a scan error", report.findings)
 	}
 }
+
+func TestCmdIgnoresPluralizesDeclarations(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"none", "1. **SIG-001** some rule\n", "0 cinch:ignore declarations found\n"},
+		{"one", "1. **SIG-001** some rule\n<!-- cinch:ignore: fixture -->\n", "1 cinch:ignore declaration:\n"},
+		{"two", "1. **SIG-001** some rule\n<!-- cinch:ignore: fixture -->\n2. **SIG-002** other rule\n<!-- cinch:ignore: fixture -->\n", "2 cinch:ignore declarations:\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			docsRoot := t.TempDir()
+			writeTestFile(t, docsRoot, "rules.md", tc.body)
+
+			var code int
+			out := captureStdout(t, func() { code = CmdIgnores(docsRoot) })
+			if code != 0 || !strings.HasPrefix(out, tc.want) {
+				t.Fatalf("CmdIgnores = %d, output %q, want it to start with %q", code, out, tc.want)
+			}
+		})
+	}
+}

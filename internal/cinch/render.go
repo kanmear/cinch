@@ -159,8 +159,10 @@ func CmdRender(root string) int {
 }
 
 // writeRenderedFiles reports changed when any file's bytes differ from what
-// was on disk, including files that didn't exist yet.
+// was on disk, including files that didn't exist yet. It names only the files
+// it changed and counts the rest, so a re-render that changes nothing says so.
 func writeRenderedFiles(root string, files []renderFile) (changed bool, err error) {
+	upToDate := 0
 	for _, f := range files {
 		destination := filepath.Join(root, f.destination)
 		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
@@ -171,13 +173,22 @@ func writeRenderedFiles(root string, files []renderFile) (changed bool, err erro
 		if mode == 0 {
 			mode = 0o644
 		}
-		if existing, err := os.ReadFile(destination); err != nil || string(existing) != content {
-			changed = true
+		fileChanged := true
+		if existing, err := os.ReadFile(destination); err == nil && string(existing) == content {
+			fileChanged = false
 		}
 		if err := os.WriteFile(destination, []byte(content), mode); err != nil {
 			return changed, err
 		}
+		if !fileChanged {
+			upToDate++
+			continue
+		}
+		changed = true
 		output.Step("rendered %s", f.destination)
+	}
+	if upToDate > 0 {
+		output.Step("%d %s up to date", upToDate, output.Plural(upToDate, "file"))
 	}
 	return changed, nil
 }

@@ -210,7 +210,11 @@ func linksList(docsRoot, target string, inbound bool) (string, error) {
 		fmt.Fprintf(&b, "%s links to no docs\n", rel)
 		return b.String(), nil
 	case inbound:
-		fmt.Fprintf(&b, "%d %s link to %s:\n\n", len(linked), output.Plural(len(linked), "doc"), rel)
+		verb := "link"
+		if len(linked) == 1 {
+			verb = "links"
+		}
+		fmt.Fprintf(&b, "%d %s %s to %s:\n\n", len(linked), output.Plural(len(linked), "doc"), verb, rel)
 	default:
 		fmt.Fprintf(&b, "%s links to %d %s:\n\n", rel, len(linked), output.Plural(len(linked), "doc"))
 	}

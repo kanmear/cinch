@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
@@ -122,19 +123,35 @@ func (roots checkRoots) relabel(f finding) finding {
 	if roots.fsRoot == roots.repoRoot {
 		return f
 	}
-	prefix := roots.fsRoot + string(filepath.Separator)
-	replacement := ""
-	if roots.repoRoot != "." {
-		replacement = roots.repoRoot + string(filepath.Separator)
-	}
+	prefix, replacement := roots.snapshotPrefix()
 	switch {
 	case f.file == roots.fsRoot:
 		f.file = roots.repoRoot
 	case strings.HasPrefix(f.file, prefix):
 		f.file = replacement + strings.TrimPrefix(f.file, prefix)
 	}
-	f.message = strings.ReplaceAll(f.message, prefix, replacement)
+	f.message = roots.relabelText(f.message)
 	return f
+}
+
+// relabelText is relabel for free text: an error that read a file in the
+// snapshot would otherwise print the temporary directory it was read from.
+func (roots checkRoots) relabelText(text string) string {
+	if roots.fsRoot == roots.repoRoot {
+		return text
+	}
+	prefix, replacement := roots.snapshotPrefix()
+	return strings.ReplaceAll(text, prefix, replacement)
+}
+
+// snapshotPrefix is the path prefix of a file in the snapshot and what it
+// reads as in the repository.
+func (roots checkRoots) snapshotPrefix() (prefix, replacement string) {
+	prefix = roots.fsRoot + string(filepath.Separator)
+	if roots.repoRoot != "." {
+		replacement = roots.repoRoot + string(filepath.Separator)
+	}
+	return prefix, replacement
 }
 
 const (
@@ -275,7 +292,7 @@ func generatedRelevant(root, docsRoot string, m *manifest, changed map[string]bo
 func runChecks(roots checkRoots, messageFile string, changed bool, only ...string) int {
 	docsRoot, err := ResolveDocsRoot(roots.fsRoot)
 	if err != nil {
-		return output.Fail("check", err)
+		return output.Failf("check", "%s", roots.relabelText(err.Error()))
 	}
 
 	m, mErr := loadManifestOptional(roots.fsRoot)
@@ -316,6 +333,9 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 	type plannedCheck struct {
 		enabled bool
 		fn      func() checkResult
+		// gated marks a check that --changed can switch off, which then
+		// prints a skip line instead of vanishing from the run.
+		gated bool
 	}
 	type namedResult struct {
 		name   string
@@ -324,28 +344,35 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 
 	planned := map[string]plannedCheck{
 		"links": {relevant(changedMarkdownUnder(changedSet, docsRoot)),
-			scoped(func() checkResult { return linksCheckResult(checkLinks(roots, docsRoot)) })},
+			scoped(func() checkResult { return linksCheckResult(checkLinks(roots, docsRoot)) }), true},
 		"rules": {relevant(len(changedSet) > 0),
-			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) })},
+			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) }), true},
 		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
-			scoped(func() checkResult { return indexCheckResult(checkIndex(roots, docsRoot)) })},
+			scoped(func() checkResult { return indexCheckResult(checkIndex(roots, docsRoot)) }), true},
 		"generated": {relevant(generatedRelevant(roots.fsRoot, docsRoot, m, changedSet)),
-			func() checkResult { return checkGenerated(roots, m, mErr) }},
-		// commit is unconditionally suppressed without a MSGFILE, not just under
-		// --changed: nobody hand-invokes `cinch check somefile.txt` in ordinary
-		// use (the commit-msg hook goes through commitMsgChecks instead), so
-		// "no commit message file given" is noise on every plain `cinch check`,
-		// not a diff-scoping question.
-		"commit": {messageFile != "", func() checkResult { return checkCommit(messageFile, m) }},
-		"core":   {true, func() checkResult { return checkPin(Version, m) }},
-		"hooks":  {true, func() checkResult { return checkHooks(roots.repoRoot, m, mErr) }},
+			func() checkResult { return checkGenerated(roots, m, mErr) }, true},
+		// Without a MSGFILE commit stays silent unless it was asked for by
+		// name: nobody hand-invokes `cinch check somefile.txt` in ordinary use
+		// (the commit-msg hook goes through commitMsgChecks instead), so "no
+		// commit message file given" is noise on every plain `cinch check`. An
+		// explicit --only commit that printed nothing would read as a pass.
+		"commit": {messageFile != "" || onlySet["commit"], func() checkResult { return checkCommit(messageFile, m) }, false},
+		"core":   {true, func() checkResult { return checkPin(Version, m) }, false},
+		"hooks":  {true, func() checkResult { return checkHooks(roots.repoRoot, m, mErr) }, false},
 	}
 
 	results := make(chan namedResult, len(checkLaunchOrder))
 	launched := 0
+	finished := make(map[string]checkResult, len(checkLaunchOrder))
 	for _, name := range checkLaunchOrder {
 		check := planned[name]
-		if !run(name) || !check.enabled {
+		if !run(name) {
+			continue
+		}
+		if !check.enabled {
+			if check.gated {
+				finished[name] = checkResult{noOp: "nothing relevant changed"}
+			}
 			continue
 		}
 		launched++
@@ -354,7 +381,6 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 		}()
 	}
 
-	finished := make(map[string]checkResult, launched)
 	for i := 0; i < launched; i++ {
 		r := <-results
 		finished[r.name] = r.result
@@ -375,7 +401,7 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.check != b.check {
-			return a.check < b.check
+			return slices.Index(checkLaunchOrder, a.check) < slices.Index(checkLaunchOrder, b.check)
 		}
 		if a.file != b.file {
 			return a.file < b.file

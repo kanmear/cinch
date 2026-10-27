@@ -872,3 +872,68 @@ func TestCheckRootsInCommit(t *testing.T) {
 		}
 	})
 }
+
+func TestCheckRootsRelabelText(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		roots checkRoots
+		text  string
+		want  string
+	}{
+		{
+			name:  "snapshot under the working directory",
+			roots: checkRoots{repoRoot: ".", fsRoot: "/tmp/cinch-staged-1"},
+			text:  "/tmp/cinch-staged-1/cinch.yml: yaml: line 1: oops",
+			want:  "cinch.yml: yaml: line 1: oops",
+		},
+		{
+			name:  "snapshot of another repository",
+			roots: checkRoots{repoRoot: "/work/repo", fsRoot: "/tmp/cinch-staged-1"},
+			text:  "lstat /tmp/cinch-staged-1/.docs: no such file or directory",
+			want:  "lstat /work/repo/.docs: no such file or directory",
+		},
+		{
+			name:  "working tree",
+			roots: checkRoots{repoRoot: "/work/repo", fsRoot: "/work/repo"},
+			text:  "/work/repo/cinch.yml: oops",
+			want:  "/work/repo/cinch.yml: oops",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.roots.relabelText(tc.text); got != tc.want {
+				t.Fatalf("relabelText(%q) = %q, want %q", tc.text, got, tc.want)
+			}
+		})
+	}
+}
+
+// cinch:rule CINCH-006
+func TestStagedChecksErrorNamesRepoPathNotSnapshot(t *testing.T) {
+	root := t.TempDir()
+	git := stagedTestRepo(t, root)
+	// A malformed manifest in the commit, and an unstaged edit that rules out
+	// the fast path, so the manifest is read from a snapshot directory.
+	writeTestFile(t, root, "cinch.yml", "paths: [unclosed\n")
+	git("add", "cinch.yml")
+	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", stagedMarkedCode+"// edited\n")
+
+	roots, cleanup, err := stagedSnapshot(root)
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("stagedSnapshot: %v", err)
+	}
+	if roots.fsRoot == root {
+		t.Fatal("fsRoot = repoRoot, want a snapshot")
+	}
+	var got int
+	out := captureStderr(t, func() { got = runChecks(roots, "", false) })
+	if got != 1 {
+		t.Fatalf("runChecks = %d, want 1 (the staged cinch.yml is malformed)", got)
+	}
+	if strings.Contains(out, "cinch-staged-") {
+		t.Fatalf("stderr = %q, must not name the snapshot directory", out)
+	}
+	if !strings.Contains(out, filepath.Join(root, "cinch.yml")) {
+		t.Fatalf("stderr = %q, want the error to name the repository's cinch.yml", out)
+	}
+}

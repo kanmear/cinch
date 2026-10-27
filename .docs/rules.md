@@ -20,7 +20,7 @@ repository, so an unbound rule or a stray marker fails CI.
 2. **CINCH-002** A header-stamped file the current render no longer produces
    is a finding, and `cinch render` removes it.
 3. **CINCH-003** `cinch init` never overwrites a `core.hooksPath` another tool
-   set.
+   set, and refuses before writing any file.
 4. **CINCH-004** Render rewrites an exact `require.cinch` pin and never
    changes a range pin, `any`, or an unset pin.
 5. **CINCH-005** Link syntax inside inline code is not a link.

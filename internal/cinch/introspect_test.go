@@ -215,3 +215,42 @@ func TestLinksListAcceptsDocsRootPrefix(t *testing.T) {
 		t.Fatalf("list = %q, want the docs-root-prefixed path to resolve", list)
 	}
 }
+
+func TestLinksListAgreesVerbWithCount(t *testing.T) {
+	docsRoot := t.TempDir()
+	writeTestFile(t, docsRoot, "a.md", "# A\n\n[b](b.md)\n")
+	writeTestFile(t, docsRoot, "b.md", "# B\n")
+	writeTestFile(t, docsRoot, "c.md", "# C\n\n[b](b.md)\n")
+
+	one, err := linksList(docsRoot, "a.md", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(one, "a.md links to 1 doc:") {
+		t.Fatalf("outbound = %q, want %q", one, "a.md links to 1 doc:")
+	}
+	oneInbound, err := linksList(docsRoot, "a.md", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(oneInbound, "nothing links to a.md") {
+		t.Fatalf("inbound = %q, want the nothing-links message", oneInbound)
+	}
+
+	two, err := linksList(docsRoot, "b.md", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(two, "2 docs link to b.md:") {
+		t.Fatalf("inbound = %q, want %q", two, "2 docs link to b.md:")
+	}
+
+	writeTestFile(t, docsRoot, "c.md", "# C\n")
+	single, err := linksList(docsRoot, "b.md", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(single, "1 doc links to b.md:") {
+		t.Fatalf("inbound = %q, want %q", single, "1 doc links to b.md:")
+	}
+}
