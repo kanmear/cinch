@@ -30,10 +30,12 @@ proof on its own.
 ## Current state (2026-10-12)
 
 `~/code/cinch_bench/` arrived on 2026-10-11. [22](22-catch-matrix-and-cost-curve.md) and
-[04](04-measure-binding-strength.md) are done: claims #1, #2 and #6 hold. Next is
-[23](23-public-fixture.md), which [24](24-leak-replay.md) and [25](25-upkeep-ablation.md)
-both wait for. `bench/binding` is the closest template for their harnesses: a cached clone,
-a fresh database per run, and resumable per-item runs.
+[04](04-measure-binding-strength.md) are done: claims #1, #2 and #6 hold. On 2026-10-27,
+[23](23-public-fixture.md) settled the fixture question without building one: Budgetron,
+made public, is the reproducible fixture for [25](25-upkeep-ablation.md), and
+[24](24-leak-replay.md) runs on DeltaDocs as a private data point. Both are unblocked.
+`bench/binding` is the closest template for their harnesses: a cached clone, a fresh
+database per run, and resumable per-item runs.
 
 ## Rules for publishing
 
@@ -47,8 +49,8 @@ a fresh database per run, and resumable per-item runs.
 - **Publish the null results.** "The tooling adds nothing to retrieval" belongs on the front
   page. It's what makes the positive results believable, and it's what CodeGraph didn't do.
 - **Fix the fixture problem.** DeltaDocs is a private product, so a benchmark built on it can't
-  be reproduced. Item [23](23-public-fixture.md) builds a public fixture. The private repos
-  run as extra data points, labeled as such.
+  be reproduced. Item [23](23-public-fixture.md) makes Budgetron the public fixture, pinned
+  to a tag per benchmark. DeltaDocs runs as a private data point, labeled as such.
 - **Headline correctness and upkeep, not speed.** Report cost (#6) honestly, but keep it out
   of the headline.
 
@@ -57,7 +59,8 @@ a fresh database per run, and resumable per-item runs.
 1. Catch matrix and cost curve ([22](22-catch-matrix-and-cost-curve.md)). Cheap,
    deterministic, publishable this week.
 2. Binding strength ([04](04-measure-binding-strength.md)), which was already planned.
-3. Public fixture ([23](23-public-fixture.md)), a prerequisite for the next two.
+3. Public fixture ([23](23-public-fixture.md)): decided, with Budgetron made public. No
+   fixture gets built.
 4. Leak replay ([24](24-leak-replay.md)).
 5. Upkeep ablation ([25](25-upkeep-ablation.md)).
 6. The field log at the end of the MVP push ([19](19-field-log.md), [20](20-rule-growth-replay.md)).
@@ -67,8 +70,7 @@ workflows are worth investigating further.
 
 ## Deferred claims
 
-- **#5 audit recall.** This waits until 22–25 are done. It needs the public fixture from 23 to
-  seed into, and its answer key (the seeded set) must be committed before the run, like every
+- **#5 audit recall.** This waits until 22–25 are done. It seeds into Budgetron, the public fixture from 23, and its answer key (the seeded set) must be committed before the run, like every
   other key.
 - **#7 history replay.** It reuses the per-commit walker from [20](20-rule-growth-replay.md)
   and [09](09-calibrate-heuristics-against-history.md), running `cinch check` instead of

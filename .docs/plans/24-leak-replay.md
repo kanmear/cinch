@@ -18,8 +18,15 @@ table.
 
 ## Task
 
-"Add a `tab.updated` realtime event," run on the fixture from [23](23-public-fixture.md) (and
-on DeltaDocs as a labeled private data point).
+"Add a `tab.updated` realtime event," run on DeltaDocs only, labeled as a private data point.
+[23](23-public-fixture.md) found no public repo with the shape: Budgetron has no realtime
+recipients to target. The harness, prompt, hidden test and logs are still published.
+
+The real states on either side of the leak fix are the starting point:
+`adc4abb merge: fix/realtime-category-leak` (2026-09-02) added RT-001–003 and both leak tests.
+But `tab.updated` is already published in `adc4abb^` (`backend/handlers/tab.go`), so each arm's
+tagged state still has to remove that event before the task makes sense. Building those
+states is part of pre-registration.
 
 ## Arms
 

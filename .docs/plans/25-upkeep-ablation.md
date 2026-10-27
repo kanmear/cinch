@@ -23,8 +23,9 @@ the docs and the `AGENTS.md` pointer already do on their own.
 
 ## Tasks
 
-Changes that break or extend existing rules, run on the fixture from
-[23](23-public-fixture.md) (DeltaDocs as a labeled private data point). Each task's answer key
+Changes that break or extend existing rules, run on Budgetron at a pinned tag (the public
+fixture from [23](23-public-fixture.md)) and on DeltaDocs as a labeled private data point.
+Tasks are written per repo, because the two corpora share no rules. Each task's answer key
 names the rules it touches, and whether a correct solution changes a rule, adds one, or must
 leave all rules true.
 

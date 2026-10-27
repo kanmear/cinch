@@ -36,9 +36,9 @@ tier three is small in isolation but compounds.
 | 20 | [Replay history for rule growth](20-rule-growth-replay.md) | 4 — evidence | Open — run at the end of the push |
 | 21 | [A benchmark suite worth publishing](21-benchmark-suite.md) | 4 — evidence | Open — umbrella for 22–25 |
 | 22 | [Catch matrix and cost curve](22-catch-matrix-and-cost-curve.md) | 4 — evidence | **Done** — catch matrix and cost curve in `bench/`; scan fix shipped in 0.10.1 |
-| 23 | [A public fixture](23-public-fixture.md) | 4 — evidence | Open |
-| 24 | [Leak replay](24-leak-replay.md) | 4 — evidence | Open — waits for 23 and `~/code/cinch_bench` |
-| 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Open — waits for 23 and `~/code/cinch_bench` |
+| 23 | [A public fixture](23-public-fixture.md) | 4 — evidence | Decided — Budgetron, made public, is the fixture for 25; DeltaDocs stays private |
+| 24 | [Leak replay](24-leak-replay.md) | 4 — evidence | Open — DeltaDocs only, private data point |
+| 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Open — Budgetron (public, pinned tag) plus DeltaDocs (private) |
 | 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** (`a937164`) — kept for provenance |
 | 27 | [Budgetron field report, 2026-10-11](27-budgetron-field-report.md) | 4 — evidence | **Shipped** (`1edf5a2`–`0ade181`) — kept for provenance |
 | 28 | [Absorb the squash-message and version-bump scripts](28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | Deferred behind the benchmark suite (23–25) — copies re-drifted within 18 days of a hand alignment |

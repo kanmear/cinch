@@ -1,6 +1,8 @@
 # 23. A public fixture
 
-**Tier 4 — evidence. Cost estimate: days. It's the prerequisite for 24, 25 and audit recall.**
+**Tier 4 — evidence. Status: decided 2026-10-27. No fixture gets built: Budgetron, made
+public, is the reproducible fixture for 25 and audit recall, and DeltaDocs stays private. The
+definition of done below is what's left to do.**
 
 ## Provenance
 
@@ -8,29 +10,53 @@
 which is a private product. A benchmark built only on it can't be reproduced, and that's the
 weakness [21](21-benchmark-suite.md) exists to fix.
 
-## What to build
-
-Pick one of these two, in this order of preference:
+## What was considered
 
 1. **A sanitized slice of DeltaDocs**: permissions, signatures and realtime, with its rules,
-   marked tests and enough history to replay. Strip product-specific names and anything
-   proprietary, but keep the shapes that matter: rules spanning more than one doc, a realtime
-   fan-out where the targeting decision lives, and Go tests carrying `cinch:rule` markers.
-2. **A purpose-built app with the same shape**, if the slice can't be sanitized without losing
-   the shape.
+   marked tests and enough history to replay.
+2. **A purpose-built app with the same shape**, if the slice couldn't be sanitized without
+   losing the shape.
 
-Either way, the fixture needs:
+## Decision
 
-- A `cinch.yml` and a docs root that pass `cinch check`.
-- A one-command test run (the hidden assertions in 24 and 25 run through it).
-- Tagged states for each benchmark arm (for example, with the realtime targeting rule and
-  without it, for [24](24-leak-replay.md)) so that an arm is a `git checkout`, not a hand edit.
+- **The DeltaDocs slice is not a slice.** Its dependencies cover nearly the whole backend.
+  Realtime targeting (RT-001) resolves category permission, so it needs categories, roles,
+  members and the access resolver. Tabs sit on pages: `tabs.page_id` references `files`, and
+  `TabHandler` takes a `FileRepository`. Signatures gate on permission levels. Only auth,
+  invites, users and rate limiting fall outside, and the tests still log in through sessions.
+  The "slice" would be about 85–90% of the backend and 91 of its 93 rules. Publishing that
+  also means publishing the production auth path, rewriting 350 commits of history, and
+  letting future models train on the leak fix before [24](24-leak-replay.md) runs.
+  Declined.
+- **The purpose-built app is declined for now.** It would take days, and the leak would be
+  reconstructed rather than real.
+- **Budgetron becomes the public fixture** (`github.com/kanmear/budgetron`, made public by the
+  owner). It's a Flutter/Dart app with 39 rules, every one carrying a test marker, and a
+  one-command test run (`make-test`). It's a second stack next to DeltaDocs's Go backend,
+  which helps external validity. It fits [25](25-upkeep-ablation.md) and audit recall. It
+  doesn't fit 24, because it has no permissions or realtime recipients to target. Its cinch
+  history starts 2026-10-06, so it's thin for [20](20-rule-growth-replay.md).
+- **DeltaDocs stays private.** It runs 24 on its own and 25 as a second data point, labeled
+  private and not reproducible in every table. Its harness, task prompts, hidden tests,
+  scoring and logs are still published. Only the repo isn't.
 
-The private repos still run as extra data points. Every published table labels them as
-private and not reproducible.
+## Pinning
+
+Budgetron will keep being refactored and extended, so a benchmark never runs against its
+moving tip:
+
+- Each benchmark pins a Budgetron tag (for example `cinch-bench/upkeep-v1`), created at
+  pre-registration. The harness clones that tag and refuses any other commit.
+- Answer keys and hidden assertions name rule IDs and paths as they stand at that tag.
+- Rerunning on a later Budgetron state takes a new tag and a new pre-registration, never an
+  edit to the old key.
+- Task specs avoid features the owner plans to build in Budgetron. Once one of them lands
+  publicly, a rerun of that task is contaminated, so the README records the publish date.
 
 ## Verification / definition of done
 
-- The fixture lives in a public location (`bench/fixture/` or its own repo, decided when built)
-  and `cinch check` plus its tests pass from a clean clone.
-- Someone without access to DeltaDocs can run the 24 and 25 harnesses against it.
+- Budgetron is public. A secret scan has been run over its whole history, not just the tree.
+  A filename check on 2026-10-27 found no keystores, `google-services` files, `.env` files or
+  key files on any branch, but gitleaks hasn't been run yet.
+- At the pinned tag, `cinch check` and `make-test` pass from a clean clone.
+- Someone without access to DeltaDocs can run the 25 harness against it.
