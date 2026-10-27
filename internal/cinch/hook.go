@@ -53,6 +53,13 @@ func cmdHookPreCommit(root string) int {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
+	// Loaded before the checks so a malformed cinch.yml is reported once, here:
+	// the checks would fail on it too, and say the same thing a second time.
+	m, err := loadManifestOptional(root)
+	if err != nil {
+		return output.Fail("hook", err)
+	}
+
 	roots, cleanup, err := stagedSnapshot(root)
 	defer cleanup()
 	if err != nil {
@@ -62,11 +69,6 @@ func cmdHookPreCommit(root string) int {
 	// one cache makes that a single pass over the tree.
 	roots.scans = newMarkerScanCache()
 	ok := preCommitChecks(roots) == 0
-
-	m, err := loadManifestOptional(root)
-	if err != nil {
-		return output.Fail("hook", err)
-	}
 
 	// The checks and the impact advisory read the same index snapshot, so
 	// the advisory describes what is being committed. Only dispatchHooks
@@ -102,12 +104,14 @@ func cmdHookCommitMsg(root string, args []string) int {
 	}
 	messageFile := args[0]
 
-	ok := commitMsgChecks(root, messageFile) == 0
-
+	// Loaded before the checks for the same reason as in cmdHookPreCommit.
 	m, err := loadManifestOptional(root)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
+
+	ok := commitMsgChecks(root, messageFile) == 0
+
 	if m != nil {
 		steps := dispatchHooks(root, m, "commit-msg", nil, messageFile)
 		printHookSummary("commit-msg", ok, steps)

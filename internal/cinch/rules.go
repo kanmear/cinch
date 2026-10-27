@@ -741,7 +741,7 @@ func CmdIgnores(docsRoot string) int {
 		fmt.Println("0 cinch:ignore declarations found")
 		return 0
 	}
-	fmt.Printf("%d cinch:ignore declarations:\n\n", len(ignored))
+	fmt.Printf("%d cinch:ignore %s:\n\n", len(ignored), output.Plural(len(ignored), "declaration"))
 	for _, item := range ignored {
 		reason := item.ignoreReason
 		if reason == "" {

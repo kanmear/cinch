@@ -113,11 +113,13 @@ func checkoutSnapshot(repoRoot string, index indexListing) (roots checkRoots, cl
 	if index.skipWorktree {
 		args = append(args, "--ignore-skip-worktree-bits")
 	}
+	roots = checkRoots{repoRoot: repoRoot, fsRoot: directory, indexFiles: index.files, index: index.set}
 	if out, err := gitutil.CombinedOutput(repoRoot, args...); err != nil {
 		cleanup()
-		return checkRoots{}, noCleanup, fmt.Errorf("git checkout-index failed: %s", strings.TrimSpace(string(out)))
+		// git names the --prefix directory in its complaints.
+		return checkRoots{}, noCleanup, fmt.Errorf("git checkout-index failed: %s", roots.relabelText(strings.TrimSpace(string(out))))
 	}
-	return checkRoots{repoRoot: repoRoot, fsRoot: directory, indexFiles: index.files, index: index.set}, cleanup, nil
+	return roots, cleanup, nil
 }
 
 // readIndex lists the index with `git ls-files -v`, whose one-letter tag

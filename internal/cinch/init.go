@@ -27,13 +27,34 @@ type hookEntry struct {
 }
 
 func CmdInit(root string) int {
-	if !ManifestExists(root) {
-		var answers initAnswers
+	var answers initAnswers
+	var hooksDirectory string
+	writing := !ManifestExists(root)
+	if writing {
 		if output.IsInteractiveStdin(os.Stdin) {
 			answers = askInit()
 		} else {
 			answers = initAnswers{docsPath: defaultDocsPath, hooksPath: defaultHooksPath}
 		}
+		hooksDirectory = answers.hooksPath
+		if hooksDirectory == "" {
+			hooksDirectory = defaultHooksPath
+		}
+	} else {
+		existing, err := loadManifest(root)
+		if err != nil {
+			return output.Fail("init", err)
+		}
+		hooksDirectory = hooksPathValue(existing)
+	}
+
+	// Checked before anything is written: a refused init must leave the
+	// repository as it found it (CINCH-003).
+	if code := checkHooksPathFree(root, hooksDirectory); code != 0 {
+		return code
+	}
+
+	if writing {
 		// A floor, not an exact pin: it turns an older binary's confusing
 		// generated drift into "reinstall", and never forces a commit on
 		// every release.
@@ -58,12 +79,6 @@ func CmdInit(root string) int {
 	}
 
 	if gitutil.IsRepo(root) {
-		hooksDirectory := hooksPathValue(m)
-		if existing, err := gitutil.Output(root, "config", "--get", "core.hooksPath"); err == nil {
-			if got := strings.TrimSpace(string(existing)); got != "" && !sameHooksDirectory(root, got, hooksDirectory) {
-				return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
-			}
-		}
 		if out, err := gitutil.CombinedOutput(root, "config", "core.hooksPath", hooksDirectory); err != nil {
 			return output.Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
@@ -82,6 +97,23 @@ func CmdInit(root string) int {
 	hintClaudeMd(root)
 
 	return 0
+}
+
+// checkHooksPathFree fails when core.hooksPath already points somewhere other
+// than hooksDirectory, so init never overwrites another tool's hook wiring.
+func checkHooksPathFree(root, hooksDirectory string) int {
+	if !gitutil.IsRepo(root) {
+		return 0
+	}
+	existing, err := gitutil.Output(root, "config", "--get", "core.hooksPath")
+	if err != nil {
+		return 0
+	}
+	got := strings.TrimSpace(string(existing))
+	if got == "" || sameHooksDirectory(root, got, hooksDirectory) {
+		return 0
+	}
+	return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
 }
 
 func askInit() initAnswers {

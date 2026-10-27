@@ -112,7 +112,8 @@ func latestReleaseTag() (string, bool) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		output.Skip("upgrade", fmt.Sprintf("could not reach GitHub to check for a newer release: %v", err))
+		output.Skip("upgrade", "could not reach GitHub to check for a newer release (network error); continuing with local sync")
+		fmt.Fprintf(os.Stderr, "  %v\n", err)
 		return "", false
 	}
 	defer resp.Body.Close()
