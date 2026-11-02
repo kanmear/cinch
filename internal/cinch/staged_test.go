@@ -19,16 +19,16 @@ const (
 
 // stagedTestRepo commits a clean corpus — one rule doc and the code marking
 // its only rule — so a test can layer staged and unstaged edits on top.
-func stagedTestRepo(t *testing.T, root string) func(args ...string) {
+func stagedTestRepo(t *testing.T, repoRoot string) func(args ...string) {
 	t.Helper()
-	git := initTestGitRepo(t, root)
+	git := initTestGitRepo(t, repoRoot)
 	for _, directory := range []string{".docs", "internal"} {
-		if err := os.MkdirAll(filepath.Join(root, directory), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Join(repoRoot, directory), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", stagedOneRuleDoc)
-	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", stagedMarkedCode)
+	writeTestFile(t, filepath.Join(repoRoot, ".docs"), "rules.md", stagedOneRuleDoc)
+	writeTestFile(t, filepath.Join(repoRoot, "internal"), "auth.go", stagedMarkedCode)
 	git("add", "-A")
 	git("commit", "-q", "-m", "seed")
 	return git
@@ -37,11 +37,11 @@ func stagedTestRepo(t *testing.T, root string) func(args ...string) {
 // stageRuleHiddenByUnstagedMarker stages a new rule without its marker, then
 // adds the marker to the working tree only: the commit would leave HEAD red,
 // but the working tree looks clean.
-func stageRuleHiddenByUnstagedMarker(t *testing.T, root string, git func(args ...string)) {
+func stageRuleHiddenByUnstagedMarker(t *testing.T, repoRoot string, git func(args ...string)) {
 	t.Helper()
-	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", stagedTwoRulesDoc)
+	writeTestFile(t, filepath.Join(repoRoot, ".docs"), "rules.md", stagedTwoRulesDoc)
 	git("add", ".docs/rules.md")
-	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", stagedMarkedCode+stagedMarker+"AUTH-005\n")
+	writeTestFile(t, filepath.Join(repoRoot, "internal"), "auth.go", stagedMarkedCode+stagedMarker+"AUTH-005\n")
 }
 
 // cinch:rule CINCH-006
@@ -575,15 +575,15 @@ func TestStagedChecksIgnoreGitignoredDoc(t *testing.T) {
 
 // fastPathRoots returns the roots stagedSnapshot hands the checks and fails
 // unless they read the working tree in place.
-func fastPathRoots(t *testing.T, root string) checkRoots {
+func fastPathRoots(t *testing.T, repoRoot string) checkRoots {
 	t.Helper()
-	roots, cleanup, err := stagedSnapshot(root)
+	roots, cleanup, err := stagedSnapshot(repoRoot)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatalf("stagedSnapshot: %v", err)
 	}
-	if roots.fsRoot != root {
-		t.Fatalf("fsRoot = %q, want repoRoot %q (untracked and ignored files must not force a snapshot)", roots.fsRoot, root)
+	if roots.fsRoot != repoRoot {
+		t.Fatalf("fsRoot = %q, want repoRoot %q (untracked and ignored files must not force a snapshot)", roots.fsRoot, repoRoot)
 	}
 	if roots.index == nil {
 		t.Fatal("index = nil, want the indexed paths the checks may read")
@@ -593,29 +593,29 @@ func fastPathRoots(t *testing.T, root string) checkRoots {
 
 // slowPathRoots is the checkout-index snapshot, whatever stagedSnapshot would
 // have chosen.
-func slowPathRoots(t *testing.T, root string) checkRoots {
+func slowPathRoots(t *testing.T, repoRoot string) checkRoots {
 	t.Helper()
-	index, err := readIndex(root)
+	index, err := readIndex(repoRoot)
 	if err != nil {
 		t.Fatalf("readIndex: %v", err)
 	}
-	roots, cleanup, err := checkoutSnapshot(root, index)
+	roots, cleanup, err := checkoutSnapshot(repoRoot, index)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatalf("checkoutSnapshot: %v", err)
 	}
-	if roots.fsRoot == root {
+	if roots.fsRoot == repoRoot {
 		t.Fatal("fsRoot = repoRoot, want a snapshot directory")
 	}
 	return roots
 }
 
 // renderedRepo commits a cinch.yml and everything cinch render writes for it.
-func renderedRepo(t *testing.T, root string) func(args ...string) {
+func renderedRepo(t *testing.T, repoRoot string) func(args ...string) {
 	t.Helper()
-	git := initTestGitRepo(t, root)
-	writeTestFile(t, root, "cinch.yml", "paths:\n  docs: .docs\n")
-	if code := CmdRender(root); code != 0 {
+	git := initTestGitRepo(t, repoRoot)
+	writeTestFile(t, repoRoot, "cinch.yml", "paths:\n  docs: .docs\n")
+	if code := CmdRender(repoRoot); code != 0 {
 		t.Fatalf("CmdRender = %d, want 0", code)
 	}
 	git("add", "-A")

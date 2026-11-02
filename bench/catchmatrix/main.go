@@ -56,8 +56,8 @@ func main() {
 }
 
 // generate renders the matrix from the annotated tests under root.
-func generate(root string) (string, error) {
-	entries, err := collect(filepath.Join(root, "internal", "cinch"))
+func generate(repoRoot string) (string, error) {
+	entries, err := collect(filepath.Join(repoRoot, "internal", "cinch"))
 	if err != nil {
 		return "", err
 	}

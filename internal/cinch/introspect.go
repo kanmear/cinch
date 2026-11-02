@@ -94,8 +94,8 @@ func indexCheckResult(report indexReport) checkResult {
 	}
 }
 
-func CmdIndex(root string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdIndex(repoRoot string) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("index", err)
 	}
@@ -286,8 +286,8 @@ func workflowsTable(docsRoot string) (string, error) {
 	return b.String(), nil
 }
 
-func CmdWorkflows(root string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdWorkflows(repoRoot string) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("workflows", err)
 	}

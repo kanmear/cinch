@@ -13,8 +13,8 @@ import (
 	"cinch/internal/semver"
 )
 
-func checkHooks(root string, m *manifest, mErr error) checkResult {
-	if !gitutil.IsRepo(root) {
+func checkHooks(repoRoot string, m *manifest, mErr error) checkResult {
+	if !gitutil.IsRepo(repoRoot) {
 		return checkResult{noOp: "not a git repository"}
 	}
 
@@ -24,12 +24,12 @@ func checkHooks(root string, m *manifest, mErr error) checkResult {
 
 	want := hooksPathValue(m)
 
-	out, err := gitutil.Output(root, "config", "--get", "core.hooksPath")
+	out, err := gitutil.Output(repoRoot, "config", "--get", "core.hooksPath")
 	got := strings.TrimSpace(string(out))
 	if err != nil || got == "" {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is not set — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", want)}
 	}
-	if !sameHooksDirectory(root, got, want) {
+	if !sameHooksDirectory(repoRoot, got, want) {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is %q, expected %q (paths.hooks) — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", got, want, want)}
 	}
 	return checkResult{}
@@ -58,19 +58,83 @@ func sameHooksDirectory(repoRoot, got, want string) bool {
 	return gotErr == nil && wantErr == nil && gotReal == wantReal
 }
 
-func checkCommit(messageFile string, m *manifest) checkResult {
+// commitState is what git is in the middle of when the commit-msg hook runs:
+// a squash merge (SQUASH_MSG in the git dir) or a real merge (MERGE_HEAD).
+// Outside a git repository both are false and the subject is judged as an
+// ordinary commit.
+type commitState struct {
+	squash bool
+	merge  bool
+	branch string // checked out branch while squashing; "" when detached
+}
+
+func readCommitState(repoRoot string) commitState {
+	if !gitutil.IsRepo(repoRoot) {
+		return commitState{}
+	}
+	out, err := gitutil.Output(repoRoot, "rev-parse", "--git-dir")
+	if err != nil {
+		return commitState{}
+	}
+	gitDir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(repoRoot, gitDir)
+	}
+	exists := func(name string) bool {
+		_, err := os.Stat(filepath.Join(gitDir, name))
+		return err == nil
+	}
+	state := commitState{squash: exists("SQUASH_MSG"), merge: exists("MERGE_HEAD")}
+	if state.squash {
+		if branch, err := gitutil.Output(repoRoot, "symbolic-ref", "--short", "HEAD"); err == nil {
+			state.branch = strings.TrimSpace(string(branch))
+		}
+	}
+	return state
+}
+
+const commitMergeExempt = "exempt"
+
+// commitPatternFor picks the setting a subject is judged by. A squash onto a
+// branch with a commit.squash entry uses that entry; a real merge uses
+// commit.merge (exempt, or a pattern); everything else, including a squash
+// onto an unlisted branch and a manifest without the new keys, uses
+// commit.pattern exactly as before those keys existed.
+func commitPatternFor(m *manifest, state commitState) (pattern, source, where string, exempt bool) {
+	if state.squash && state.branch != "" {
+		key := "commit.squash." + state.branch
+		if p, ok := manifestSetting(m, key); ok {
+			return p, key, "squash-merge onto " + state.branch + ": ", false
+		}
+	}
+	if state.merge {
+		if mode, ok := manifestSetting(m, "commit.merge"); ok {
+			if mode == commitMergeExempt {
+				return "", "commit.merge", "", true
+			}
+			return mode, "commit.merge", "merge commit: ", false
+		}
+	}
+	p, _ := manifestSetting(m, "commit.pattern")
+	return p, "commit.pattern", "", false
+}
+
+func checkCommit(repoRoot, messageFile string, m *manifest) checkResult {
 	if messageFile == "" {
 		return checkResult{noOp: "no commit message file given"}
 	}
-	pattern, ok := manifestSetting(m, "commit.pattern")
-	if !ok {
+	pattern, source, where, exempt := commitPatternFor(m, readCommitState(repoRoot))
+	if exempt {
+		return checkResult{noOp: "merge commit: commit.merge is exempt"}
+	}
+	if pattern == "" {
 		return checkResult{noOp: "commit.pattern is not set in cinch.yml — opt-in, not configured"}
 	}
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return checkResult{findings: []finding{{
 			check: "commit", level: "error", file: messageFile, line: 1,
-			message: "commit.pattern is not a valid regexp: " + err.Error(),
+			message: source + " is not a valid regexp: " + err.Error(),
 		}}}
 	}
 	data, err := os.ReadFile(messageFile)
@@ -81,11 +145,11 @@ func checkCommit(messageFile string, m *manifest) checkResult {
 	if re.MatchString(subject) {
 		return checkResult{}
 	}
-	message := "commit message does not match commit.pattern (" + pattern + "): " + subject
+	message := where + "commit message does not match " + source + " (" + pattern + "): " + subject
 	// git's default merge subjects ("Merge branch …", "Merge tag …") are easy to
 	// produce by accident; say where the subject came from and how to override it.
-	if strings.HasPrefix(subject, "Merge ") {
-		message += " — this is git's default merge message; commit the merge with -m '<a subject matching commit.pattern>'"
+	if source == "commit.pattern" && strings.HasPrefix(subject, "Merge ") {
+		message += " — this is git's default merge message; commit the merge with -m '<a subject matching commit.pattern>' (or set commit.merge: exempt)"
 	}
 	return checkResult{findings: []finding{{
 		check: "commit", level: "error", file: messageFile, line: 1,

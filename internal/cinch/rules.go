@@ -472,20 +472,20 @@ func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 		return nil, err
 	}
 
-	buf := bytes.NewBuffer(make([]byte, 0, info.Size()+bytes.MinRead))
-	if _, err := io.CopyN(buf, f, binarySniffLen); err != nil && err != io.EOF {
+	buffer := bytes.NewBuffer(make([]byte, 0, info.Size()+bytes.MinRead))
+	if _, err := io.CopyN(buffer, f, binarySniffLen); err != nil && err != io.EOF {
 		return nil, err
 	}
-	if bytes.IndexByte(buf.Bytes(), 0) >= 0 {
+	if bytes.IndexByte(buffer.Bytes(), 0) >= 0 {
 		return map[string][]markerLoc{}, nil
 	}
-	if _, err := buf.ReadFrom(f); err != nil {
+	if _, err := buffer.ReadFrom(f); err != nil {
 		return nil, err
 	}
-	if !bytes.Contains(buf.Bytes(), markerNeedle) {
+	if !bytes.Contains(buffer.Bytes(), markerNeedle) {
 		return map[string][]markerLoc{}, nil
 	}
-	return scanMarkers(bytes.NewReader(buf.Bytes()), path, strings.HasSuffix(path, ".md"))
+	return scanMarkers(bytes.NewReader(buffer.Bytes()), path, strings.HasSuffix(path, ".md"))
 }
 
 // scanFileMarkersFunc is the per-file scan the worker pool calls; tests wrap

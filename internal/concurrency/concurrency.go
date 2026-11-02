@@ -1,6 +1,8 @@
 package concurrency
 
-import "runtime"
+import (
+	"runtime"
+)
 
 // BoundedWorkers returns a sensible worker-pool size for n independent,
 // subprocess- or I/O-bound jobs: capped at 8 to avoid spawning excessive

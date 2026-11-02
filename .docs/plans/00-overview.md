@@ -41,7 +41,8 @@ tier three is small in isolation but compounds.
 | 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Open — Budgetron (public, pinned tag) plus DeltaDocs (private) |
 | 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** (`a937164`) — kept for provenance |
 | 27 | [Budgetron field report, 2026-10-11](27-budgetron-field-report.md) | 4 — evidence | **Shipped** (`1edf5a2`–`0ade181`) — kept for provenance |
-| 28 | [Absorb the squash-message and version-bump scripts](28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | Deferred behind the benchmark suite (23–25) — copies re-drifted within 18 days of a hand alignment |
+| 28 | [Absorb the squash-message and version-bump scripts](28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | Part A shipped 2026-11-02 (`commit.squash`, `commit.merge`); Part B deferred, the bump stays a script |
+| 30 | [Convention packs: portable conventions, layered and overridable](30-convention-packs.md) | 3 — decide before investing | Draft, not approved — recovered 2026-11-01 from a 2026-10-09 session; builds on 28 Part A |
 
 ## Reading order vs. build order
 

@@ -138,19 +138,22 @@ func TestCmdImpactSurfacesScanError(t *testing.T) {
 func TestOwnsMatchesExactAndPrefix(t *testing.T) {
 	owns := []string{"main.go", "internal/sig"}
 	cases := []struct {
+		name    string
 		changed string
 		want    bool
 	}{
-		{"main.go", true},
-		{"internal/sig/verify.go", true},
-		{"internal/sig", true},
-		{"internal/signature/verify.go", false}, // must not prefix-match a sibling dir
-		{"other.go", false},
+		{"exact file", "main.go", true},
+		{"file under prefix dir", "internal/sig/verify.go", true},
+		{"exact dir", "internal/sig", true},
+		{"sibling dir with shared prefix", "internal/signature/verify.go", false}, // must not prefix-match a sibling dir
+		{"unrelated file", "other.go", false},
 	}
 	for _, tc := range cases {
-		if got := ownsMatches(tc.changed, owns); got != tc.want {
-			t.Errorf("ownsMatches(%q, %v) = %v, want %v", tc.changed, owns, got, tc.want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ownsMatches(tc.changed, owns); got != tc.want {
+				t.Errorf("ownsMatches(%q, %v) = %v, want %v", tc.changed, owns, got, tc.want)
+			}
+		})
 	}
 }
 

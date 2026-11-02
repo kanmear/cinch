@@ -3,6 +3,13 @@
 **Part A tier 1 — trust the checker. Part B tier 3 — decide before investing. Cost estimate:
 A is about a day with tests; B is two or three days, most of it the replay against consumers.**
 
+**Status (2026-11-02):** Part A implemented in this repo (`commit.squash.<branch>`,
+`commit.merge`, rules CINCH-015 and CINCH-016, catch-matrix row); `scripts/check-squash-merge-msg.sh`
+deleted here and `cinch.yml` carries the config. The consumers adopt it through the harness
+template (plan 31 § 6). Part B is deferred: the bump stays a script with its table as a case
+block. Reopen B when a consumer's bump script diverges from the shared table in a way that
+mis-bumps a release, or when a fourth storage format appears.
+
 ## Provenance
 
 **Field data.** A conventions sweep of every consumer on 2026-10-09, a hand alignment the same
@@ -45,13 +52,14 @@ service in `ortho-store` and `project_deltadocs`. That split is the design below
 
 ```yaml
 commit:
-  pattern: '^(feat|fix|ui|docs|style|refactor|test|chore|perf)(!)?( \[[^]]+\])?: .+'
+  pattern: '^(feat|fix|ui|docs|style|refactor|test|chore|perf)(!)?( \[[a-z+-]+\])?: .+'
   # While $GIT_DIR/SQUASH_MSG exists: the subject must match the entry for the
   # current branch. A branch with no entry falls back to commit.pattern.
   squash:
-    dev: '^merge: (feature|refactor|fix|chore|docs)/.+'
+    dev: '^merge: (feature|refactor|fix|chore|docs|perf|ui)/.+'
     main: '^merge: hotfix/.+'
-  # While $GIT_DIR/MERGE_HEAD exists: exempt (default) or pattern.
+  # While $GIT_DIR/MERGE_HEAD exists: exempt, or a pattern. Unset keeps
+  # today's behaviour (commit.pattern applies), so no new key changes nothing.
   merge: exempt
 ```
 

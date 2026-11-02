@@ -201,22 +201,22 @@ func printImpact(hits []impactHit, capped bool) {
 // files are given it defaults to the staged diff. Unlike the pre-commit
 // hook's use of buildImpact, a scan error here surfaces loudly — the user
 // asked for this data directly and didn't get it.
-func CmdImpact(root string, files []string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdImpact(repoRoot string, files []string) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("impact", err)
 	}
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("impact", err)
 	}
 	if len(files) == 0 {
-		files, err = stagedPaths(root)
+		files, err = stagedPaths(repoRoot)
 		if err != nil {
 			return output.Fail("impact", err)
 		}
 	}
-	hits, err := buildImpact(workingTreeRoots(root), docsRoot, files, m.list(pathsExcludeKey))
+	hits, err := buildImpact(workingTreeRoots(repoRoot), docsRoot, files, m.list(pathsExcludeKey))
 	if err != nil {
 		return output.Fail("impact", err)
 	}

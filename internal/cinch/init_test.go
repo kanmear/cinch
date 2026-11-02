@@ -155,18 +155,18 @@ func initAgentsRepo(t *testing.T, manifestBody string) string {
 	return root
 }
 
-func readAgentsFile(t *testing.T, root string) []byte {
+func readAgentsFile(t *testing.T, repoRoot string) []byte {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	data, err := os.ReadFile(filepath.Join(repoRoot, "AGENTS.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return data
 }
 
-func mustCmdInit(t *testing.T, root string) {
+func mustCmdInit(t *testing.T, repoRoot string) {
 	t.Helper()
-	if code := CmdInit(root); code != 0 {
+	if code := CmdInit(repoRoot); code != 0 {
 		t.Fatalf("CmdInit = %d, want 0", code)
 	}
 }

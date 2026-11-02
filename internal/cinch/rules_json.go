@@ -100,19 +100,19 @@ func warnGlobLikeOwns(docPath string, owns []string) {
 	}
 }
 
-func CmdRules(root string, jsonOut bool) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdRules(repoRoot string, jsonOut bool) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("rules", err)
 	}
 	if !jsonOut {
 		return output.UsageError("rules: requires --json (no bare-text mode; see 'cinch ignores' or 'cinch check')")
 	}
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("rules", err)
 	}
-	inv, err := buildRulesInventory(root, docsRoot, markerScanOptionsFor(m))
+	inv, err := buildRulesInventory(repoRoot, docsRoot, markerScanOptionsFor(m))
 	if err != nil {
 		return output.Fail("rules", err)
 	}
