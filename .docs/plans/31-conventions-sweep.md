@@ -491,9 +491,11 @@ fish config), fsed-odin-docs plan triage, and the Deferred entries in ortho, bud
 deltadocs. The template README's "Choices made while building" and "Gaps" sections list what
 the agents decided on their own; read them before the first real `make apply`.
 
-**Resume at:** both cinch branches are committed (2026-11-02, the bench stash popped, tag
-`prereg/recover-amend0` set). Squash-merge them onto `dev`, this one first so `dev` gets Part A
-before the bench branch's cinch.yml excludes land on top. Then step 6: Forum F0/F1, after
+**Resume at:** both cinch branches are committed and squash-merged onto `dev` (2026-11-02:
+`merge: feature/commit-squash-merge` bumped dev to 0.14.0, `merge: chore/bench-upkeep-ablation`
+followed; tag `prereg/recover-amend0` points at the bench branch). Nothing is pushed. Next in
+cinch: cut the release (`make release`, then `make push-release` when ready) so Part A reaches
+the other machines. Then step 6: Forum F0/F1, after
 which the Forum CLI plan reopens. Still waiting on an explicit go-ahead: plan 29's full
 judging (about 1,030 Sonnet calls) and the Sonnet stage 1 of the upkeep ablation (90 runs);
 the free Qwen recoverability runs may start any time.
