@@ -18,8 +18,8 @@ type manifest struct {
 	order []string
 }
 
-func loadManifest(root string) (*manifest, error) {
-	path := filepath.Join(root, manifestPath)
+func loadManifest(repoRoot string) (*manifest, error) {
+	path := filepath.Join(repoRoot, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf("%s: not found (run 'cinch init')", path)
@@ -30,8 +30,8 @@ func loadManifest(root string) (*manifest, error) {
 	return m, m.validate(path)
 }
 
-func loadManifestOptional(root string) (*manifest, error) {
-	path := filepath.Join(root, manifestPath)
+func loadManifestOptional(repoRoot string) (*manifest, error) {
+	path := filepath.Join(repoRoot, manifestPath)
 	m, err := parseManifestFile(path)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -42,8 +42,8 @@ func loadManifestOptional(root string) (*manifest, error) {
 	return m, m.validate(path)
 }
 
-func ManifestExists(root string) bool {
-	_, err := os.Stat(filepath.Join(root, manifestPath))
+func ManifestExists(repoRoot string) bool {
+	_, err := os.Stat(filepath.Join(repoRoot, manifestPath))
 	return err == nil
 }
 

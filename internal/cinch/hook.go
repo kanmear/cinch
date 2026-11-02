@@ -47,20 +47,20 @@ func CmdHook(root, event string, args []string) int {
 	}
 }
 
-func cmdHookPreCommit(root string) int {
-	staged, err := stagedPaths(root)
+func cmdHookPreCommit(repoRoot string) int {
+	staged, err := stagedPaths(repoRoot)
 	if err != nil {
 		return output.Failf("hook", "git diff --cached failed: %s", err.Error())
 	}
 
 	// Loaded before the checks so a malformed cinch.yml is reported once, here:
 	// the checks would fail on it too, and say the same thing a second time.
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
 
-	roots, cleanup, err := stagedSnapshot(root)
+	roots, cleanup, err := stagedSnapshot(repoRoot)
 	defer cleanup()
 	if err != nil {
 		return output.Fail("hook", err)
@@ -84,8 +84,8 @@ func cmdHookPreCommit(root string) int {
 	}
 
 	if m != nil {
-		warnIfTreeDiffers(root, m, staged)
-		steps := dispatchHooks(root, m, "pre-commit", staged)
+		warnIfTreeDiffers(repoRoot, m, staged)
+		steps := dispatchHooks(repoRoot, m, "pre-commit", staged)
 		printHookSummary("pre-commit", ok, steps)
 		if hookStepsFailed(steps) {
 			ok = false
@@ -98,22 +98,22 @@ func cmdHookPreCommit(root string) int {
 	return 0
 }
 
-func cmdHookCommitMsg(root string, args []string) int {
+func cmdHookCommitMsg(repoRoot string, args []string) int {
 	if len(args) < 1 {
 		return output.UsageError("hook: commit-msg requires a message-file argument")
 	}
 	messageFile := args[0]
 
 	// Loaded before the checks for the same reason as in cmdHookPreCommit.
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
 
-	ok := commitMsgChecks(root, messageFile) == 0
+	ok := commitMsgChecks(repoRoot, messageFile) == 0
 
 	if m != nil {
-		steps := dispatchHooks(root, m, "commit-msg", nil, messageFile)
+		steps := dispatchHooks(repoRoot, m, "commit-msg", nil, messageFile)
 		printHookSummary("commit-msg", ok, steps)
 		if hookStepsFailed(steps) {
 			ok = false
@@ -126,20 +126,20 @@ func cmdHookCommitMsg(root string, args []string) int {
 	return 0
 }
 
-func cmdHookPostCommit(root string) int {
-	committed, err := committedFiles(root)
+func cmdHookPostCommit(repoRoot string) int {
+	committed, err := committedFiles(repoRoot)
 	if err != nil {
 		return output.Failf("hook", "git diff HEAD failed: %s", err.Error())
 	}
 
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("hook", err)
 	}
 	if m == nil {
 		return 0
 	}
-	steps := dispatchHooks(root, m, "post-commit", committed)
+	steps := dispatchHooks(repoRoot, m, "post-commit", committed)
 	printHookSummary("post-commit", true, steps)
 	if hookStepsFailed(steps) {
 		return 1
@@ -147,20 +147,20 @@ func cmdHookPostCommit(root string) int {
 	return 0
 }
 
-func committedFiles(root string) ([]string, error) {
-	files, err := gitutil.OutputPaths(root, "diff", "--name-only", "HEAD^", "HEAD")
+func committedFiles(repoRoot string) ([]string, error) {
+	files, err := gitutil.OutputPaths(repoRoot, "diff", "--name-only", "HEAD^", "HEAD")
 	if err == nil {
 		return files, nil
 	}
-	return gitutil.OutputPaths(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
+	return gitutil.OutputPaths(repoRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
 }
 
-func stagedPaths(root string) ([]string, error) {
-	return gitutil.OutputPaths(root, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
+func stagedPaths(repoRoot string) ([]string, error) {
+	return gitutil.OutputPaths(repoRoot, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
 }
 
-func unstagedPaths(root string) ([]string, error) {
-	return gitutil.OutputPaths(root, "diff", "--name-only", "--diff-filter=ACMRD")
+func unstagedPaths(repoRoot string) ([]string, error) {
+	return gitutil.OutputPaths(repoRoot, "diff", "--name-only", "--diff-filter=ACMRD")
 }
 
 // hookScripts lists the scripts registered under hooks.<event>, in cinch.yml
@@ -180,7 +180,7 @@ func hookScripts(m *manifest, event string) []hookScript {
 // dispatchHooks runs every script that passes its when filter and keeps going
 // after a failure, so a later step (a logger, say) still runs; the caller
 // prints the summary that makes the failure impossible to miss.
-func dispatchHooks(root string, m *manifest, event string, staged []string, args ...string) []hookStep {
+func dispatchHooks(repoRoot string, m *manifest, event string, staged []string, args ...string) []hookStep {
 	var steps []hookStep
 	for _, script := range hookScripts(m, event) {
 		if !hookWhenMatches(staged, script.when) {
@@ -188,7 +188,7 @@ func dispatchHooks(root string, m *manifest, event string, staged []string, args
 			steps = append(steps, hookStep{name: script.name, status: hookSkipped})
 			continue
 		}
-		if err := runHookCommand(root, event, script.command, args...); err != nil {
+		if err := runHookCommand(repoRoot, event, script.command, args...); err != nil {
 			output.Failf("hook", "%s: %s failed: %v", event, script.name, err)
 			steps = append(steps, hookStep{name: script.name, status: hookFailed, err: err})
 			continue
@@ -265,7 +265,7 @@ func printHookSummary(event string, checksOK bool, steps []hookStep) {
 
 // warnIfTreeDiffers says so when a pre-commit script, which reads the
 // working tree, would see something other than what is being committed.
-func warnIfTreeDiffers(root string, m *manifest, staged []string) {
+func warnIfTreeDiffers(repoRoot string, m *manifest, staged []string) {
 	runs := false
 	for _, script := range hookScripts(m, "pre-commit") {
 		if hookWhenMatches(staged, script.when) {
@@ -276,11 +276,11 @@ func warnIfTreeDiffers(root string, m *manifest, staged []string) {
 	if !runs {
 		return
 	}
-	unstaged, err := unstagedPaths(root)
+	unstaged, err := unstagedPaths(repoRoot)
 	if err != nil {
 		return
 	}
-	untracked, err := gitutil.OutputPaths(root, "ls-files", "--others", "--exclude-standard")
+	untracked, err := gitutil.OutputPaths(repoRoot, "ls-files", "--others", "--exclude-standard")
 	if err != nil {
 		return
 	}

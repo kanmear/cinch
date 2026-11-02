@@ -2,7 +2,9 @@
 
 package cinch
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // reexec is unreachable on windows: maybeInstallLatest skips the
 // install/reexec path entirely for runtime.GOOS == "windows". This stub only

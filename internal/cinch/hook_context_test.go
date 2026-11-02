@@ -41,10 +41,10 @@ func runCheck(t *testing.T, changed bool) (code int, stdout, stderr string) {
 	return code, stdout, stderr
 }
 
-func runPreCommitHook(t *testing.T, root string) (code int, stderr string) {
+func runPreCommitHook(t *testing.T, repoRoot string) (code int, stderr string) {
 	t.Helper()
 	captureStdout(t, func() {
-		stderr = ansiPattern.ReplaceAllString(captureStderr(t, func() { code = cmdHookPreCommit(root) }), "")
+		stderr = ansiPattern.ReplaceAllString(captureStderr(t, func() { code = cmdHookPreCommit(repoRoot) }), "")
 	})
 	return code, stderr
 }

@@ -214,14 +214,14 @@ func commitMsgChecks(root, messageFile string) int {
 // finding.file already uses — including when root is an absolute test temp
 // dir, since git itself always reports paths relative to the repo root
 // regardless of how root was spelled when invoking it.
-func changedFileSet(root string) (map[string]bool, error) {
-	paths, err := unstagedPaths(root)
+func changedFileSet(repoRoot string) (map[string]bool, error) {
+	paths, err := unstagedPaths(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 	set := make(map[string]bool, len(paths))
 	for _, p := range paths {
-		set[filepath.Join(root, p)] = true
+		set[filepath.Join(repoRoot, p)] = true
 	}
 	return set, nil
 }
@@ -356,7 +356,7 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 		// (the commit-msg hook goes through commitMsgChecks instead), so "no
 		// commit message file given" is noise on every plain `cinch check`. An
 		// explicit --only commit that printed nothing would read as a pass.
-		"commit": {messageFile != "" || onlySet["commit"], func() checkResult { return checkCommit(messageFile, m) }, false},
+		"commit": {messageFile != "" || onlySet["commit"], func() checkResult { return checkCommit(roots.repoRoot, messageFile, m) }, false},
 		"core":   {true, func() checkResult { return checkPin(Version, m) }, false},
 		"hooks":  {true, func() checkResult { return checkHooks(roots.repoRoot, m, mErr) }, false},
 	}

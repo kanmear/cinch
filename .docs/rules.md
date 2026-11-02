@@ -43,3 +43,11 @@ repository, so an unbound rule or a stray marker fails CI.
     last lines name every step's result.
 14. **CINCH-014** A rule item ends at the next heading or unindented paragraph,
     so a `cinch:ignore` outside its rule's item binds nothing.
+15. **CINCH-015** While `$GIT_DIR/SQUASH_MSG` exists, the commit subject is
+    checked against `commit.squash.<branch>` for the checked-out branch. A
+    branch with no entry, a manifest without `commit.squash`, or no
+    `SQUASH_MSG` falls back to `commit.pattern` as for any commit.
+16. **CINCH-016** While `$GIT_DIR/MERGE_HEAD` exists, `commit.merge: exempt`
+    passes the subject unchecked and `commit.merge: <pattern>` replaces
+    `commit.pattern`; without the key a merge commit is checked like any
+    other, and the key is ignored outside a merge.

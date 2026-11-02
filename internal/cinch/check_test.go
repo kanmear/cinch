@@ -48,9 +48,9 @@ func captureFile(t *testing.T, target **os.File, fn func()) string {
 // initTestGitRepo initializes a git repo with a committer identity set, so
 // callers can immediately `git commit` without hitting user.email/user.name
 // errors.
-func initTestGitRepo(t *testing.T, root string) func(args ...string) {
+func initTestGitRepo(t *testing.T, repoRoot string) func(args ...string) {
 	t.Helper()
-	git := gitTestHelper(t, root)
+	git := gitTestHelper(t, repoRoot)
 	git("init", "-q")
 	git("config", "user.email", "cinch@test")
 	git("config", "user.name", "cinch test")
@@ -60,9 +60,9 @@ func initTestGitRepo(t *testing.T, root string) func(args ...string) {
 // changedTestRepo commits an initial state, then leaves the working tree
 // dirty with unstaged edits made by dirty — mirroring how a developer running
 // `cinch check --changed` would find their tree.
-func changedTestRepo(t *testing.T, root string, seed, dirty func()) {
+func changedTestRepo(t *testing.T, repoRoot string, seed, dirty func()) {
 	t.Helper()
-	git := initTestGitRepo(t, root)
+	git := initTestGitRepo(t, repoRoot)
 	seed()
 	git("add", "-A")
 	git("commit", "-q", "-m", "seed")

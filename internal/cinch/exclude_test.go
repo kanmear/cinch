@@ -15,19 +15,19 @@ const excludeMarker = "// cinch:" + "rule "
 // cinch.yml with the given paths.exclude entries, and a stray marker naming
 // an unknown rule in each of strays — so every stray that isn't excluded
 // shows up as a "does not resolve" finding.
-func excludeTestRepo(t *testing.T, root string, exclude []string, strays []string) (*manifest, func(args ...string)) {
+func excludeTestRepo(t *testing.T, repoRoot string, exclude []string, strays []string) (*manifest, func(args ...string)) {
 	t.Helper()
-	git := initTestGitRepo(t, root)
+	git := initTestGitRepo(t, repoRoot)
 	for _, directory := range []string{".docs", "internal", "fixtures"} {
-		if err := os.MkdirAll(filepath.Join(root, directory), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Join(repoRoot, directory), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	writeTestFile(t, root, "cinch.yml", "paths:\n  exclude: ["+strings.Join(exclude, ", ")+"]\n")
-	writeTestFile(t, filepath.Join(root, ".docs"), "rules.md", "# Auth rules\n\n1. **AUTH-001** sessions expire\n")
-	writeTestFile(t, filepath.Join(root, "internal"), "auth.go", "package auth\n\n"+excludeMarker+"AUTH-001\n")
+	writeTestFile(t, repoRoot, "cinch.yml", "paths:\n  exclude: ["+strings.Join(exclude, ", ")+"]\n")
+	writeTestFile(t, filepath.Join(repoRoot, ".docs"), "rules.md", "# Auth rules\n\n1. **AUTH-001** sessions expire\n")
+	writeTestFile(t, filepath.Join(repoRoot, "internal"), "auth.go", "package auth\n\n"+excludeMarker+"AUTH-001\n")
 	for i, stray := range strays {
-		directory, name := filepath.Split(filepath.Join(root, filepath.FromSlash(stray)))
+		directory, name := filepath.Split(filepath.Join(repoRoot, filepath.FromSlash(stray)))
 		if err := os.MkdirAll(directory, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -36,7 +36,7 @@ func excludeTestRepo(t *testing.T, root string, exclude []string, strays []strin
 	git("add", "-A")
 	git("commit", "-q", "-m", "seed")
 
-	m, err := loadManifest(root)
+	m, err := loadManifest(repoRoot)
 	if err != nil {
 		t.Fatalf("loadManifest: %v", err)
 	}

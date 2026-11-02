@@ -7,14 +7,14 @@ import (
 	"cinch/internal/semver"
 )
 
-func CmdUpgrade(root string) int {
+func CmdUpgrade(repoRoot string) int {
 	output.Step("installed cinch version: %s", Version)
 
 	if code, handled := maybeInstallLatest(); handled {
 		return code
 	}
 
-	m, err := loadManifest(root)
+	m, err := loadManifest(repoRoot)
 	if err != nil {
 		return output.Fail("upgrade", err)
 	}
@@ -24,12 +24,12 @@ func CmdUpgrade(root string) int {
 		return output.Fail("upgrade", err)
 	}
 
-	wrote, err := writeRenderedFiles(root, files)
+	wrote, err := writeRenderedFiles(repoRoot, files)
 	if err != nil {
 		return output.Fail("upgrade", err)
 	}
 
-	removed, err := removeOrphanedFiles(root, files)
+	removed, err := removeOrphanedFiles(repoRoot, files)
 	if err != nil {
 		return output.Fail("upgrade", err)
 	}
@@ -38,13 +38,13 @@ func CmdUpgrade(root string) int {
 	// committed: a release that renders the same bytes doesn't need one.
 	changed := wrote || removed
 	reportPinStatus(m, changed)
-	if err := syncRequireCinch(root, changed); err != nil {
+	if err := syncRequireCinch(repoRoot, changed); err != nil {
 		return output.Fail("upgrade", err)
 	}
 
 	// The files just rendered aren't staged, so the working tree — not the
 	// index — is what has to come out clean here.
-	return preCommitChecks(workingTreeRoots(root))
+	return preCommitChecks(workingTreeRoots(repoRoot))
 }
 
 // reportPinStatus surfaces the ">=" floor cases syncRequireCinch leaves

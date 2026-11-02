@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-func checkHooksTest(t *testing.T, root string) checkResult {
+func checkHooksTest(t *testing.T, repoRoot string) checkResult {
 	t.Helper()
-	m, mErr := loadManifestOptional(root)
-	return checkHooks(root, m, mErr)
+	m, mErr := loadManifestOptional(repoRoot)
+	return checkHooks(repoRoot, m, mErr)
 }
 
 func TestCheckHooksNotGitRepo(t *testing.T) {
@@ -133,14 +133,14 @@ func TestCheckHooksDefaultPath(t *testing.T) {
 // gitTestHelper's env entries go last, so they override both the isolation
 // defaults and the inherited environment (exec keeps the last value for a
 // repeated key).
-func gitTestHelper(t *testing.T, root string, env ...string) func(args ...string) {
+func gitTestHelper(t *testing.T, repoRoot string, env ...string) func(args ...string) {
 	t.Helper()
 	return func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", args...)
-		cmd.Dir = root
+		cmd.Dir = repoRoot
 		cmd.Env = append(append([]string{
-			"HOME=" + root,
+			"HOME=" + repoRoot,
 			"GIT_CONFIG_GLOBAL=/dev/null",
 			"GIT_CONFIG_SYSTEM=/dev/null",
 		}, os.Environ()...), env...)
@@ -172,7 +172,7 @@ func loadTestManifest(t *testing.T, directory string) *manifest {
 func TestCheckCommit(t *testing.T) {
 	t.Run("no message file", func(t *testing.T) {
 		directory := t.TempDir()
-		r := checkCommit("", loadTestManifest(t, directory))
+		r := checkCommit(directory, "", loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -180,7 +180,7 @@ func TestCheckCommit(t *testing.T) {
 
 	t.Run("pattern not configured", func(t *testing.T) {
 		directory := t.TempDir()
-		r := checkCommit("msg.txt", loadTestManifest(t, directory))
+		r := checkCommit(directory, "msg.txt", loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -189,7 +189,7 @@ func TestCheckCommit(t *testing.T) {
 	t.Run("invalid pattern", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '['\n")
-		r := checkCommit("msg.txt", loadTestManifest(t, directory))
+		r := checkCommit(directory, "msg.txt", loadTestManifest(t, directory))
 		if len(r.findings) != 1 || r.findings[0].check != "commit" {
 			t.Fatalf("result = %+v, want commit finding", r)
 		}
@@ -198,7 +198,7 @@ func TestCheckCommit(t *testing.T) {
 	t.Run("unreadable message file", func(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^feat'\n")
-		r := checkCommit(filepath.Join(directory, "missing.txt"), loadTestManifest(t, directory))
+		r := checkCommit(directory, filepath.Join(directory, "missing.txt"), loadTestManifest(t, directory))
 		if r.noOp == "" || len(r.findings) != 0 {
 			t.Fatalf("result = %+v, want noOp", r)
 		}
@@ -208,7 +208,7 @@ func TestCheckCommit(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^feat: .+'\n")
 		msg := writeTestFile(t, directory, "msg.txt", "feat: add things\n\nbody line\n")
-		r := checkCommit(msg, loadTestManifest(t, directory))
+		r := checkCommit(directory, msg, loadTestManifest(t, directory))
 		if len(r.findings) != 0 || r.noOp != "" {
 			t.Fatalf("result = %+v, want ok", r)
 		}
@@ -218,7 +218,7 @@ func TestCheckCommit(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^feat: .+'\n")
 		msg := writeTestFile(t, directory, "msg.txt", "fix: nope\n")
-		r := checkCommit(msg, loadTestManifest(t, directory))
+		r := checkCommit(directory, msg, loadTestManifest(t, directory))
 		if len(r.findings) != 1 {
 			t.Fatalf("result = %+v, want one finding", r)
 		}
@@ -241,7 +241,7 @@ func TestCheckCommit(t *testing.T) {
 			"Merge commit 'abc123'",
 		} {
 			msg := writeTestFile(t, directory, "msg.txt", subject+"\n")
-			r := checkCommit(msg, loadTestManifest(t, directory))
+			r := checkCommit(directory, msg, loadTestManifest(t, directory))
 			if len(r.findings) != 1 {
 				t.Fatalf("%q: result = %+v, want one finding", subject, r)
 			}
@@ -257,7 +257,7 @@ func TestCheckCommit(t *testing.T) {
 		directory := t.TempDir()
 		writeTestFile(t, directory, "cinch.yml", "commit:\n  pattern: '^(Merge branch |feat: .+)'\n")
 		msg := writeTestFile(t, directory, "msg.txt", "Merge branch 'dev'\n")
-		r := checkCommit(msg, loadTestManifest(t, directory))
+		r := checkCommit(directory, msg, loadTestManifest(t, directory))
 		if len(r.findings) != 0 || r.noOp != "" {
 			t.Fatalf("result = %+v, want ok", r)
 		}
@@ -443,4 +443,112 @@ func TestSeededDefectGeneratedOrphanFile(t *testing.T) {
 	if !ok {
 		t.Fatalf("findings = %+v, want an 'orphaned generated file' finding for orphan-leftover.md", result.findings)
 	}
+}
+
+// squashTestRepo is a repository on branch with git mid squash-merge: git
+// writes SQUASH_MSG into the git dir before it opens the editor, and the
+// commit-msg hook runs while that file exists.
+func squashTestRepo(t *testing.T, repoRoot, branch string) {
+	t.Helper()
+	git := initTestGitRepo(t, repoRoot)
+	git("symbolic-ref", "HEAD", "refs/heads/"+branch)
+	writeTestFile(t, filepath.Join(repoRoot, ".git"), "SQUASH_MSG", "Squashed commit of the following:\n")
+}
+
+// cinch:rule CINCH-015
+// catch-matrix: commit | caught | squash-merge subject that doesn't match commit.squash.<branch> (CINCH-015)
+func TestCheckCommitSquash(t *testing.T) {
+	const squashManifest = "commit:\n  pattern: '^(feat|fix): .+'\n  squash:\n    dev: '^merge: (feature|fix)/.+'\n    main: '^merge: hotfix/.+'\n"
+	cases := []struct {
+		name, branch, manifest, subject string
+		wantFinding                     bool
+		wantIn                          string
+	}{
+		{"squash onto dev with a merge subject", "dev", squashManifest, "merge: feature/x\n", false, ""},
+		{"squash onto dev with an ordinary subject", "dev", squashManifest, "feat: x\n", true, "squash-merge onto dev: commit message does not match commit.squash.dev"},
+		{"squash onto main checks its own entry", "main", squashManifest, "merge: feature/x\n", true, "commit.squash.main"},
+		{"squash onto an unlisted branch falls back to commit.pattern", "topic", squashManifest, "merge: feature/x\n", true, "commit.pattern"},
+		{"squash onto an unlisted branch, ordinary subject", "topic", squashManifest, "feat: x\n", false, ""},
+		{"no squash key: a squash is an ordinary commit", "dev", "commit:\n  pattern: '^(feat|fix): .+'\n", "merge: feature/x\n", true, "commit.pattern"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			squashTestRepo(t, repoRoot, tc.branch)
+			writeTestFile(t, repoRoot, "cinch.yml", tc.manifest)
+			msg := writeTestFile(t, repoRoot, "msg.txt", tc.subject)
+			r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+			if (len(r.findings) == 1) != tc.wantFinding || r.noOp != "" {
+				t.Fatalf("result = %+v, want finding=%v", r, tc.wantFinding)
+			}
+			if tc.wantFinding && !strings.Contains(r.findings[0].message, tc.wantIn) {
+				t.Fatalf("message = %q, want it to contain %q", r.findings[0].message, tc.wantIn)
+			}
+		})
+	}
+
+	t.Run("squash entries are not consulted without SQUASH_MSG", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		git := initTestGitRepo(t, repoRoot)
+		git("symbolic-ref", "HEAD", "refs/heads/dev")
+		writeTestFile(t, repoRoot, "cinch.yml", squashManifest)
+		msg := writeTestFile(t, repoRoot, "msg.txt", "merge: feature/x\n")
+		r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+		if len(r.findings) != 1 || !strings.Contains(r.findings[0].message, "commit.pattern") {
+			t.Fatalf("result = %+v, want a commit.pattern finding", r)
+		}
+	})
+}
+
+// mergeTestRepo is a repository with git mid merge: MERGE_HEAD names the
+// commit being merged until the merge commit is made.
+func mergeTestRepo(t *testing.T, repoRoot string) {
+	t.Helper()
+	git := initTestGitRepo(t, repoRoot)
+	writeTestFile(t, repoRoot, "a.txt", "a\n")
+	git("add", "a.txt")
+	git("commit", "-q", "-m", "feat: seed")
+	writeTestFile(t, filepath.Join(repoRoot, ".git"), "MERGE_HEAD", "0000000000000000000000000000000000000000\n")
+}
+
+// cinch:rule CINCH-016
+// catch-matrix: commit | not a defect | git's default merge subject on a real merge, with commit.merge: exempt (CINCH-016)
+func TestCheckCommitMerge(t *testing.T) {
+	cases := []struct {
+		name, manifest, subject string
+		wantNoOp                bool
+		wantFinding             bool
+		wantIn                  string
+	}{
+		{"exempt passes git's default subject unchecked", "commit:\n  pattern: '^feat: .+'\n  merge: exempt\n", "Merge branch 'dev'\n", true, false, ""},
+		{"a merge pattern replaces commit.pattern", "commit:\n  pattern: '^feat: .+'\n  merge: '^merge: dev$'\n", "merge: dev\n", false, false, ""},
+		{"a merge pattern that doesn't match", "commit:\n  pattern: '^feat: .+'\n  merge: '^merge: dev$'\n", "Merge branch 'dev'\n", false, true, "merge commit: commit message does not match commit.merge"},
+		{"no merge key: commit.pattern applies as before", "commit:\n  pattern: '^feat: .+'\n", "Merge branch 'dev'\n", false, true, "default merge message"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			mergeTestRepo(t, repoRoot)
+			writeTestFile(t, repoRoot, "cinch.yml", tc.manifest)
+			msg := writeTestFile(t, repoRoot, "msg.txt", tc.subject)
+			r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+			if (r.noOp != "") != tc.wantNoOp || (len(r.findings) == 1) != tc.wantFinding {
+				t.Fatalf("result = %+v, want noOp=%v finding=%v", r, tc.wantNoOp, tc.wantFinding)
+			}
+			if tc.wantFinding && !strings.Contains(r.findings[0].message, tc.wantIn) {
+				t.Fatalf("message = %q, want it to contain %q", r.findings[0].message, tc.wantIn)
+			}
+		})
+	}
+
+	t.Run("commit.merge is ignored outside a merge", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		initTestGitRepo(t, repoRoot)
+		writeTestFile(t, repoRoot, "cinch.yml", "commit:\n  pattern: '^feat: .+'\n  merge: exempt\n")
+		msg := writeTestFile(t, repoRoot, "msg.txt", "Merge branch 'dev'\n")
+		r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+		if len(r.findings) != 1 || r.noOp != "" {
+			t.Fatalf("result = %+v, want a commit.pattern finding", r)
+		}
+	})
 }

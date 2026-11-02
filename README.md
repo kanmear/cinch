@@ -114,7 +114,7 @@ code review and the `docs-audit-coverage` workflow.
 | `index` | a doc outside `plans/` has no `# ` title |
 | `generated` | a rendered workflow or hook shim differs from what `cinch render` would write now |
 | `hooks` | `core.hooksPath` isn't set to `paths.hooks` |
-| `commit` | (opt-in) the commit subject doesn't match `commit.pattern` |
+| `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt` or a pattern) |
 | `core` | the installed cinch doesn't satisfy `require.cinch` (`init` writes a `>=` floor; `any` disables) |
 
 The pre-commit hook and `cinch check --staged` check the content being
@@ -232,9 +232,17 @@ hooks:
     notify:
       run: scripts/notify.sh
 
-# Optional: commit subjects must match this regexp.
+# Optional: commit subjects must match this regexp. While git is mid
+# squash-merge ($GIT_DIR/SQUASH_MSG) the entry for the current branch under
+# squash: applies instead, and a branch with no entry falls back to pattern.
+# While git is mid merge ($GIT_DIR/MERGE_HEAD), merge: exempt passes the
+# subject unchecked and merge: '<regexp>' replaces pattern; leave it out and a
+# merge commit is checked like any other.
 #commit:
 #  pattern: '^\[[a-z-]+\] .+'
+#  squash:
+#    dev: '^merge: (feature|fix)/.+'
+#  merge: exempt
 
 # Optional: set to false to stop `cinch init` from writing the AGENTS.md pointer.
 #agents:
