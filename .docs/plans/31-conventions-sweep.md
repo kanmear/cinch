@@ -475,4 +475,6 @@ fish config), fsed-odin-docs plan triage, and the Deferred entries in ortho, bud
 deltadocs. The template README's "Choices made while building" and "Gaps" sections list what
 the agents decided on their own; read them before the first real `make apply`.
 
-Then step 6: Forum F0/F1, after which the Forum CLI plan reopens.
+Nothing is pushed. Next in cinch: cut the release (`make release`, then `make push-release` when
+ready) so Part A reaches the other machines. Then step 6: Forum F0/F1, after which the Forum CLI
+plan reopens.
