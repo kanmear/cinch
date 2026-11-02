@@ -1,0 +1,10 @@
+{
+  "task": "C2",
+  "kind": "change",
+  "rules": [
+    {"id": "ACCT-001", "match": ["half|halv"]},
+    {"id": "BUDGET-002", "match": ["half|halv"]},
+    {"id": "XFER-001", "match": ["lossless|come back equal"]},
+    {"id": "XFER-005", "match": ["derived"]}
+  ]
+}

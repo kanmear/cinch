@@ -1,7 +1,9 @@
 # 25. Upkeep ablation
 
 **Tier 4 — evidence. Cost estimate: local runs, about two nights. This is the experiment
-cinch's existence depends on.**
+cinch's existence depends on. Status: Budgetron set pre-registered 2026-10-28 (tag
+`prereg/upkeep`). The design of record is
+[bench/upkeep/DESIGN.md](../../bench/upkeep/DESIGN.md).**
 
 ## Provenance
 

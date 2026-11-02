@@ -1,0 +1,81 @@
+diff --git a/.docs/domain/sms-import.md b/.docs/domain/sms-import.md
+index f59352f..49205cc 100644
+--- a/.docs/domain/sms-import.md
++++ b/.docs/domain/sms-import.md
+@@ -16,6 +16,6 @@ Banking SMS are read from the Android inbox (on demand, and in the background wh
+ 3. **SMS-003** A category rule matches the merchant case-insensitively and, when no rule matches it (or there is no merchant), the whole SMS text, as its match mode says: `contains` (the default, and what rules stored without a mode mean) finds the keyword anywhere, `word` only as a whole word (bounded by the text's ends or a character that is neither a letter nor a digit), `prefix` only at the start of the text. Only categories of the pending entry's type count; within each pass the longest keyword wins and the earlier rule wins a tie. A pending entry's category only ever comes from the rules (the user sets one only by confirming), so rules are re-applied to all pending entries whenever one is saved, edited or removed, in the same transaction as the rule write: each category becomes whatever the current rules resolve, possibly none. Rules are editable (keyword, category, mode). Keywords are unique case-insensitively: saving a new rule with an existing keyword updates that rule, an edit that would give a rule another rule's keyword is refused and writes nothing.
+ 4. **SMS-004** Confirming a pending entry creates the entry (ENTRY-001, ENTRY-005), marks the pending entry confirmed and, when the user gave a rule keyword (not blank after trimming; the form offers the whole merchant), saves the rule "keyword means the entry's category" (SMS-003), in one transaction. Confirm-all confirms only pending entries whose category has the pending entry's type.
+ 5. **SMS-005** Deleting a category deletes its rules and clears it from pending entries in the same transaction.
+-6. **SMS-006** A background scan (app start or resume) runs only when the read permission is already granted and a scan point exists; it never prompts and never asks for a start point. Scans run at most once a minute and never concurrently.
++6. **SMS-006** A background scan (app start or resume) runs only when the read permission is already granted and a scan point exists; it never prompts and never asks for a start point. Scans run at most once every 13 minutes and never concurrently.
+ 7. **SMS-007** A template may read the currency code; a pending entry whose code differs from the app currency is never confirmed by confirm-all and is marked on the list.
+ 8. **SMS-008** A message no enabled template reads is kept as unrecognized when it looks like a transaction (an amount followed by a three-letter code in capitals), at most once per message; saving or enabling a template re-reads the kept ones, and those it reads become pending entries. A dismissed unrecognized message is never shown again.
+diff --git a/lib/cubit/sms_scan_cubit.dart b/lib/cubit/sms_scan_cubit.dart
+index e675b66..02bf21a 100644
+--- a/lib/cubit/sms_scan_cubit.dart
++++ b/lib/cubit/sms_scan_cubit.dart
+@@ -12,7 +12,7 @@ export 'package:budgetron/cubit/sms_scan_state.dart';
+ /// the last result; the pending entries themselves come from the repository.
+ class SmsScanCubit extends Cubit<SmsScanState> {
+   /// Scans (manual or background) start at most this often.
+-  static const Duration minInterval = Duration(minutes: 1);
++  static const Duration minInterval = Duration(minutes: 13);
+ 
+   final SmsImportService _service;
+   final SmsSource _source;
+@@ -45,7 +45,7 @@ class SmsScanCubit extends Cubit<SmsScanState> {
+   /// SMS-001).
+   Future<void> scanFrom(DateTime since) => _scan(since, isBackground: false);
+ 
+-  /// [scan] unless a scan ended less than a minute ago; for opening the page.
++  /// [scan] unless a scan ended less than 13 minutes ago; for opening the page.
+   Future<void> scanIfStale() async {
+     if (_isFresh) return;
+ 
+diff --git a/lib/routes/pages/sms/pending_entry_list_page.dart b/lib/routes/pages/sms/pending_entry_list_page.dart
+index 24f9d3c..103819f 100644
+--- a/lib/routes/pages/sms/pending_entry_list_page.dart
++++ b/lib/routes/pages/sms/pending_entry_list_page.dart
+@@ -27,7 +27,8 @@ import 'package:budgetron/utils/date_format.dart';
+ 
+ /// The SMS import screen: pending entries read from banking SMS, to review,
+ /// confirm or dismiss. Scanning belongs to the app-level `SmsScanCubit`; this
+-/// page starts one on open (unless one ran a minute ago) and shows its status.
++/// page starts one on open (unless one ran in the last 13 minutes) and shows
++/// its status.
+ class PendingEntryListPage extends StatelessWidget {
+   const PendingEntryListPage({super.key});
+ 
+diff --git a/test/cubit/sms_scan_cubit_test.dart b/test/cubit/sms_scan_cubit_test.dart
+index 9747154..05bc680 100644
+--- a/test/cubit/sms_scan_cubit_test.dart
++++ b/test/cubit/sms_scan_cubit_test.dart
+@@ -266,11 +266,11 @@ void main() {
+     });
+ 
+     // cinch:rule SMS-006
+-    test('runs at most once a minute, whoever scanned last', () async {
++    test('runs at most once every 13 minutes, whoever scanned last', () async {
+       final cubit = newCubit();
+ 
+       await cubit.scan();
+-      now = now.add(const Duration(seconds: 59));
++      now = now.add(const Duration(minutes: 12, seconds: 59));
+       await cubit.scanInBackground();
+       await cubit.scanIfStale();
+ 
+@@ -321,12 +321,12 @@ void main() {
+   });
+ 
+   group('scanIfStale', () {
+-    test('scans when nothing ran yet and after a minute', () async {
++    test('scans when nothing ran yet and after 13 minutes', () async {
+       final cubit = newCubit();
+ 
+       await cubit.scanIfStale();
+       await cubit.scanIfStale();
+-      now = now.add(const Duration(minutes: 1));
++      now = now.add(const Duration(minutes: 13));
+       await cubit.scanIfStale();
+ 
+       verify(

@@ -7,6 +7,15 @@ paths:
     - internal/cinch/hook_test.go
     - internal/cinch/impact_test.go
     - internal/cinch/rules_json_test.go
+    # upkeep reference solutions: marker-shaped lines inside patches for another repo
+    - bench/upkeep/tasks/*/reference.patch
+    # field log: cinch's own finding text quoted from other repos' logs, and the test inputs for it
+    - bench/field/*.csv
+    - bench/field/main_test.go
+    # drift census: audit reports quoting markers and suggested tests for other repos
+    - bench/drift/
+    # leak replay: DeltaDocs rule IDs quoted in states, patches, hidden tests and probes
+    - bench/leak/
 
 # .docs/git-conventions.md § Commit message shapes. The squash entries apply
 # only while $GIT_DIR/SQUASH_MSG exists; the release cut (git merge --no-ff)

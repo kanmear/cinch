@@ -1,0 +1,318 @@
+{
+  "repo": "budgetron",
+  "commit": "2907c92cdf886eb269d7bb91573e6c0841a9022a",
+  "questions": [
+    {
+      "id": "ACCT-001",
+      "doc": ".docs/domain/accounts.md",
+      "question": "How is an account's balance computed in Budgetron: which stored quantities go into it, and with what sign does each one count?",
+      "key": "1. **ACCT-001** Balance equals opening balance plus the sum of the account's entries plus the sum of its transactions plus transfers in minus transfers out.",
+      "notes": "Correct: names all five terms with their signs: opening balance, plus the account's entries, plus its account transactions, plus transfers in, minus transfers out. Partial: the right shape but one term missing (most often the account transactions or the opening balance) or transfer direction unsigned. Wrong: says the balance is a stored running total updated on each write, or gives a different formula.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ACCT-002",
+      "doc": ".docs/domain/accounts.md",
+      "question": "How many accounts may be marked as the default account at the same time, and what does the `Settings` row store to identify the default account in every case?",
+      "key": "2. **ACCT-002** At most one account is default, and `Settings.defaultAccountId` points at it (or is `-1` when none).",
+      "notes": "Correct: at most one default account (zero is allowed), `Settings.defaultAccountId` holds its id, and it is -1 when no account is default. Partial: one default and the settings field, but no word on the no-default case or a different sentinel left unstated. Wrong: says exactly one account must always be default, or that several may be, or names a different sentinel value (null, 0).",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ACCT-003",
+      "doc": ".docs/domain/accounts.md",
+      "question": "What does a transfer between two of the user's accounts do to each of the two account balances?",
+      "key": "3. **ACCT-003** A transfer changes the two balances by equal and opposite amounts.",
+      "notes": "Correct: the source balance goes down and the destination balance goes up by the same amount (equal and opposite; net zero across the two). Partial: says both balances change but not that the amounts are equal. Wrong: says only one balance changes, or the amounts differ (fees, rounding).",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ACCT-004",
+      "doc": ".docs/domain/accounts.md",
+      "question": "When a user deletes an account, what happens to each kind of record that belongs to it or refers to it, and to the app's default-account setting?",
+      "key": "4. **ACCT-004** Deleting an account, in one transaction, removes its transactions and every transfer from or to it, clears it from its entries, SMS templates and pending entries (they stay), and resets `Settings.defaultAccountId` to `-1` if it was the default.",
+      "notes": "Focus: which records are deleted and which are kept; a code reader can easily assume a cascade. Correct: the account's transactions and every transfer from or to it are deleted; entries, SMS templates and pending SMS entries that refer to it are kept with the account reference cleared; `Settings.defaultAccountId` is reset to -1 if it was the default. Doing it in one transaction is not required in the answer. Partial: the deleted/kept split right but the default-account reset missing, or one kind misplaced. Wrong: says entries (or templates, or pending entries) are deleted with the account, or that deletion is refused while records refer to it.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-001",
+      "doc": ".docs/domain/budgets.md",
+      "question": "For each budget period type (week, month, year), on what date does a period start?",
+      "key": "1. **BUDGET-001** Period starts are: week on Monday, month on day 1, year on January 1.",
+      "notes": "Focus: the week start, which a code reader may take from a locale default. Correct: week on Monday, month on day 1, year on January 1. Partial: two of the three right and the third missing. Wrong: any start stated differently (e.g. a week starting Sunday, or periods starting on the budget's creation date).",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-002",
+      "doc": ".docs/domain/budgets.md",
+      "question": "How is a budget's spent amount for one period computed: which entries count, how are their amounts combined, and how are the period's start and end dates treated?",
+      "key": "2. **BUDGET-002** Spent for a period is the sum of absolute values of the category's expense entries dated in `[periodStart, periodEnd)`.",
+      "notes": "Focus: the boundary, half-open, unlike the entry list's date filters. Correct: the sum of the absolute values of the budget category's expense entries dated from the period start inclusive to the period end exclusive, `[periodStart, periodEnd)`. Partial: the entry set and absolute sum right but the boundary not stated. Wrong: the end date inclusive, income entries counted, or signed values netted.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-003",
+      "doc": ".docs/domain/budgets.md",
+      "question": "When the app has not been opened for a long time, how many elapsed budget periods are rolled over into history the next time budgets are evaluated?",
+      "key": "3. **BUDGET-003** Any number of elapsed periods roll over, not just one.",
+      "notes": "Correct: all of them, any number of elapsed periods, not just one. Partial: says periods roll over but is vague on how many. Wrong: only the most recent elapsed period, or a fixed cap.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-004",
+      "doc": ".docs/domain/budgets.md",
+      "question": "A budget's target has been changed over time. Which target is a past period's spending compared against?",
+      "key": "4. **BUDGET-004** A past period is evaluated against the target in effect during that period.",
+      "notes": "Correct: the target that was in effect during that period (its revision), not the current target. Partial: says past periods keep a target but not which one. Wrong: the current target, or the target in effect at the period's end when it differs from the one governing the period.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-005",
+      "doc": ".docs/domain/budgets.md",
+      "question": "How are a category's budget-tracked flag and its budget kept consistent when budgets and categories are created or deleted?",
+      "key": "5. **BUDGET-005** Creating a budget marks its category budget-tracked; deleting the budget clears the flag; deleting a tracked category deletes its budget.",
+      "notes": "Focus: the category-deletion clause. Correct: creating a budget marks its category budget-tracked; deleting the budget clears the flag; deleting a tracked category deletes its budget. Partial: the flag set and cleared with the budget, but nothing (or something vague) about deleting the category. Wrong: says deleting a tracked category is refused, or leaves an orphan budget.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-006",
+      "doc": ".docs/domain/budgets.md",
+      "question": "What happens to an archived budget's periods as time passes after it was archived?",
+      "key": "6. **BUDGET-006** Archived budgets do not accrue new periods.",
+      "notes": "Correct: an archived budget accrues no new periods (no period starts after the archive date). Partial: says archived budgets are hidden or frozen without saying that no new periods accrue. Wrong: says periods keep rolling over while archived.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "BUDGET-007",
+      "doc": ".docs/domain/budgets.md",
+      "question": "A user changes a budget's period type (say from monthly to weekly) partway through a period. When does the first period of the new type start, and how is the interrupted old period recorded and evaluated?",
+      "key": "7. **BUDGET-007** Changing a budget's period type takes effect at once. The new period starts at the start (per BUDGET-001) of the new-type period containing the change date. The previous period is truncated to end there, kept in history as a *partial* period, and evaluated against its full old target (not prorated). Periods never overlap, and every entry belongs to exactly one period. Changing only the target applies to the whole current period, and past periods keep theirs (BUDGET-004).",
+      "notes": "Focus: the target the truncated period is judged against, which a reader may guess is prorated. Correct: the change takes effect at once; the new period starts at the start of the new-type period containing the change date; the old period is truncated to end there, kept in history as a partial period, and evaluated against its full old target, not prorated. Partial: truncation and partial-period history right but the evaluation target not stated, or the new period's start not stated. Wrong: the old target prorated, the change deferred to the end of the current period, or the old period dropped.",
+      "predict": "normative"
+    },
+    {
+      "id": "BUDGET-008",
+      "doc": ".docs/domain/budgets.md",
+      "question": "What database writes, if any, happen when budget summaries are computed, for example when the budgets page loads long after the last visit?",
+      "key": "8. **BUDGET-008** Reading budgets never writes: computing summaries, however often and however long after the last visit, leaves every budget and revision row unchanged.",
+      "notes": "Correct: none: computing summaries never writes; every budget and revision row is left unchanged however long it has been. Partial: says reading is mostly side-effect free but hedges about rollover writes. Wrong: says loading persists rolled-over periods, spent values or any other row.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "CAT-001",
+      "doc": ".docs/domain/categories.md",
+      "question": "How does Budgetron decide whether a new or renamed category's name collides with an existing category, and what happens to the stored data when it does?",
+      "key": "1. **CAT-001** Category names are unique. Exact match, case-sensitive; adding or renaming to a taken name throws `DuplicateCategoryName` and leaves the stored rows unchanged.",
+      "notes": "Focus: case sensitivity (a reader may assume names are compared ignoring case). Correct: a collision is an exact, case-sensitive match; adding or renaming to a taken name throws `DuplicateCategoryName` (or is rejected with that error) and no row changes. Partial: unique names and a rejection, but nothing on how names are compared, or the stored-rows clause missing. Wrong: comparison ignores case or whitespace, or the duplicate is saved or merged.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "CAT-002",
+      "doc": ".docs/domain/categories.md",
+      "question": "How is a category's color stored, and what guarantee holds when converting between the stored form and a Flutter `Color`?",
+      "key": "2. **CAT-002** A category color string and its `Color` round-trip losslessly.",
+      "notes": "Correct: stored as a string (\"a category color string\" states the stored form); converting the string to a `Color` and back (and the other way) is lossless, a round trip. Partial: names the stored form but not the round-trip guarantee. Wrong: says the conversion is lossy (alpha dropped, palette snapping) or the color is stored as something else.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "XFER-001",
+      "doc": ".docs/domain/data-transfer.md",
+      "question": "When a user exports their data to a file and imports it into a fresh install, which kinds of data come back, and what about record ids and the links between records?",
+      "key": "1. **XFER-001** Export followed by import into an empty store is lossless: entries, categories, groups, accounts, transactions, transfers, budgets with their revisions, SMS templates, SMS category rules, and settings come back equal, with relations intact. Ids may change.",
+      "notes": "Focus: completeness, including the less obvious kinds. Correct: all of entries, categories, groups, accounts, transactions, transfers, budgets with their revisions, SMS templates, SMS category rules and settings come back equal, relations intact; ids may change. Partial: lossless with relations intact but missing up to two of the kinds, or claims ids are preserved. Wrong: says something on the list is not carried (e.g. budgets' history or SMS templates), or lists pending SMS entries as restored.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "XFER-002",
+      "doc": ".docs/domain/data-transfer.md",
+      "question": "If an import file turns out to be invalid, or the import fails partway through, what happens to the data that was on the device before the import?",
+      "key": "2. **XFER-002** Import is all-or-nothing. The whole file is validated before any write, and the replace runs in one transaction. An invalid file, or a failure part-way through, leaves the existing data exactly as it was.",
+      "notes": "Correct: it is left exactly as it was: the whole file is validated before any write and the replace runs in one transaction (all or nothing). Partial: says existing data survives but not how (no validation-first or single transaction), or only covers one of the two failure cases. Wrong: says a failure can leave partial data, or that the user must restore from the backup.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "XFER-003",
+      "doc": ".docs/domain/data-transfer.md",
+      "question": "What has to happen before an import is allowed to replace the existing data on the device?",
+      "key": "3. **XFER-003** Import replaces existing data only after the user explicitly confirms, and only after the current database has been copied to `data.mdb.pre-import-<timestamp>`.",
+      "notes": "Correct: both preconditions: the user explicitly confirms, and the current database has been copied to a backup (`data.mdb.pre-import-<timestamp>`). The exact file name is not required; a copy of the database file is. Partial: only one of the two. Wrong: says neither is needed, or that the backup is taken after the replace.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "XFER-004",
+      "doc": ".docs/domain/data-transfer.md",
+      "question": "When importing a data file, how does the app treat the file's format version (newer than the app, and older), and what happens to the app's currency setting?",
+      "key": "4. **XFER-004** Every file carries a format version. A file newer than the app supports is rejected; older formats are upgraded on import (a version-1 file has no SMS templates or category rules; a rule without a `mode`, as in versions 1 and 2, is a `contains` rule; a template without a `currencyRegex`, as in versions 1 to 3, reads no currency). Import switches the app's currency to the file's currency, since the amounts are in that currency's minor units.",
+      "notes": "Focus: the currency switch, the clause a reader is least likely to infer. Correct: a file newer than the app supports is rejected; older formats are upgraded on import; import switches the app's currency to the file's currency (amounts are minor units of that currency). The per-version defaults are not required. Partial: the version handling right but the currency clause missing. Wrong: the app keeps its own currency (or converts amounts), or newer files are accepted.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "XFER-005",
+      "doc": ".docs/domain/data-transfer.md",
+      "question": "In an export file, how are amounts, account balances and budget progress represented, and what is left out of the file?",
+      "key": "5. **XFER-005** The file holds stored facts of the current model only: amounts as integer minor units (MONEY-001), opening balances not balances (ACCT-001), budget revisions not spent values (BUDGET-002). Derived values and retired legacy fields are never written.",
+      "notes": "Correct: amounts as integer minor units; accounts carry opening balances, not current balances; budgets carry their revisions, not spent values; derived values and retired legacy fields are never written. Partial: two or three of these right, the rest missing. Wrong: says balances or spent values are exported, or amounts as decimals.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "XFER-006",
+      "doc": ".docs/domain/data-transfer.md",
+      "question": "What does an import do to the pending SMS entries, the unrecognized SMS messages and the SMS scan point that were on the device before it?",
+      "key": "6. **XFER-006** Import removes every pending SMS entry and every unrecognized SMS (SMS-008, neither is exported), since they point at the replaced categories and accounts, and keeps the SMS scan point.",
+      "notes": "Focus: the scan point is kept (a reader may expect it reset along with the rest). Correct: every pending SMS entry and every unrecognized SMS is removed, and the scan point is kept. Partial: removal right, scan point not addressed. Wrong: pending entries or unrecognized messages kept, or the scan point reset or taken from the file.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ENTRY-001",
+      "doc": ".docs/domain/entries.md",
+      "question": "How is the sign of an entry's stored amount determined, and what sign do expense and income entries carry?",
+      "key": "1. **ENTRY-001** Expense entries are stored with a negative value and income entries with a positive value; the sign comes from `category.isExpense`.",
+      "notes": "Correct: expenses are stored negative and income positive; the sign comes from the category's `isExpense`. Partial: the signs right but not where they come from (or vice versa). Wrong: all amounts stored positive with the type kept elsewhere, or the signs reversed.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ENTRY-002",
+      "doc": ".docs/domain/entries.md",
+      "question": "When entries are filtered by a date range, how are the range's start and end treated?",
+      "key": "2. **ENTRY-002** Date-range filters are inclusive on both ends.",
+      "notes": "Correct: inclusive on both ends. Partial: says only one end is inclusive without addressing the other. Wrong: the end (or start) exclusive.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ENTRY-003",
+      "doc": ".docs/domain/entries.md",
+      "question": "When several entry filters are given at once (period, entry ids, category, account), how are they combined?",
+      "key": "3. **ENTRY-003** Combining filters (period, ids, category, account) is a logical AND.",
+      "notes": "Correct: as a logical AND: an entry must satisfy every given filter. Wrong: OR, or one filter overriding the others.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ENTRY-004",
+      "doc": ".docs/domain/entries.md",
+      "question": "What happens to an entry's identity when the user edits it?",
+      "key": "4. **ENTRY-004** Editing an entry updates it in place and keeps its id.",
+      "notes": "Correct: the entry is updated in place and keeps its id. Wrong: says it is deleted and recreated, or gets a new id.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ENTRY-005",
+      "doc": ".docs/domain/entries.md",
+      "question": "Besides the entry itself, what does `EntryService` write when an entry is created, edited (including a change of category) or deleted, and how are those writes grouped?",
+      "key": "5. **ENTRY-005** Creating, editing or deleting an entry and all dependent writes (category usages) are atomic. `EntryService` runs each of these in one `UnitOfWork`; deleting also decrements the category usages (never below 0), and an edit that changes the category moves one usage from the old category to the new one. Budget spent and account balances are derived on read, so no write maintains them.",
+      "notes": "Focus: what is and isn't maintained on write. Correct: each operation runs with its dependent writes (category usage counts) in one `UnitOfWork`, atomically; deleting decrements the category's usage, an edit that changes the category moves one usage from the old category to the new one; budget spent and account balances are not written, they are derived on read. The floor at 0 is not required. Partial: atomicity and usage counts right but silent on balances/spent, or the category-change move missing. Wrong: says balances or budget spent are updated on write, or that the writes are not atomic.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "ENTRY-006",
+      "doc": ".docs/domain/entries.md",
+      "question": "In the entries list, within one period group, how are the categories ordered under each sort option (amount descending, amount ascending, recent), and where do income categories go relative to expense categories?",
+      "key": "6. **ENTRY-006** Inside a period group, sorting by amount lists income categories before expense categories, each side ordered by the absolute value of the category total: largest first for \"amount, descending\" (the default), smallest first for \"amount, ascending\". \"Recent\" keeps categories in the order of their newest entry.",
+      "notes": "Focus: income first, and ordering by absolute category total. Correct: income categories before expense categories; within each side, by the absolute value of the category total, largest first for amount descending and smallest first for amount ascending; 'recent' keeps categories in the order of their newest entry. Partial: the amount ordering right but the income/expense placement missing, or 'recent' missing. Wrong: sorted by signed totals (expenses first as negatives), or income and expense interleaved.",
+      "predict": "normative"
+    },
+    {
+      "id": "ENTRY-007",
+      "doc": ".docs/domain/entries.md",
+      "question": "What totals does a period group in the entries list, and each category inside it, expose, and how do those totals relate to the group's net total?",
+      "key": "7. **ENTRY-007** A period group and each of its categories expose their income sum and their expense sum separately; income plus expense equals the signed total (ENTRY-001).",
+      "notes": "Correct: an income sum and an expense sum, exposed separately for the group and for each category, and income plus expense equals the signed (net) total. Partial: separate sums but no relation to the net total. Wrong: only one net total exposed.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "MONEY-001",
+      "doc": ".docs/domain/money.md",
+      "question": "How are monetary amounts stored in the database, and what is the status of the older `double` amount columns: which code may still read them?",
+      "key": "1. **MONEY-001** Amounts are stored as integer minor units (`*Minor` fields), so sums are exact. The legacy `double` columns stay in the schema until the column-retirement release (plan 5 T11) and are `@Deprecated`; only `lib/db/migrations` reads them.",
+      "notes": "Focus: who may read the legacy columns. Correct: amounts are stored as integer minor units (`*Minor` fields) so sums are exact; the legacy `double` columns remain in the schema, deprecated, and only the migrations (`lib/db/migrations`) read them. The retirement plan is not required. Partial: minor units right but the legacy-column clause missing or vague. Wrong: amounts stored as doubles, or the legacy columns still read by the app at large.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "MONEY-002",
+      "doc": ".docs/domain/money.md",
+      "question": "How does displaying an amount decide its rounding, and what effect does display formatting have on the stored amount?",
+      "key": "2. **MONEY-002** Display formatting rounds via the selected currency and never changes stored values.",
+      "notes": "Correct: rounding follows the selected currency (its decimal places), and formatting never changes the stored value. Partial: one of the two. Wrong: says formatted values are written back, or rounding is a fixed number of places regardless of currency.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SET-001",
+      "doc": ".docs/domain/settings.md",
+      "question": "How many `Settings` rows exist in the database once the app has started?",
+      "key": "1. **SET-001** Exactly one `Settings` row exists after startup.",
+      "notes": "Correct: exactly one (startup creates it if missing). Wrong: zero or more, or 'at least one'.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SET-002",
+      "doc": ".docs/domain/settings.md",
+      "question": "How do database schema migrations run at app startup: how is the current schema version tracked, when do migrations run relative to the UI, how are they grouped, and what happens if one runs again?",
+      "key": "2. **SET-002** Schema migrations are versioned (`Settings.schemaVersion`), run in one transaction before the UI starts, and are idempotent.",
+      "notes": "Correct: versioned through `Settings.schemaVersion`, run in one transaction, before the UI starts, and idempotent (a rerun changes nothing). Partial: three of the four. Wrong: says migrations run lazily after the UI is up, or that rerunning duplicates data.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-001",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "How does SMS import recognize a message it has already seen, and what does a later scan do with a message whose pending entry the user has already confirmed or dismissed?",
+      "key": "1. **SMS-001** An SMS becomes at most one pending entry, ever: messages are recognized by a key (provider id plus receive time) whatever the pending entry's status (pending, confirmed, dismissed); a scan never recreates a dismissed one, but the user can undo a dismissal, which sets that entry back to pending (re-resolving its category by the current rules, SMS-003). A scan reads only messages received after its start point; the stored scan point only moves forward.",
+      "notes": "Focus: dedup across every status, the dismissed case above all. Correct: messages are recognized by a key of provider id plus receive time, whatever the pending entry's status (pending, confirmed, dismissed), so an SMS becomes at most one pending entry, ever, and a scan never recreates a confirmed or dismissed one. The undo-dismissal and scan-point clauses are not required. Partial: deduplicated by some per-message key but the key's parts not named, or the dismissed case not addressed. Wrong: dedup by text or by entry, or a dismissed message coming back on a rescan.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-002",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "When several SMS templates could read the same message, which one parses it, and what happens to the scan when a template has a broken regex or date pattern?",
+      "key": "2. **SMS-002** A message is parsed by the first enabled template (by id) whose sender filter and keywords match (template regexes and keywords are case-insensitive); the type is the keyword that occurs first; the amount is parsed into `Money` with the app currency's minor units and must be above zero; without a date match the receive time is used. A template error (bad regex, unparseable date) skips the message and never aborts the scan.",
+      "notes": "Correct: the first enabled template, by id, whose sender filter and keywords match; a template error skips that message and never aborts the scan. The type/amount/date details are not required. Partial: one of the two. Wrong: the best or most specific match wins, or a template error aborts the scan.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-003",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "How does a pending SMS entry get its category, and what happens to the categories of existing pending entries when a category rule is added, edited or removed?",
+      "key": "3. **SMS-003** A category rule matches the merchant case-insensitively and, when no rule matches it (or there is no merchant), the whole SMS text, as its match mode says: `contains` (the default, and what rules stored without a mode mean) finds the keyword anywhere, `word` only as a whole word (bounded by the text's ends or a character that is neither a letter nor a digit), `prefix` only at the start of the text. Only categories of the pending entry's type count; within each pass the longest keyword wins and the earlier rule wins a tie. A pending entry's category only ever comes from the rules (the user sets one only by confirming), so rules are re-applied to all pending entries whenever one is saved, edited or removed, in the same transaction as the rule write: each category becomes whatever the current rules resolve, possibly none. Rules are editable (keyword, category, mode). Keywords are unique case-insensitively: saving a new rule with an existing keyword updates that rule, an edit that would give a rule another rule's keyword is refused and writes nothing.",
+      "notes": "Focus: rule re-application, the clause a reader of the matcher is most likely to miss. Correct: a pending entry's category only ever comes from the rules (the user picks one only by confirming); whenever a rule is saved, edited or removed, the rules are re-applied to all pending entries in the same transaction, and each gets whatever the current rules resolve, possibly none. The matching semantics are not required. Partial: rules decide the category, but re-application is missing, partial (only new entries, only uncategorized entries) or not in the same transaction. Wrong: says the user sets the category on a pending entry directly, or that existing pending entries keep their category when rules change.",
+      "predict": "normative"
+    },
+    {
+      "id": "SMS-004",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "What does confirming a pending SMS entry do, including when the user leaves a rule keyword in the confirm form, and which pending entries does 'confirm all' confirm?",
+      "key": "4. **SMS-004** Confirming a pending entry creates the entry (ENTRY-001, ENTRY-005), marks the pending entry confirmed and, when the user gave a rule keyword (not blank after trimming; the form offers the whole merchant), saves the rule \"keyword means the entry's category\" (SMS-003), in one transaction. Confirm-all confirms only pending entries whose category has the pending entry's type.",
+      "notes": "Focus: the confirm-all condition. Correct: confirming creates the entry, marks the pending entry confirmed and, when the keyword is not blank after trimming, saves the rule keyword -> the entry's category, all in one transaction; confirm-all confirms only pending entries whose category has the pending entry's type (expense/income). Partial: the single confirm right but confirm-all described only as 'those that have a category'. Wrong: confirm-all confirms everything, or the rule saved separately from the entry.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-005",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "What happens to SMS category rules and to pending SMS entries that refer to a category when that category is deleted?",
+      "key": "5. **SMS-005** Deleting a category deletes its rules and clears it from pending entries in the same transaction.",
+      "notes": "Correct: its rules are deleted and it is cleared from pending entries (the pending entries stay), in the same transaction. Both effects right without a word on atomicity is still correct. Partial: one of the two effects. Wrong: pending entries deleted, or rules left pointing at the deleted category.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-006",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "Under what conditions does a background SMS scan run at app start or resume, and how often and how concurrently may scans run?",
+      "key": "6. **SMS-006** A background scan (app start or resume) runs only when the read permission is already granted and a scan point exists; it never prompts and never asks for a start point. Scans run at most once a minute and never concurrently.",
+      "notes": "Correct: only when the read permission is already granted and a scan point exists; it never prompts and never asks for a start point; scans run at most once a minute and never concurrently. Partial: the preconditions right but the rate or the concurrency missing, or vice versa. Wrong: says a background scan requests the permission, asks for a start point, or names another rate.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-007",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "How are pending SMS entries handled whose message carries a currency code different from the app's currency?",
+      "key": "7. **SMS-007** A template may read the currency code; a pending entry whose code differs from the app currency is never confirmed by confirm-all and is marked on the list.",
+      "notes": "Correct: confirm-all never confirms them, and they are marked on the pending list. Partial: one of the two. Wrong: says the amount is converted, or the entry is dropped.",
+      "predict": "recoverable"
+    },
+    {
+      "id": "SMS-008",
+      "doc": ".docs/domain/sms-import.md",
+      "question": "What happens to an SMS that no enabled template can read, and what happens to such messages later, when the user saves or enables a template?",
+      "key": "8. **SMS-008** A message no enabled template reads is kept as unrecognized when it looks like a transaction (an amount followed by a three-letter code in capitals), at most once per message; saving or enabling a template re-reads the kept ones, and those it reads become pending entries. A dismissed unrecognized message is never shown again.",
+      "notes": "Focus: which unreadable messages are kept. Correct: it is kept as unrecognized only when it looks like a transaction (an amount followed by a three-letter capitalized currency code), at most once per message; saving or enabling a template re-reads the kept ones and those it reads become pending entries. Dismissal is not required. Partial: kept and re-read, but the looks-like-a-transaction test missing. Wrong: every unreadable SMS kept, or kept messages never re-read.",
+      "predict": "recoverable"
+    }
+  ]
+}

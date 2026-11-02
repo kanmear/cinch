@@ -4,10 +4,10 @@ LDFLAGS := -X main.Version=$(VERSION)
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/cinch .
-	go vet ./...
+	go vet $$(go list ./... | grep -v /hidden)
 
 test:
-	go test ./...
+	go test $$(go list ./... | grep -v /hidden)
 
 catch-matrix:
 	go run ./bench/catchmatrix

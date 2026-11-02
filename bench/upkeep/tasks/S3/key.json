@@ -1,0 +1,8 @@
+{
+  "task": "S3",
+  "kind": "leave",
+  "rules": [
+    {"id": "MONEY-001", "match": ["integer minor units"]},
+    {"id": "MONEY-002", "match": ["never changes stored values"]}
+  ]
+}

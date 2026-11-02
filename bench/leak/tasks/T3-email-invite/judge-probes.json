@@ -1,0 +1,50 @@
+{
+  "comment": "T3 judge probes (DESIGN § Calibration; NOTES § Rule-written key). Real texts read with git show from d2fb210 / f99130f (private DeltaDocs rule prose). memb018-active-no-link and memb019-reworded are the reference's other two rules; the builder judged them ABSENT (neither says who may obtain a link) - the designer should confirm.",
+  "probes": [
+    {
+      "id": "memb024-real",
+      "rule": "An invite link for a pending account is issued only to a caller who is owner or admin of every non-deleted project the account belongs to; otherwise the invite still adds the membership but issues no link and leaves the existing one live.",
+      "expected": "STATES"
+    },
+    {
+      "id": "memb024-paraphrase",
+      "rule": "Re-inviting an account that has not finished setup gives the caller a login link only when the caller is an owner or admin in every live project that account belongs to. Otherwise the account is still added to the caller's project, but no link is returned and the old link keeps working.",
+      "expected": "STATES"
+    },
+    {
+      "id": "stricter-only-own-new-account",
+      "rule": "An invite link is only ever returned for an account that this very invite created; inviting an account that already existed never returns a link.",
+      "expected": "STATES"
+    },
+    {
+      "id": "memb019-licenses-opposite",
+      "rule": "A pending account has at most one live invite link — inviting it again (from any project) rotates the token and kills the previous link.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "memb019-reworded",
+      "rule": "A pending account has at most one live invite link — issuing a new one (MEMB-024) rotates the token and kills the previous link.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "memb018-active-no-link",
+      "rule": "Inviting an email into a project creates a pending account (name = the email) when no account has that email, and joins the account with the chosen role; an email of an active account is a plain member add and issues no invite link.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "memb020-link-logs-in",
+      "rule": "An invite link logs its holder in as the pending account, repeatably, until the invite expires (7 days) or the account completes setup; only the token's hash is stored.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "owner-or-admin-only",
+      "rule": "Inviting someone by email is allowed only for the project's owner or an admin.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "vague-do-not-leak",
+      "rule": "Invite links must not leak to other projects.",
+      "expected": "PARTIAL"
+    }
+  ]
+}

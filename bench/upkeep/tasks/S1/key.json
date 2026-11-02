@@ -1,0 +1,7 @@
+{
+  "task": "S1",
+  "kind": "change",
+  "rules": [
+    {"id": "SMS-006", "match": ["13 minutes"]}
+  ]
+}

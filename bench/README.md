@@ -22,8 +22,9 @@ and each benchmark has its own plan item.
 | #6 It's cheap enough to run on every commit | [Cost curve](cost-curve.csv) | Holds: 31 ms at 1k files, 215 ms at 10k, 1.8 s at 100k (was 7.3 s before 0.10.1) | `make cost-curve` |
 
 | #2 A passing check means the rules are actually tested | [Binding strength](#binding-strength) | Holds: 72 of 75 bindings bite (96%), 67 through the marked test. Private fixture | `make binding-strength` |
+| #3 Cinch keeps docs true as code changes | [Upkeep ablation](upkeep/DESIGN.md) | Pre-registered 2026-10-28 (`prereg/upkeep`); stage 1 running. Public fixture (Budgetron) | `go run ./bench/upkeep -engine pi` (see DESIGN) |
 
-Claims #3–#5, #7 and #8 are listed in plan 21 and land here as they run.
+Claims #4, #5, #7 and #8 are listed in plan 21 and land here as they run.
 
 ## Catch matrix
 

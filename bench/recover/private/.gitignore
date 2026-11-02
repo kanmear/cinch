@@ -1,0 +1,4 @@
+# Judge calibration output (holds DeltaDocs rule text) and the DeltaDocs arm files.
+# bench/private-manifest.txt records a sha256 of each file.
+*
+!.gitignore

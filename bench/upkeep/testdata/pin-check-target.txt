@@ -1,0 +1,6 @@
+check:
+	dart format --output=none --set-exit-if-changed lib test tool
+	$(MAKE) l10n
+	$(MAKE) analyze
+	$(MAKE) strings
+	cinch check

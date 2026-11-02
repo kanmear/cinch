@@ -38,10 +38,11 @@ tier three is small in isolation but compounds.
 | 22 | [Catch matrix and cost curve](22-catch-matrix-and-cost-curve.md) | 4 — evidence | **Done** — catch matrix and cost curve in `bench/`; scan fix shipped in 0.10.1 |
 | 23 | [A public fixture](23-public-fixture.md) | 4 — evidence | Decided — Budgetron, made public, is the fixture for 25; DeltaDocs stays private |
 | 24 | [Leak replay](24-leak-replay.md) | 4 — evidence | Open — DeltaDocs only, private data point |
-| 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Open — Budgetron (public, pinned tag) plus DeltaDocs (private) |
+| 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Pre-registered 2026-10-28 (`prereg/upkeep`, [design](../../bench/upkeep/DESIGN.md)); pi/Qwen stage 1 done 2026-10-29: not detected at N = 5. Sonnet pending; v2 is [29](29-benchmark-program-v2.md) |
 | 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** (`a937164`) — kept for provenance |
 | 27 | [Budgetron field report, 2026-10-11](27-budgetron-field-report.md) | 4 — evidence | **Shipped** (`1edf5a2`–`0ade181`) — kept for provenance |
 | 28 | [Absorb the squash-message and version-bump scripts](28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | Part A shipped 2026-11-02 (`commit.squash`, `commit.merge`); Part B deferred, the bump stays a script |
+| 29 | [Benchmark program v2: measure the premise, not the checker](29-benchmark-program-v2.md) | 4 — evidence | In progress — A (drift census) and G (field log) done 2026-11-01, B pre-registered; C–F pending |
 | 30 | [Convention packs: portable conventions, layered and overridable](30-convention-packs.md) | 3 — decide before investing | Draft, not approved — recovered 2026-11-01 from a 2026-10-09 session; builds on 28 Part A |
 
 ## Reading order vs. build order

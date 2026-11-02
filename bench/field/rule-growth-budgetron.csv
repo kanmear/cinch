@@ -1,0 +1,11 @@
+commit,date,subject,type,product_code,rules,marked,ignored,added,changed,removed,added_ids,changed_ids,removed_ids,prev_row_added,prev_row_changed,prev_row_removed,error
+f6f9abd,2026-10-09T00:25:07+03:00,merge: chore/versioning-conventions,chore,false,33,33,0,0,0,0,,,,,,,
+7229e0d,2026-10-09T00:31:11+03:00,merge: fix/drawer-version,fix,true,33,33,0,0,0,0,,,,0,0,0,
+526e4d2,2026-10-09T00:59:54+03:00,merge: feature/ux-and-account-delete,feature,true,34,34,0,1,0,0,ACCT-004,,,1,0,0,
+b9d4b6b,2026-10-10T01:14:43+03:00,merge: chore/align-conventions,chore,false,34,34,0,0,0,0,,,,0,0,0,
+4b92d9b,2026-10-11T15:10:48+03:00,merge: feature/sms-import-improvements,feature,true,37,37,0,3,6,0,SMS-006|SMS-007|SMS-008,SMS-001|SMS-002|SMS-003|SMS-004|XFER-004|XFER-006,,3,6,0,
+3605c7c,2026-10-11T15:43:26+03:00,merge: feature/ux-fixes,feature,true,39,39,0,2,0,0,ENTRY-006|ENTRY-007,,,2,0,0,
+57bdd83,2026-10-11T15:59:34+03:00,merge: fix/ux-followups,fix,true,39,39,0,0,0,0,,,,0,0,0,
+1442094,2026-10-11T16:51:33+03:00,merge: chore/debug-app-id,chore,false,39,39,0,0,0,0,,,,0,0,0,
+2d63323,2026-10-12T00:07:35+03:00,merge: chore/merge-time-tests,chore,false,39,39,0,0,0,0,,,,0,0,0,
+0fe3070,2026-10-28T00:59:22+03:00,merge: docs/rerender-workflows,docs,false,39,39,0,0,0,0,,,,0,1,0,

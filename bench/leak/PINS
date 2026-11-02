@@ -1,0 +1,72 @@
+# Leak replay (plan 24 / plan 29 D): pin of record.
+# KEY=VALUE, one per line. TODO values are filled at prereg/leak-pilot (tree hashes, versions)
+# or at prereg/leak (CAP_*, KEPT_TASKS), and never change after that. The harness refuses to run
+# while a value is TODO, when a SHA doesn't resolve in the fixture, when a built state's
+# `git ls-tree -r HEAD | sha256sum` differs from its *_TREE_SHA256, or when a file under
+# bench/leak/private/ differs from bench/private-manifest.txt.
+
+FIXTURE=project_deltadocs
+DOCS_ROOT=.agent
+
+# Base (pre-fix) and fix SHAs, full. No tags are created in the fixture; states are built by
+# bench/leak/states/<task>-arm<k>.py (BUILD.md § 2).
+T1_BASE_SHA=4c8af8295b948244c39c09698c6b2470f04fc8ac
+T1_FIX_SHA=adc4abbbbb090d2ce981da0fa9c9d5f787c15ea5
+T2_BASE_SHA=d0866c9089fe81fabf2cc4d5558c006fc72dfd62
+T2_FIX_SHA=c5389db6232b7f7505299caa6c226f4a313c4938
+T3_BASE_SHA=d2fb2106ddd90e993a13ab5f7b436d4c7a23d94d
+T3_FIX_SHA=f99130f7637bdcb70430e9c158bef7ab432347ad
+# T3 restores one rule's text from the feature's parent.
+T3_PREFEATURE_SHA=210c6defd8fa0a14b3a2fcb0ce6066636db62949
+# T4 is withheld; its base is pinned, its script lives under private/.
+T4_BASE_SHA=db65536270f56882504a30e053a0dcbc18a72e3b
+
+# Built-state tree hashes (`leak states -pin`). Arm 3 uses arm 1's state. T4 has no arm 2.
+# Arms each task runs (default 1,2,3): T4 runs arms 1 and 3 only.
+T4_ARMS=1,3
+T1_ARM1_TREE_SHA256=157a1b09473742ffb0234c79cbdf07e39ca850a0c31b2617654ef04af4396ee8
+T1_ARM2_TREE_SHA256=547e208dadc9ad3c027e03f96ab24ae02f2deb302c979d2e2d13223b0e82351c
+T2_ARM1_TREE_SHA256=db7a2e74bb38f88d7724102eba2de4824c301b4a4e1b17523fc0c00c7c6612b2
+T2_ARM2_TREE_SHA256=731bafb4bbbbe3ba2aae22e275cda990bfbf9abf47014922c5f8bb8cc72098f4
+T3_ARM1_TREE_SHA256=91c947e870e32f60b3a6bbb06868f03314a38f951e0dd4ea57475d785df91413
+T3_ARM2_TREE_SHA256=f0c3f199c1df58cc415eef64049a530241f4d5f09cb94ce222384aaf4de8422e
+T4_ARM1_TREE_SHA256=4a9b198e0c86fe62674e9d454c5578df839a6be5a2b68c77864cf31156238c7a
+
+# sha256sum of every file under bench/leak/private/, committed at prereg/leak-pilot.
+PRIVATE_MANIFEST=bench/private-manifest.txt
+
+CINCH_VERSION=0.13.2
+
+# Benchmark Postgres (never 5432). Two fresh databases per run.
+PG_CONTAINER=cinch-binding-pg
+PG_PORT=55432
+PG_USER=deltadocs_user
+
+PI_VERSION=1.4.0
+PI_PROVIDER=llama-cpp
+PI_MODEL=Qwen3.8-27B-UD-Q4_K_M
+PI_THINKING=high
+PI_BASE_URL=https://lab.tail14ad66.ts.net/v1
+
+CLAUDE_VERSION=TODO
+CLAUDE_MODEL=claude-sonnet-5-5
+CLAUDE_MAX_TURNS=80
+# Judges: the other model family for each engine, plus a blind owner audit sample.
+JUDGE_FOR_PI=claude-sonnet-5-5
+JUDGE_FOR_CLAUDE=pi:Qwen3.8-27B-UD-Q4_K_M
+OWNER_AUDIT_PER_ENGINE=30
+
+PILOT_CAP_MINUTES=75
+# Set at prereg/leak by the pilot rule (DESIGN § Pilot and cap).
+CAP_T1=TODO
+CAP_T2=TODO
+CAP_T3=TODO
+CAP_T4=TODO
+KEPT_TASKS=TODO
+
+N_STAGE1_ARM13=8
+N_TOTAL_ARM13=15
+N_ARM2=5
+ARM2_TASKS=T1,T2,T3
+
+SCHEDULE_SEED=20261102

@@ -1,0 +1,103 @@
+{
+  "comment": "DESIGN.md § Analysis, Judge checks (c): the negation and partial probes, transcribed verbatim from its table. rule + repo say which question, key and notes the answer is judged against.",
+  "probes": [
+    {
+      "id": "P01",
+      "rule": "SIG-017",
+      "repo": "deltadocs",
+      "answer": "A signer who loses eligibility is not removed and the request is never auto-cancelled; they just fail the permission check when they respond, and only the editor cancelling unblocks it.",
+      "expected": "CORRECT"
+    },
+    {
+      "id": "P02",
+      "rule": "SIG-017",
+      "repo": "deltadocs",
+      "answer": "A signer who loses eligibility is automatically removed from the request, and if no signers remain it is auto-cancelled.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P03",
+      "rule": "SIG-001",
+      "repo": "deltadocs",
+      "answer": "Editing is never locked by a signature request; the tab stays editable while a request is open.",
+      "expected": "CORRECT"
+    },
+    {
+      "id": "P04",
+      "rule": "BUDGET-008",
+      "repo": "budgetron",
+      "answer": "Computing budget summaries never writes anything, however long since the last visit.",
+      "expected": "CORRECT"
+    },
+    {
+      "id": "P05",
+      "rule": "MEMB-007",
+      "repo": "deltadocs",
+      "answer": "Removing a member deletes only the membership row; nothing they created is deleted.",
+      "expected": "CORRECT"
+    },
+    {
+      "id": "P06",
+      "rule": "PERM-003",
+      "repo": "deltadocs",
+      "answer": "If no entry exists the role has the default permission, `none`.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P07",
+      "rule": "CAT-001",
+      "repo": "budgetron",
+      "answer": "Names are unique ignoring case, so `Food` and `food` collide and the rename throws `DuplicateCategoryName`.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P08",
+      "rule": "ENTRY-002",
+      "repo": "budgetron",
+      "answer": "Date-range filters include the start date and exclude the end date.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P09",
+      "rule": "BUDGET-007",
+      "repo": "budgetron",
+      "answer": "The interrupted period is kept as a partial period and evaluated against its target prorated to its shortened length.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P10",
+      "rule": "SIG-019",
+      "repo": "deltadocs",
+      "answer": "Once no signer is still pending the request resolves accepted, even if one signer declined.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P11",
+      "rule": "XFER-006",
+      "repo": "budgetron",
+      "answer": "Import keeps the pending SMS entries and resets the SMS scan point.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P12",
+      "rule": "PROJ-007",
+      "repo": "deltadocs",
+      "answer": "Deleting a project removes its row from the database, and its reads return 404.",
+      "expected": "WRONG"
+    },
+    {
+      "id": "P13",
+      "rule": "BUDGET-001",
+      "repo": "budgetron",
+      "answer": "Weeks start on Monday and months on the 1st.",
+      "expected": "PARTIAL"
+    },
+    {
+      "id": "P14",
+      "rule": "SMS-006",
+      "repo": "budgetron",
+      "answer": "A background scan runs only if the permission is already granted and a scan point exists, never prompts, and scans never overlap.",
+      "expected": "PARTIAL"
+    }
+  ]
+}

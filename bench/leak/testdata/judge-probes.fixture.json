@@ -1,0 +1,7 @@
+{
+  "comment": "fixture for the probe loader",
+  "probes": [
+    {"id": "real", "rule": "A tab.updated event is delivered only to members who can view the tab's category.", "expected": "STATES"},
+    {"id": "near-miss", "rule": "Tab events are sent to the members of the project.", "expected": "ABSENT"}
+  ]
+}

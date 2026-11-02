@@ -1,0 +1,12 @@
+{
+  "task": "C1",
+  "kind": "change",
+  "rules": [
+    {"id": "XFER-001", "match": ["lossless"]},
+    {"id": "XFER-004", "match": ["older"]},
+    {"id": "XFER-005", "match": ["derived"]}
+  ],
+  "retire": [
+    {"id": "CAT-002", "ifPresent": {"match": ["name"], "forbid": ["round[- ]?trip", "lossless"]}}
+  ]
+}
