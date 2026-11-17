@@ -81,4 +81,3 @@ repository, so an unbound rule or a stray marker fails CI.
     a commit on a detached HEAD pass the guard. A `--no-verify` commit (the
     version bump's amend) isn't checked, by git's design. Without the key
     the guard does nothing.
-    <!-- cinch:ignore: test lands in plan 33 T3 -->

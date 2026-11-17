@@ -4,7 +4,7 @@
 
 Every defect class cinch's checks are tested against, and what each check does with it. Each row is one test in `internal/cinch`, which passes in `go test ./...`; the row is generated from that test, so the table and the suite can't disagree.
 
-**47 defect classes:** 22 caught, 2 warns, 5 gap, 17 not a defect, 1 control.
+**48 defect classes:** 23 caught, 2 warns, 5 gap, 17 not a defect, 1 control.
 
 | Verdict | Meaning |
 |---|---|
@@ -87,6 +87,7 @@ Every defect class cinch's checks are tested against, and what each check does w
 | commit message doesn't match commit.pattern | caught | `TestCheckCommit` (`checks_misc_test.go`) |
 | squash-merge subject that doesn't match commit.squash.<branch> (CINCH-015) | caught | `TestCheckCommitSquash` (`checks_misc_test.go`) |
 | any commit made mid merge, with commit.merge: reject (CINCH-020) | caught | `TestCheckCommitMergeReject` (`checks_misc_test.go`) |
+| plain commit on a branch listed in commit.protect (CINCH-021) | caught | `TestCheckCommitProtect` (`checks_misc_test.go`) |
 | git's default merge subject on a real merge, with commit.merge: exempt (CINCH-016) | not a defect | `TestCheckCommitMerge` (`checks_misc_test.go`) |
 
 ## `hooks`
