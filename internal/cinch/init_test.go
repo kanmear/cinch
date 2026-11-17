@@ -2,8 +2,10 @@ package cinch
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -316,5 +318,70 @@ func TestCmdInitClaudeMdHint(t *testing.T) {
 				t.Fatalf("CLAUDE.md = %q (err %v), want unchanged %q", data, err, tc.claude)
 			}
 		})
+	}
+}
+
+func TestCmdInitClosesWithSummaryAndNextStep(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T, root string)
+		hooks string
+	}{
+		{"git repository", func(t *testing.T, root string) { initTestGitRepo(t, root) }, "hooks active"},
+		{"no repository", func(t *testing.T, root string) {}, "hooks not active"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			tc.setup(t, root)
+
+			var code int
+			stdout := captureStdout(t, func() {
+				captureStderr(t, func() { code = CmdInit(root) })
+			})
+			if code != 0 {
+				t.Fatalf("CmdInit = %d, want 0", code)
+			}
+
+			workflows := len(renderedWorkflows(t))
+			want := fmt.Sprintf("cinch is set up: cinch.yml, %d workflows, %d hook shims, %s\nnext: add rules under .docs/, then run 'cinch check'\n",
+				workflows, len(hookEvents), tc.hooks)
+			if !strings.HasSuffix(stdout, want) {
+				t.Fatalf("stdout = %q, want it to end with %q", stdout, want)
+			}
+		})
+	}
+}
+
+func TestCmdInitRefusalPutsTheRemedyOnItsOwnLine(t *testing.T) {
+	root := t.TempDir()
+	git := initTestGitRepo(t, root)
+	git("config", "core.hooksPath", "other-hooks")
+
+	var code int
+	stderr := ansiPattern.ReplaceAllString(captureStderr(t, func() { code = CmdInit(root) }), "")
+	if code == 0 {
+		t.Fatalf("CmdInit = %d, want non-zero", code)
+	}
+	lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n")
+	wantLines := []string{
+		`cinch: init: error: core.hooksPath is already "other-hooks" — init won't overwrite another tool's hooks`,
+		`  fix: set paths.hooks to "other-hooks" in cinch.yml, or unset core.hooksPath (expected ".githooks")`,
+	}
+	if !slices.Equal(lines, wantLines) {
+		t.Fatalf("stderr = %q, want the error line and an indented fix line %q", stderr, wantLines)
+	}
+}
+
+// Each default shows once, as askLine's [default].
+func TestAskInitShowsEachDefaultOnce(t *testing.T) {
+	stdout := captureStdout(t, func() { askInit() })
+	for _, want := range []string{"paths.docs [.docs]: ", "paths.hooks [.githooks]: "} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("prompts = %q, want %q", stdout, want)
+		}
+	}
+	if strings.Contains(stdout, "(default") {
+		t.Fatalf("prompts = %q, want no '(default ...)' beside the [default]", stdout)
 	}
 }

@@ -188,7 +188,7 @@ func writeRenderedFiles(repoRoot string, files []renderFile) (changed bool, err 
 		output.Step("rendered %s", f.destination)
 	}
 	if upToDate > 0 {
-		output.Step("%d %s up to date", upToDate, output.Plural(upToDate, "file"))
+		output.Detail("%d %s up to date", upToDate, output.Plural(upToDate, "file"))
 	}
 	return changed, nil
 }

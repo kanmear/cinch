@@ -78,24 +78,55 @@ func CmdInit(repoRoot string) int {
 		return code
 	}
 
+	hooksActive := false
 	if gitutil.IsRepo(repoRoot) {
 		if out, err := gitutil.CombinedOutput(repoRoot, "config", "core.hooksPath", hooksDirectory); err != nil {
 			return output.Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
 		output.Step("activated hooks: core.hooksPath = %s", hooksDirectory)
+		hooksActive = true
 	} else {
 		output.Skip("hooks", "not a git repository — hook shims generated but not activated")
 	}
 
-	if !agentsPointerEnabled(m) {
+	if agentsPointerEnabled(m) {
+		if err := ensureAgentPointer(repoRoot, manifestVar(m, pathsDocsKey, defaultDocsPath)); err != nil {
+			return output.Fail("init", err)
+		}
+		hintClaudeMd(repoRoot)
+	} else {
 		output.Skip("init", fmt.Sprintf("%s is false — %s left alone", agentsPointerKey, agentsFile))
-		return 0
 	}
-	if err := ensureAgentPointer(repoRoot, manifestVar(m, pathsDocsKey, defaultDocsPath)); err != nil {
+
+	return printInitSummary(m, hooksActive)
+}
+
+// printInitSummary closes init's output with what is now in place and the
+// next step, counted from the render itself so it can't drift from it.
+func printInitSummary(m *manifest, hooksActive bool) int {
+	files, err := renderAll(m)
+	if err != nil {
 		return output.Fail("init", err)
 	}
-	hintClaudeMd(repoRoot)
-
+	docsRoot := docsPathValue(m)
+	workflowPrefix := docsRoot + "/" + workflowsSubdir + "/"
+	hookPrefix := hooksPathValue(m) + "/"
+	workflows, shims := 0, 0
+	for _, f := range files {
+		switch {
+		case strings.HasPrefix(f.destination, workflowPrefix):
+			workflows++
+		case strings.HasPrefix(f.destination, hookPrefix):
+			shims++
+		}
+	}
+	hooks := "hooks active"
+	if !hooksActive {
+		hooks = "hooks not active"
+	}
+	output.Success("cinch is set up: %s, %d %s, %d hook %s, %s",
+		manifestPath, workflows, output.Plural(workflows, "workflow"), shims, output.Plural(shims, "shim"), hooks)
+	output.Step("next: add rules under %s/, then run 'cinch check'", strings.TrimRight(docsRoot, "/"))
 	return 0
 }
 
@@ -113,14 +144,14 @@ func checkHooksPathFree(root, hooksDirectory string) int {
 	if got == "" || sameHooksDirectory(root, got, hooksDirectory) {
 		return 0
 	}
-	return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
+	return output.Failf("init", "core.hooksPath is already %q — init won't overwrite another tool's hooks\n  fix: set paths.hooks to %q in cinch.yml, or unset core.hooksPath (expected %q)", got, got, hooksDirectory)
 }
 
 func askInit() initAnswers {
 	answers := initAnswers{}
 
-	answers.docsPath = askLine("paths.docs (default .docs)", defaultDocsPath)
-	answers.hooksPath = askLine("paths.hooks (default .githooks)", defaultHooksPath)
+	answers.docsPath = askLine("paths.docs", defaultDocsPath)
+	answers.hooksPath = askLine("paths.hooks", defaultHooksPath)
 
 	if output.AskYesNo("enforce a commit message pattern?") {
 		answers.commitPattern = askLine("commit.pattern", "")

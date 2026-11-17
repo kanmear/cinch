@@ -12,11 +12,11 @@ import (
 type ansi string
 
 const (
-	colorReset   ansi = "\x1b[0m"
-	colorRed     ansi = "\x1b[31m"
-	colorRedBold ansi = "\x1b[1;31m"
-	colorYellow  ansi = "\x1b[33m"
-	colorGreen   ansi = "\x1b[32m"
+	colorReset  ansi = "\x1b[0m"
+	colorRed    ansi = "\x1b[31m"
+	colorYellow ansi = "\x1b[33m"
+	colorGreen  ansi = "\x1b[32m"
+	colorDim    ansi = "\x1b[2m"
 )
 
 func isColorTerminal(f *os.File) bool {
@@ -29,6 +29,23 @@ func isColorTerminal(f *os.File) bool {
 
 func IsInteractiveStdin(f *os.File) bool {
 	return term.IsTerminal(int(f.Fd()))
+}
+
+// DefaultWidth is what TerminalWidth reports when the size can't be read.
+const DefaultWidth = 100
+
+// IsTerminal reports whether f is a terminal, for commands that lay their
+// output out differently for a person than for a pipe.
+func IsTerminal(f *os.File) bool {
+	return term.IsTerminal(int(f.Fd()))
+}
+
+// TerminalWidth is f's column count, or DefaultWidth when it has none.
+func TerminalWidth(f *os.File) int {
+	if width, _, err := term.GetSize(int(f.Fd())); err == nil && width > 0 {
+		return width
+	}
+	return DefaultWidth
 }
 
 var (
@@ -73,12 +90,35 @@ func StatusText(good bool, text string) string {
 	return paint(stderrColor, colorRed, text)
 }
 
+// SkipText colors text yellow, the color Skip uses, for stderr.
+func SkipText(text string) string {
+	return paint(stderrColor, colorYellow, text)
+}
+
 func Skip(checker, msg string) {
 	fmt.Fprintf(os.Stderr, "%s: %s\n", checker, paint(stderrColor, colorYellow, "skip: "+msg))
 }
 
+// Step is a plain progress line. Color is reserved for status: green means
+// ok, red means failed.
 func Step(format string, args ...any) {
+	fmt.Printf(format+"\n", args...)
+}
+
+// Detail is a Step for secondary information, such as a count of files left
+// alone.
+func Detail(format string, args ...any) {
+	fmt.Println(paint(stdoutColor, colorDim, fmt.Sprintf(format, args...)))
+}
+
+// Success is the green closing line of a command that finished its job.
+func Success(format string, args ...any) {
 	fmt.Println(paint(stdoutColor, colorGreen, fmt.Sprintf(format, args...)))
+}
+
+// Dim marks secondary text, for stderr.
+func Dim(s string) string {
+	return paint(stderrColor, colorDim, s)
 }
 
 func UsageError(msg string) int {
@@ -135,12 +175,8 @@ func Plural(n int, word string) string {
 }
 
 func Level(level string) string {
-	switch level {
-	case "block":
-		return paint(stdoutColor, colorRedBold, level)
-	case "error":
-		return paint(stdoutColor, colorYellow, level)
-	default:
-		return level
+	if level == "error" {
+		return paint(stdoutColor, colorRed, level)
 	}
+	return level
 }
