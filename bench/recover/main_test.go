@@ -615,6 +615,10 @@ func TestArmSpecFromPins(t *testing.T) {
 	if err != nil || b.docsRoot != ".docs" || len(b.strip) != 0 || b.agents != nil {
 		t.Errorf("budgetron: %+v %v", b, err)
 	}
+	// DeltaDocs' arm texts are private and gitignored, so CI has no copy.
+	if _, err := os.Stat(filepath.Join(".", pins["DELTADOCS_AGENTS_DIR"])); os.IsNotExist(err) {
+		t.Skipf("%s absent (private, gitignored)", pins["DELTADOCS_AGENTS_DIR"])
+	}
 	d, err := armSpecFor(pins, ".", "deltadocs")
 	if err != nil || d.docsRoot != ".agent" || !reflect.DeepEqual(d.strip, []string{".claude", ".cursor", ".pi", ".pi-lens.json"}) {
 		t.Errorf("deltadocs: %+v %v", d, err)
