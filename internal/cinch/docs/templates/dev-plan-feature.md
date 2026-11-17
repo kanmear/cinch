@@ -80,5 +80,9 @@ build or run, and say so in the task.
 ## Handoff
 ```
 
+`**Status:**` takes one word: `planned` for a plan written ahead of its work, `in-progress` once
+work starts. Only plans live in `plans/`: the roadmap is `{{paths.docs}}/roadmap.md`, and work
+put off goes in its `## Deferred` section.
+
 Work through the tasks with `{{paths.docs}}/workflows/dev-execute-plan.md`, which also covers
 completion.

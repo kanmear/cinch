@@ -6,11 +6,13 @@ Every check below enforces [Doc Philosophy](docs-philosophy.md); read it first.
 
 ## 1. Load context
 
-Run `cinch index` for the full list of docs and their titles.
+Run `cinch index` for the full list of docs and their titles. Steps 2 and 3 cover those docs except
+`workflows/`, which cinch generates, and `{{paths.docs}}/roadmap.md`, which records intent.
+`cinch index` already leaves out `plans/`.
 
 ## 2. Prune first: the Admission Test, applied retroactively
 
-Apply the Admission Test to every existing doc, not just to new content:
+Apply the Admission Test to every doc in scope, not just to new content:
 
 - Anything an agent could recover by reading the source is **removed, not trimmed and not
   refreshed**. Deletion is the fix, and in this step the corpus only shrinks.
@@ -20,8 +22,7 @@ Apply the Admission Test to every existing doc, not just to new content:
 
 ## 3. Audit each doc
 
-Read every `.md` file under `{{paths.docs}}/` except `workflows/`, which cinch generates. For each,
-check:
+Read every doc in scope. For each, check:
 
 **Speculative content** (principle 5)
 - References to unimplemented features, "planned" sections, examples for things that don't exist

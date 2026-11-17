@@ -70,5 +70,7 @@ its enforcement, then a consumer's handling.
 ## Handoff
 ```
 
+`**Status:**` takes `planned` or `in-progress`, as for a feature plan.
+
 Work through the tasks with `{{paths.docs}}/workflows/dev-execute-plan.md`. If the diagnosis was
 non-obvious, record it via `{{paths.docs}}/workflows/docs-sync.md`.

@@ -251,6 +251,55 @@ func TestCheckChangedSkipsIrrelevantChecksVisibly(t *testing.T) {
 	}
 }
 
+// TestCheckChangedGatesPlansOnPlansMarkdown pins that --changed runs the
+// plans check when markdown under plans/ or cinch.yml changed, and prints a
+// skip line otherwise.
+func TestCheckChangedGatesPlansOnPlansMarkdown(t *testing.T) {
+	setup := func(t *testing.T, dirty func(root, docs string)) string {
+		t.Helper()
+		root := t.TempDir()
+		docs := filepath.Join(root, ".docs")
+		if err := os.MkdirAll(filepath.Join(docs, "plans"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		changedTestRepo(t, root,
+			func() {
+				writeTestFile(t, root, "cinch.yml", "paths:\n  docs: .docs\nplans:\n  lifecycle: enforce\n")
+				writeTestFile(t, docs, "a.md", "# A\n")
+				writeTestFile(t, filepath.Join(docs, "plans"), "p.md", "# P\n\n**Status:** planned\n")
+			},
+			func() { dirty(root, docs) },
+		)
+		return captureStderr(t, func() { runChecks(workingTreeRoots(root), "", true) })
+	}
+	skip := "plans: skip: nothing relevant changed"
+
+	t.Run("plan markdown changed", func(t *testing.T) {
+		out := setup(t, func(root, docs string) {
+			writeTestFile(t, filepath.Join(docs, "plans"), "p.md", "# P\n\n**Status:** planned\nedited\n")
+		})
+		if strings.Contains(out, skip) || !strings.Contains(out, "plans:") {
+			t.Fatalf("stderr = %q, want plans to run", out)
+		}
+	})
+	t.Run("cinch.yml changed", func(t *testing.T) {
+		out := setup(t, func(root, docs string) {
+			writeTestFile(t, root, "cinch.yml", "paths:\n  docs: .docs\nplans:\n  lifecycle: enforce\n# edited\n")
+		})
+		if strings.Contains(out, skip) || !strings.Contains(out, "plans:") {
+			t.Fatalf("stderr = %q, want plans to run", out)
+		}
+	})
+	t.Run("only a doc outside plans changed", func(t *testing.T) {
+		out := setup(t, func(root, docs string) {
+			writeTestFile(t, docs, "a.md", "# A\nedited\n")
+		})
+		if !strings.Contains(out, skip) {
+			t.Fatalf("stderr = %q, want %q", out, skip)
+		}
+	})
+}
+
 // TestCheckChangedLeavesOnlyExcludedChecksOut pins that the skip lines are
 // for --changed alone: a check --only leaves out prints nothing.
 func TestCheckChangedLeavesOnlyExcludedChecksOut(t *testing.T) {
@@ -389,7 +438,7 @@ func TestRunChecksStatusLinesInFixedOrder(t *testing.T) {
 	writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
 	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
 
-	want := []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
+	want := []string{"links", "rules", "index", "plans", "generated", "commit", "core", "hooks"}
 	if !reflect.DeepEqual(checkLaunchOrder, want) {
 		t.Fatalf("checkLaunchOrder = %v, want %v", checkLaunchOrder, want)
 	}

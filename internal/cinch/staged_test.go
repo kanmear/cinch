@@ -937,3 +937,41 @@ func TestStagedChecksErrorNamesRepoPathNotSnapshot(t *testing.T) {
 		t.Fatalf("stderr = %q, want the error to name the repository's cinch.yml", out)
 	}
 }
+
+// cinch:rule CINCH-017
+// cinch:rule CINCH-006
+func TestStagedChecksReadPlanStatusFromIndex(t *testing.T) {
+	root := t.TempDir()
+	git := initTestGitRepo(t, root)
+	plansDirectory := filepath.Join(root, ".docs", "plans")
+	if err := os.MkdirAll(plansDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, root, "cinch.yml", "paths:\n  docs: .docs\nplans:\n  lifecycle: enforce\n")
+	writeTestFile(t, plansDirectory, "a.md", "# A\n\n**Status:** planned\n")
+	git("add", "-A")
+	git("commit", "-q", "-m", "seed")
+
+	// Stage a status the folder doesn't allow, then put a valid one back on
+	// disk without staging it: only the index holds the violation.
+	writeTestFile(t, plansDirectory, "a.md", "# A\n\n**Status:** complete\n")
+	git("add", ".docs/plans/a.md")
+	writeTestFile(t, plansDirectory, "a.md", "# A\n\n**Status:** planned\n")
+
+	if got := runChecks(workingTreeRoots(root), "", false, "plans"); got != 0 {
+		t.Fatalf("working-tree plans = %d, want 0 (the status on disk is valid)", got)
+	}
+	roots, cleanup, err := stagedSnapshot(root)
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("stagedSnapshot: %v", err)
+	}
+	var code int
+	out := captureStdout(t, func() { code = runChecks(roots, "", false, "plans") })
+	if code != 1 {
+		t.Fatalf("staged plans = %d, want 1 (the staged status is complete in plans/)\n%s", code, out)
+	}
+	if want := filepath.Join(".docs", "plans", "a.md") + ":3:"; !strings.Contains(out, want) {
+		t.Fatalf("output = %q, want a finding at %s", out, want)
+	}
+}

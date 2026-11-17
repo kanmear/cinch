@@ -160,14 +160,14 @@ const (
 )
 
 var (
-	defaultPreCommitChecks = []string{"links", "rules", "index", "generated", "core"}
+	defaultPreCommitChecks = []string{"links", "rules", "index", "plans", "generated", "core"}
 	defaultCommitMsgChecks = []string{"commit"}
 
 	// checkLaunchOrder is both the order checks start in and the order their
 	// status lines print in, so the two can't drift apart. Checks finish in
 	// whatever order the scheduler picks; printing in this order is what
 	// keeps the output stable run to run.
-	checkLaunchOrder = []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
+	checkLaunchOrder = []string{"links", "rules", "index", "plans", "generated", "commit", "core", "hooks"}
 )
 
 // preCommitChecks and commitMsgChecks each load their own manifest copy
@@ -286,6 +286,15 @@ func generatedRelevant(root, docsRoot string, m *manifest, changed map[string]bo
 	return changedUnder(changed, filepath.Join(root, hooksPathValue(m)))
 }
 
+// plansRelevant reports whether a change can affect checkPlans: markdown under
+// the plans folder, or the manifest, whose plans.lifecycle key may just have
+// been turned on. The manifest finding is on cinch.yml itself, so scoped keeps
+// it too.
+func plansRelevant(root, docsRoot string, changed map[string]bool) bool {
+	return changed[filepath.Join(root, manifestPath)] ||
+		changedMarkdownUnder(changed, filepath.Join(docsRoot, "plans"))
+}
+
 // runChecks reads every checked file under roots.fsRoot. changed is only
 // meaningful for working-tree roots: unstaged paths say nothing about a
 // snapshot of the index.
@@ -349,6 +358,8 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) }), true},
 		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
 			scoped(func() checkResult { return indexCheckResult(checkIndex(roots, docsRoot)) }), true},
+		"plans": {relevant(plansRelevant(roots.fsRoot, docsRoot, changedSet)),
+			scoped(func() checkResult { return checkPlans(roots, docsRoot, m) }), true},
 		"generated": {relevant(generatedRelevant(roots.fsRoot, docsRoot, m, changedSet)),
 			func() checkResult { return checkGenerated(roots, m, mErr) }, true},
 		// Without a MSGFILE commit stays silent unless it was asked for by
