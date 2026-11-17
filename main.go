@@ -14,31 +14,41 @@ var Version = "dev"
 const helpText = `cinch — check the operational docs that govern a repository
 
 usage:
-  cinch help              print this list; -h and --help are aliases
-  cinch version           print the cinch version
+
+setup
   cinch init              scaffold a consumer (fills cinch.yml, renders, activates hooks)
+  cinch render            re-render workflows and hook shims from cinch.yml
+  cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
+
+check
   cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
   cinch check --changed [--only NAMES] [MSGFILE]
                           scope checks to unstaged files; --only restricts which checks run
-                          (NAMES: links,rules,index,plans,generated,commit,core,hooks)
   cinch check --staged [--only NAMES] [MSGFILE]
                           check the staged content, as the pre-commit hook does
-  cinch ignores           list every cinch:ignore declaration
-  cinch render            render docs/templates and git hook shims from cinch.yml
-  cinch upgrade           render + sync require.cinch + run checks after reinstalling cinch
-  cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
-  cinch workflows         print the workflow trigger table
-  cinch workflow NAME     print one rendered workflow
+  NAMES (for --only), comma-separated: links, rules, index, plans, generated, commit, core, hooks
+
+inspect
   cinch index             print every doc's path and title
   cinch index --links-to PATH
                           list the docs that link to PATH
   cinch index --links-from PATH
                           list the docs PATH links to
+  cinch workflows         print the workflow trigger table
+  cinch workflow NAME     print one rendered workflow
+  cinch ignores           list every cinch:ignore declaration
   cinch rules --json      print the machine-readable rule inventory
   cinch impact [FILES...] advisory: rule IDs a diff plausibly affects (default: staged)
+
+move
   cinch mv SRC DST        move a .md file under the docs root and rewrite the links to and in it
   cinch plan archive FILE...
                           move complete or cut plans from plans/ to plans/archive/
+
+plumbing
+  cinch hook EVENT [ARGS] git-hook dispatcher the generated shims exec into
+  cinch version           print the cinch version
+  cinch help              print this list; -h and --help are aliases
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -102,7 +112,8 @@ func main() {
 		if len(os.Args) > 2 {
 			os.Exit(output.UsageError("workflows: takes no arguments"))
 		}
-		os.Exit(impl.CmdWorkflows("."))
+		// Decided here, once, so the listing code never touches the terminal.
+		os.Exit(impl.CmdWorkflows(".", output.IsTerminal(os.Stdout), output.TerminalWidth(os.Stdout)))
 	case "workflow":
 		if len(os.Args) != 3 {
 			os.Exit(output.UsageError("workflow: requires exactly one NAME argument"))
@@ -189,7 +200,7 @@ func checkCommand(args []string) int {
 // command would be the only one.
 func indexCommand(args []string) int {
 	if len(args) == 0 {
-		return impl.CmdIndex(".")
+		return impl.CmdIndex(".", output.IsTerminal(os.Stdout))
 	}
 
 	flag := args[0]

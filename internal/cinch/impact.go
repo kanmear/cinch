@@ -191,10 +191,10 @@ func printImpact(hits []impactHit, capped bool) {
 		}
 	}
 	if anyCut {
-		fmt.Fprintln(os.Stderr, "confirm the docs still match (cinch impact lists every ID)")
+		fmt.Fprintln(os.Stderr, output.Dim("confirm the docs still match (cinch impact lists every ID)"))
 		return
 	}
-	fmt.Fprintln(os.Stderr, "confirm the docs still match")
+	fmt.Fprintln(os.Stderr, output.Dim("confirm the docs still match"))
 }
 
 // CmdImpact is a standalone entry point (cinch impact [FILES...]); when no

@@ -131,9 +131,24 @@ func TestPreCommitHookWarnsWhenTreeDiffersFromCommit(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("cmdHookPreCommit = %d, want 0 (a warning never blocks)\n%s", code, stderr)
 	}
-	want := "cinch: hook: warning: pre-commit scripts run in the working tree, which differs from this commit in 3 files (1 unstaged, 2 untracked)"
-	if strings.Count(stderr, "warning:") != 1 || !strings.Contains(stderr, want+"\n") {
-		t.Fatalf("stderr = %q, want exactly one line %q", stderr, want)
+	want := "cinch: hook: warning: pre-commit scripts run in the working tree, not this commit\n  3 files differ: 1 unstaged, 2 untracked\n"
+	if strings.Count(stderr, "warning:") != 1 || !strings.Contains(stderr, want) {
+		t.Fatalf("stderr = %q, want exactly one warning shaped %q", stderr, want)
+	}
+}
+
+func TestPreCommitHookWarnsWhenOneFileDiffers(t *testing.T) {
+	root := t.TempDir()
+	hookTestRepo(t, root, oneScriptManifest)
+	writeTestFile(t, root, "scratch.txt", "untracked\n")
+
+	code, stderr := runPreCommitHook(t, root)
+	if code != 0 {
+		t.Fatalf("cmdHookPreCommit = %d, want 0 (a warning never blocks)\n%s", code, stderr)
+	}
+	want := "\n  1 file differs: 0 unstaged, 1 untracked\n"
+	if !strings.Contains(stderr, want) {
+		t.Fatalf("stderr = %q, want it to contain %q", stderr, want)
 	}
 }
 
@@ -182,14 +197,14 @@ func TestFailingHookStepDoesNotStopLaterStepsAndSummaryNamesEach(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "second.ran")); err != nil {
 		t.Fatalf("the second step did not run after the first failed: %v", err)
 	}
-	if !strings.Contains(stderr, "pre-commit: first failed: exit status 2") {
-		t.Fatalf("stderr = %q, want the failure reported where it happened", stderr)
+	if got := strings.Count(stderr, "exit status 2"); got != 1 {
+		t.Fatalf("stderr = %q, want the failure named once, in the summary row", stderr)
 	}
 
 	lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n")
 	got := strings.Join(lines[len(lines)-4:], "\n")
 	want := strings.Join([]string{
-		"cinch: hook: pre-commit: 1 of 3 steps failed",
+		"pre-commit: 1 of 3 steps failed",
 		"  checks  ok",
 		"  first   failed (exit status 2)",
 		"  second  ok",
@@ -211,7 +226,7 @@ func TestHookSummaryCoversSkippedStepsAndOtherEvents(t *testing.T) {
 		if code != 0 {
 			t.Fatalf("cmdHookPreCommit = %d, want 0\n%s", code, stderr)
 		}
-		for _, want := range []string{"cinch: hook: pre-commit: 2 steps ok", "  docs-only  skipped", "  always     ok"} {
+		for _, want := range []string{"pre-commit: 2 steps ok", "  docs-only  skipped", "  always     ok"} {
 			if !strings.Contains(stderr, want+"\n") {
 				t.Fatalf("stderr = %q, want line %q", stderr, want)
 			}
@@ -227,7 +242,7 @@ func TestHookSummaryCoversSkippedStepsAndOtherEvents(t *testing.T) {
 		if code != 0 {
 			t.Fatalf("cmdHookPostCommit = %d, want 0\n%s", code, stderr)
 		}
-		if !strings.Contains(stderr, "cinch: hook: post-commit: 1 step ok\n  notify  ok\n") || strings.Contains(stderr, "checks") {
+		if !strings.Contains(stderr, "post-commit: 1 step ok\n  notify  ok\n") || strings.Contains(stderr, "checks") {
 			t.Fatalf("stderr = %q, want a summary with only the notify row", stderr)
 		}
 	})
@@ -240,4 +255,20 @@ func TestHookSummaryCoversSkippedStepsAndOtherEvents(t *testing.T) {
 			t.Fatalf("stderr = %q, want no summary when no project script ran", stderr)
 		}
 	})
+}
+
+func TestHookFramesEachScriptAndKeepsItsPrefixShape(t *testing.T) {
+	root := t.TempDir()
+	hookTestRepo(t, root, "hooks:\n  pre-commit:\n    first:\n      run: exit 2\n    second:\n      run: |\n        touch second.ran\n        echo more\n")
+
+	_, stderr := runPreCommitHook(t, root)
+
+	for _, want := range []string{"pre-commit: first: exit 2\n", "pre-commit: second: touch second.ran ...\n"} {
+		if !strings.Contains(stderr, want) {
+			t.Fatalf("stderr = %q, want framing line %q", stderr, want)
+		}
+	}
+	if strings.Contains(stderr, "cinch: hook: pre-commit:") {
+		t.Fatalf("stderr = %q, want script-related lines shaped '<event>: ...', not 'cinch: hook: ...'", stderr)
+	}
 }

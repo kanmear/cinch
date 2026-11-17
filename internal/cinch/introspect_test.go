@@ -3,6 +3,7 @@ package cinch
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -252,5 +253,107 @@ func TestLinksListAgreesVerbWithCount(t *testing.T) {
 	}
 	if !strings.Contains(single, "1 doc links to b.md:") {
 		t.Fatalf("inbound = %q, want %q", single, "1 doc links to b.md:")
+	}
+}
+
+func workflowsFixture(t *testing.T) string {
+	t.Helper()
+	docsRoot := t.TempDir()
+	workflows := filepath.Join(docsRoot, workflowsSubdir)
+	if err := os.MkdirAll(workflows, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, workflows, "dev-fix-bug.md", "# Bug Fix\n\nUse this when a bug crosses layers, needs more than one session, or comes from a missing rule.\n")
+	writeTestFile(t, workflows, "docs.md", "# Docs\n\nUse this to sync docs.\n")
+	return docsRoot
+}
+
+func TestWorkflowsTablePipedIsMarkdown(t *testing.T) {
+	docsRoot := workflowsFixture(t)
+
+	// The width is ignored when piped: agents parse this table.
+	for _, width := range []int{20, 100} {
+		got, err := workflowsTable(docsRoot, false, width)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := "2 workflows:\n\n" +
+			"| Workflow | Trigger |\n" +
+			"|---|---|\n" +
+			"| [dev-fix-bug.md](dev-fix-bug.md) | Use this when a bug crosses layers, needs more than one session, or comes from a missing rule. |\n" +
+			"| [docs.md](docs.md) | Use this to sync docs. |\n"
+		if got != want {
+			t.Fatalf("width %d: table =\n%s\nwant\n%s", width, got, want)
+		}
+	}
+}
+
+func TestWorkflowsTableTerminalAlignsAndWraps(t *testing.T) {
+	docsRoot := workflowsFixture(t)
+
+	got, err := workflowsTable(docsRoot, true, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "2 workflows:\n\n" +
+		"dev-fix-bug  Use this when a bug crosses layers,\n" +
+		"             needs more than one session, or comes\n" +
+		"             from a missing rule.\n" +
+		"docs         Use this to sync docs.\n"
+	if got != want {
+		t.Fatalf("table =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestWrapWords(t *testing.T) {
+	cases := []struct {
+		name  string
+		text  string
+		width int
+		want  []string
+	}{
+		{"fits", "one two", 20, []string{"one two"}},
+		{"wraps at a space", "one two three", 7, []string{"one two", "three"}},
+		{"long word keeps its own line", "a bigword b", 3, []string{"a", "bigword", "b"}},
+		{"empty", "", 10, []string{""}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := wrapWords(tc.text, tc.width); !slices.Equal(got, tc.want) {
+				t.Fatalf("wrapWords(%q, %d) = %q, want %q", tc.text, tc.width, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIndexListAlignsPathsOnlyOnATerminal(t *testing.T) {
+	docsRoot := t.TempDir()
+	writeTestFile(t, docsRoot, "a.md", "# Alpha\n")
+	if err := os.MkdirAll(filepath.Join(docsRoot, "workflows"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(docsRoot, "workflows"), "long-name.md", "# Long\n")
+
+	piped, err := indexList(docsRoot, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "2 docs under " + docsRoot + ":\n\na.md — Alpha\nworkflows/long-name.md — Long\n"; piped != want {
+		t.Fatalf("piped index =\n%s\nwant\n%s", piped, want)
+	}
+
+	aligned, err := indexList(docsRoot, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "2 docs under " + docsRoot + ":\n\na.md                   — Alpha\nworkflows/long-name.md — Long\n"; aligned != want {
+		t.Fatalf("aligned index =\n%s\nwant\n%s", aligned, want)
+	}
+}
+
+func TestPhilosophyTriggerNamesItsRole(t *testing.T) {
+	title, trigger := titleAndTrigger(philosophySrc)
+	if title == "" || !strings.HasPrefix(trigger, "Use this as the reference the other workflows cite") {
+		t.Fatalf("title = %q, trigger = %q, want a 'Use this ...' trigger like the other workflows", title, trigger)
 	}
 }

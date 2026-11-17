@@ -47,11 +47,11 @@ func CmdUpgrade(repoRoot string) int {
 	return preCommitChecks(workingTreeRoots(repoRoot))
 }
 
-// reportPinStatus surfaces the ">=" floor cases syncRequireCinch leaves
-// silent: a floor it won't raise, either because it's already satisfied with
-// no rendered change or because the installed binary is below it.
-// syncRequireCinch reports its own rewrites, and both stay silent when unset,
-// any, on a dev build, or for an exact pin that already matches.
+// reportPinStatus confirms a satisfied ">=" floor that syncRequireCinch left
+// alone. A floor the installed binary is below is not reported here:
+// CmdUpgrade ends with preCommitChecks, whose core finding already names it.
+// syncRequireCinch reports its own rewrites, and everything stays silent when
+// unset, any, on a dev build, or for an exact pin that already matches.
 func reportPinStatus(m *manifest, changed bool) {
 	want, ok := manifestSetting(m, requireCinchKey)
 	if !ok || Version == "dev" {
@@ -66,7 +66,5 @@ func reportPinStatus(m *manifest, changed bool) {
 		if !changed || semver.Equal(Version, minimum) {
 			output.Step("range pin >=%s is satisfied by installed %s; no change", minimum, Version)
 		}
-		return
 	}
-	output.Step("range pin >=%s is NOT satisfied by installed %s — reinstall a newer cinch binary", minimum, Version)
 }

@@ -3,6 +3,7 @@ package cinch
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -115,4 +116,48 @@ func TestCmdUpgradeRaisesFloorWhenOutputChanged(t *testing.T) {
 	if got, ok := manifestSetting(m, requireCinchKey); !ok || got != ">=1.2.4" {
 		t.Fatalf("require.cinch = %q, ok=%v, want raised to >=1.2.4", got, ok)
 	}
+}
+
+func TestCmdUpgradePinStatusGoesWhereItBelongs(t *testing.T) {
+	t.Run("unsatisfied range pin is left to the core finding", func(t *testing.T) {
+		withVersion(t, "1.0.0")
+		withReleaseCheckDisabled(t)
+		root := t.TempDir()
+		writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=2.0.0'\n")
+
+		var stdout, stderr string
+		stdout = captureStdout(t, func() {
+			stderr = captureStderr(t, func() { CmdUpgrade(root) })
+		})
+		stdout = ansiPattern.ReplaceAllString(stdout, "")
+		stderr = ansiPattern.ReplaceAllString(stderr, "")
+
+		// The upgrade itself says nothing; preCommitChecks reports it once.
+		if strings.Contains(stdout, "range pin") || strings.Contains(stderr, "range pin") {
+			t.Fatalf("stdout = %q, stderr = %q, want no upgrade-level pin line", stdout, stderr)
+		}
+		want := "installed cinch 1.0.0 does not satisfy require.cinch >=2.0.0"
+		if n := strings.Count(stdout+stderr, want); n != 1 {
+			t.Fatalf("stdout = %q, stderr = %q, want the core finding %q exactly once, got %d", stdout, stderr, want, n)
+		}
+	})
+
+	t.Run("satisfied range pin stays a plain step", func(t *testing.T) {
+		withVersion(t, "1.2.4")
+		withReleaseCheckDisabled(t)
+		root := t.TempDir()
+		writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
+		if code := CmdRender(root); code != 0 {
+			t.Fatalf("CmdRender = %d, want 0", code)
+		}
+
+		var stdout, stderr string
+		stdout = captureStdout(t, func() {
+			stderr = captureStderr(t, func() { CmdUpgrade(root) })
+		})
+
+		if !strings.Contains(stdout, "range pin >=1.0.0 is satisfied by installed 1.2.4; no change\n") || strings.Contains(stderr, "warning") {
+			t.Fatalf("stdout = %q, stderr = %q, want the satisfied line on stdout and no warning", stdout, stderr)
+		}
+	})
 }

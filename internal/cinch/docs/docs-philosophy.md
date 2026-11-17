@@ -1,5 +1,7 @@
 # Philosophy: Lean, Scalable Documentation
 
+Use this as the reference the other workflows cite: what earns a place in the docs, and what stays in the code.
+
 **The Core Insight:** With clean architecture, the code IS the documentation. These docs exist only for information that can't be derived from reading the source.
 
 **The Admission Test:** Before writing anything, ask: *can an agent recover this by reading the source?* If yes, it does not get written — point at the source instead ("See `<path/to/file>` for the <pattern> pattern"). The corpus stays fresh by construction because nothing in it can be falsified by a code change. If no, it earns a place — then ask *could a code change falsify this?* If yes, it is a business rule: it belongs in a rule doc under the docs root, with a rule ID, where the rule-ID closure guards it. If no, it is a decision or a why: prose, here.

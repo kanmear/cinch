@@ -7,12 +7,15 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
-func indexList(docsRoot string) (string, error) {
+// indexList pads the path column when aligned is set, so the titles line up;
+// piped output keeps the one-line "path — title" shape.
+func indexList(docsRoot string, aligned bool) (string, error) {
 	type entry struct {
 		rel   string
 		title string
@@ -46,8 +49,14 @@ func indexList(docsRoot string) (string, error) {
 	sort.Slice(entries, func(i, j int) bool { return entries[i].rel < entries[j].rel })
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d %s under %s:\n\n", len(entries), output.Plural(len(entries), "doc"), docsRoot)
+	pathWidth := 0
+	if aligned {
+		for _, e := range entries {
+			pathWidth = max(pathWidth, utf8.RuneCountInString(e.rel))
+		}
+	}
 	for _, e := range entries {
-		fmt.Fprintf(&b, "%s — %s\n", e.rel, e.title)
+		fmt.Fprintf(&b, "%s%s — %s\n", e.rel, strings.Repeat(" ", max(pathWidth-utf8.RuneCountInString(e.rel), 0)), e.title)
 	}
 	return b.String(), nil
 }
@@ -94,12 +103,12 @@ func indexCheckResult(report indexReport) checkResult {
 	}
 }
 
-func CmdIndex(repoRoot string) int {
+func CmdIndex(repoRoot string, aligned bool) int {
 	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("index", err)
 	}
-	list, err := indexList(docsRoot)
+	list, err := indexList(docsRoot, aligned)
 	if err != nil {
 		return output.Fail("index", err)
 	}
@@ -264,34 +273,80 @@ func listWorkflowNames(docsRoot string) ([]string, error) {
 	return names, nil
 }
 
-func workflowsTable(docsRoot string) (string, error) {
+// workflowsTable is the markdown table agents read when output is piped. On a
+// terminal (aligned) it is a name column and a trigger wrapped to width with a
+// hanging indent. The caller decides which, so tests can cover both without a
+// pty.
+func workflowsTable(docsRoot string, aligned bool, width int) (string, error) {
 	names, err := listWorkflowNames(docsRoot)
 	if err != nil || len(names) == 0 {
 		return "", fmt.Errorf("cinch render has not run — nothing to show")
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, "%d %s:\n\n", len(names), output.Plural(len(names), "workflow"))
-	b.WriteString("| Workflow | Trigger |\n")
-	b.WriteString("|---|---|\n")
-	for _, name := range names {
-		file := name + ".md"
-		data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, file))
+	triggers := make([]string, len(names))
+	nameWidth := 0
+	for i, name := range names {
+		data, err := os.ReadFile(filepath.Join(docsRoot, workflowsSubdir, name+".md"))
 		if err != nil {
 			return "", err
 		}
-		_, trigger := titleAndTrigger(string(data))
-		fmt.Fprintf(&b, "| [%s](%s) | %s |\n", file, file, trigger)
+		_, triggers[i] = titleAndTrigger(string(data))
+		nameWidth = max(nameWidth, utf8.RuneCountInString(name))
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d %s:\n\n", len(names), output.Plural(len(names), "workflow"))
+	if !aligned {
+		b.WriteString("| Workflow | Trigger |\n")
+		b.WriteString("|---|---|\n")
+		for i, name := range names {
+			file := name + ".md"
+			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", file, file, triggers[i])
+		}
+		return b.String(), nil
+	}
+
+	const gap = 2
+	indent := strings.Repeat(" ", nameWidth+gap)
+	for i, name := range names {
+		lines := wrapWords(triggers[i], max(width-nameWidth-gap, minTriggerWidth))
+		fmt.Fprintf(&b, "%-*s%s\n", nameWidth+gap, name, lines[0])
+		for _, line := range lines[1:] {
+			fmt.Fprintf(&b, "%s%s\n", indent, line)
+		}
 	}
 	return b.String(), nil
 }
 
-func CmdWorkflows(repoRoot string) int {
+// minTriggerWidth keeps a very narrow terminal from wrapping a trigger one
+// word per line.
+const minTriggerWidth = 20
+
+// wrapWords breaks text at spaces into lines of at most width runes; a single
+// word longer than width gets a line to itself. It always returns one line.
+func wrapWords(text string, width int) []string {
+	var lines []string
+	current := ""
+	for _, word := range strings.Fields(text) {
+		switch {
+		case current == "":
+			current = word
+		case utf8.RuneCountInString(current)+1+utf8.RuneCountInString(word) <= width:
+			current += " " + word
+		default:
+			lines = append(lines, current)
+			current = word
+		}
+	}
+	return append(lines, current)
+}
+
+func CmdWorkflows(repoRoot string, aligned bool, width int) int {
 	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("workflows", err)
 	}
-	table, err := workflowsTable(docsRoot)
+	table, err := workflowsTable(docsRoot, aligned, width)
 	if err != nil {
 		return output.Fail("workflows", err)
 	}
