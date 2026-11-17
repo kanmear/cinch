@@ -1201,6 +1201,19 @@ func TestFakeEngineProvisioningAndSandbox(t *testing.T) {
 	c.taskFilter = []string{"T1"}
 	c.armFilter = []int{1, 3}
 	c.workspaces = filepath.Join(work, "ws-test")
+	// run refuses a grader cinch other than the pinned one; skip like the
+	// states test does rather than fail on every machine with a newer cinch.
+	pins, err := loadPins(c.pinsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cinchBin, err := findCinch(c.cinch)
+	if err != nil {
+		t.Skip(err)
+	}
+	if out, err := exec.Command(cinchBin, "version").Output(); err != nil || strings.TrimSpace(string(out)) != pins["CINCH_VERSION"] {
+		t.Skipf("cinch is %q, PINS records %s", out, pins["CINCH_VERSION"])
+	}
 	if err := run(c); err != nil {
 		t.Fatalf("run: %v", err)
 	}

@@ -1,5 +1,7 @@
 # 25. Upkeep ablation
 
+**Status:** in-progress
+
 **Tier 4 — evidence. Cost estimate: local runs, about two nights. This is the experiment
 cinch's existence depends on. Status: Budgetron set pre-registered 2026-10-28 (tag
 `prereg/upkeep`). The design of record is
@@ -7,7 +9,7 @@ cinch's existence depends on. Status: Budgetron set pre-registered 2026-10-28 (t
 
 ## Provenance
 
-**Benchmark** (planned). This is claim #3 in [21](21-benchmark-suite.md). It closes the gap
+**Benchmark** (planned). This is claim #3 in [21](archive/21-benchmark-suite.md). It closes the gap
 between two earlier results in `~/code/cinch_bench/FINDINGS.md`:
 
 - The layer ablation showed cinch's tooling adds nothing to **reading** the docs. Grep and a
@@ -26,7 +28,7 @@ the docs and the `AGENTS.md` pointer already do on their own.
 ## Tasks
 
 Changes that break or extend existing rules, run on Budgetron at a pinned tag (the public
-fixture from [23](23-public-fixture.md)) and on DeltaDocs as a labeled private data point.
+fixture from [23](archive/23-public-fixture.md)) and on DeltaDocs as a labeled private data point.
 Tasks are written per repo, because the two corpora share no rules. Each task's answer key
 names the rules it touches, and whether a correct solution changes a rule, adds one, or must
 leave all rules true.
@@ -45,7 +47,7 @@ leave all rules true.
   optional. That gets published, on the front page.
 - **If arm 3 wins**, that's the headline.
 - This result also gates the longitudinal study (claim #8, item
-  [07](07-workflow-prose-value-and-f1-scope.md)'s expensive half). Run that only if arm 3
+  [07](archive/07-workflow-prose-value-and-f1-scope.md)'s expensive half). Run that only if arm 3
   wins.
 
 ## Pre-registration

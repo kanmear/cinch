@@ -1,5 +1,7 @@
 # 20. Replay history for rule growth
 
+**Status:** planned
+
 **Tier 4 — evidence. Cost estimate: one script, run once at the end of the MVP push.**
 
 ## Provenance
@@ -10,7 +12,7 @@ counts blocks and bypasses, and this item counts whether the corpus grew while c
 ## Why
 
 The missing-rule step (step 2 of `dev-plan-feature`) is the newest and most important part of
-the workflow pack. It's also the part item [07](07-workflow-prose-value-and-f1-scope.md) could
+the workflow pack. It's also the part item [07](archive/07-workflow-prose-value-and-f1-scope.md) could
 not measure: the workflow ablation held the corpus fixed. If feature and fix merges land
 without adding or changing rules, the step isn't working and the workflow prose still isn't
 paying for itself. This replay needs no setup now, because it reads the repo after the fact.
@@ -27,8 +29,8 @@ For each merge onto `project_deltadocs`'s `dev` since the release:
 4. Diff each row against the previous one: rules added, rules changed, rules removed.
 
 This is the "walk history, run at each commit" mechanism from item
-[09](09-calibrate-heuristics-against-history.md). Write it as a reusable script so 09's
-calibration replays and claim #7 (history replay) in [21](21-benchmark-suite.md) can reuse it,
+[09](archive/09-calibrate-heuristics-against-history.md). Write it as a reusable script so 09's
+calibration replays and claim #7 (history replay) in [21](archive/21-benchmark-suite.md) can reuse it,
 rather than writing three bespoke loops.
 
 Run the replay with cinch 0.9.2 or later. Before that, `rules --json` listed an ID's marker

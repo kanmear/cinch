@@ -182,6 +182,13 @@ func TestWalkOnARealRepo(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
+	// Under a pre-commit hook git exports a relative GIT_INDEX_FILE (and may
+	// export GIT_DIR); inherited, they point the worktree below at the wrong
+	// index. Drop the repo-local variables, as gitutil does for foreign repos.
+	for _, k := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"} {
+		t.Setenv(k, "")
+		os.Unsetenv(k)
+	}
 	repo := t.TempDir()
 	sh := func(dir string, args ...string) {
 		t.Helper()

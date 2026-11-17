@@ -1,5 +1,7 @@
 name: release
 
+# Runs when `make ship` (or `make release`) pushes a v<version> tag; goreleaser builds the
+# binaries from .goreleaser.yml and publishes the GitHub release.
 on:
   push:
     tags:
@@ -17,11 +19,11 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: go.mod
       - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

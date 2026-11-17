@@ -1,7 +1,7 @@
 # Benchmarks
 
 Evidence for the claims cinch makes, one benchmark per claim, each designed so that it could
-prove the claim false. The plan behind this directory is `.docs/plans/21-benchmark-suite.md`,
+prove the claim false. The plan behind this directory is `.docs/plans/archive/21-benchmark-suite.md`,
 and each benchmark has its own plan item.
 
 ## Rules this directory follows
@@ -96,7 +96,7 @@ hook pays it, even though it never blocks a commit.
 ## Binding strength
 
 **Private fixture.** This runs on `project_deltadocs`, a private product, so it can't be
-reproduced from outside. Plan [04](../.docs/plans/04-measure-binding-strength.md) has the
+reproduced from outside. Plan [04](../.docs/plans/archive/04-measure-binding-strength.md) has the
 reasoning; this section is the pre-registered method.
 
 **Question.** A `cinch:rule` marker only proves that a rule ID resolves. When the code

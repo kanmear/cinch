@@ -1,5 +1,7 @@
 # 19. Field log during the DeltaDocs MVP push
 
+**Status:** in-progress
+
 **Tier 4 — evidence. Cost estimate: one script per consumer repo now, about 10 minutes a week
 of labeling, and one afternoon of analysis at the end.**
 
@@ -15,7 +17,7 @@ that observes what happens instead of predicting it.
 A commit cinch blocked never lands. A `--no-verify` bypass looks like any other commit. Those
 are exactly the cases that most need counting, so something has to record them as they
 happen. This item has to be installed **now**, before the push, which is why it's numbered
-ahead of the benchmarks in [21](21-benchmark-suite.md) even though it's analyzed last.
+ahead of the benchmarks in [21](archive/21-benchmark-suite.md) even though it's analyzed last.
 
 ## What it answers
 
@@ -24,7 +26,7 @@ ahead of the benchmarks in [21](21-benchmark-suite.md) even though it's analyzed
 | Does cinch catch real problems? | Hook log, then weekly labeling | Automatic, plus ~10 min/week |
 | Does it block wrongly, or get bypassed? | Hook log | Automatic |
 | Do rules get written as you go (is the missing-rule step working)? | [20](20-rule-growth-replay.md), at the end | One script, once |
-| Does a passing check mean the rules are actually tested? | [04](04-measure-binding-strength.md) | One local run, overnight |
+| Does a passing check mean the rules are actually tested? | [04](archive/04-measure-binding-strength.md) | One local run, overnight |
 
 ## 1. The hook log (no cinch changes needed)
 
@@ -74,7 +76,7 @@ hooks:
 Two dependencies to know about:
 
 - The post-commit branch relies on `GIT_INDEX_FILE` being honored by `cinch check --staged`.
-  That's item [14](14-pre-commit-checks-index.md)'s snapshot design, covered by
+  That's item [14](archive/14-pre-commit-checks-index.md)'s snapshot design, covered by
   `internal/cinch/staged_test.go`.
 - The `grep` matches the finding format printed at `internal/cinch/check.go:326`
   (`<check> <level> <file>:<line>: <msg>`). That only works with colour off. It is: colour is
@@ -181,12 +183,12 @@ Also record the bypasses from the log, and note why each one happened.
 ## 3. Decision rules (pre-registered)
 
 These are written down before any data exists, following item
-[09](09-calibrate-heuristics-against-history.md)'s discipline. This file's commit timestamp is
+[09](archive/09-calibrate-heuristics-against-history.md)'s discipline. This file's commit timestamp is
 the evidence that they came first.
 
 - **Wrong blocks.** If any check produces more than one FP or bypass a week, fix that check
   before anything else.
-- **Binding strength** ([04](04-measure-binding-strength.md)). Above about 90% biting, close
+- **Binding strength** ([04](archive/04-measure-binding-strength.md)). Above about 90% biting, close
   the question. Below about 70%, build a mutation-check step into the coverage audit.
 - **Rule growth** ([20](20-rule-growth-replay.md)). If close to zero merges add rules over the
   MVP push, cut the dev workflows down to the missing-rule step and the entry gate.
@@ -206,7 +208,7 @@ review, which can only predict this behavior.
 - `~/code/cinch_bench/field-log.md` has a labeled entry for every distinct finding and every
   bypass at the end of the MVP push.
 - A results note applies each decision rule above to the data and states the outcome. It feeds
-  claim #7 in [21](21-benchmark-suite.md).
+  claim #7 in [21](archive/21-benchmark-suite.md).
 
 **State (2026-10-06):** `~/code/cinch_bench/` is not on this machine yet; it will be available
 later. The hook log doesn't need it, so install the script now. The labels file is created there

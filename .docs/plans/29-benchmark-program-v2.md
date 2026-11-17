@@ -1,7 +1,9 @@
 # 29. Benchmark program v2: measure the premise, not the checker
 
+**Status:** in-progress
+
 **Tier 4 — evidence. Status: in progress. Supersedes the order in
-[21](21-benchmark-suite.md); 21's claims and publishing rules still apply. 2026-11-01: A done
+[21](archive/21-benchmark-suite.md); 21's claims and publishing rules still apply. 2026-11-01: A done
 (`bench/drift/`), G done (`bench/field/`), B pre-registered (`prereg/recover`), 25 amended
 (`prereg/upkeep-amend2`). D is being designed; C, E and F wait on B.**
 
@@ -103,7 +105,7 @@ answered from the question itself. A code-only agent (docs removed, no pointer) 
 judge from a different model family grades against the rule text. The share of rules *not*
 recoverable is the normative share. Questions and keys are committed before any run.
 
-This makes [10](10-kind-normative-vs-descriptive.md)'s `kind:` decision empirical, says which
+This makes [10](archive/10-kind-normative-vs-descriptive.md)'s `kind:` decision empirical, says which
 rules are worth protecting, and picks the far rules for C.
 
 **Status (2026-11-01):** questions, keys, `PINS` and the rubric are committed (`prereg/recover`).
@@ -130,7 +132,7 @@ accumulation at a fraction of F's cost.
 
 ### F. Corpus genesis
 
-[07](07-workflow-prose-value-and-f1-scope.md)'s expensive half: start from no corpus, N tasks
+[07](archive/07-workflow-prose-value-and-f1-scope.md)'s expensive half: start from no corpus, N tasks
 with and without the workflows, grade the residue with A and B. Free on pi. With A and B
 built, its grading is mechanical, which is what made it unaffordable before.
 

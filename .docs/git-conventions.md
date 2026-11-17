@@ -1,110 +1,122 @@
 # Git conventions
+<!-- harness-template v2 -->
 
-Branch model, commit-message shapes, and the auto-versioning scheme. The message
-shapes are enforced by cinch's own `commit` check from the `commit:` block in `cinch.yml`
-(CINCH-015, CINCH-016); the version bump by `scripts/post-commit-version-bump.sh`. Ported
-from `project_deltadocs`'s version-bump hooks and adapted for a single-binary Go repo.
-Cinch runs on itself: `.githooks/*` are shims rendered by `cinch init`, and they call
-`cinch hook <event>`. That runs cinch's own checks, then dispatches to the bump script
-registered under `hooks.post-commit` in `cinch.yml`.
-
-## Setup
-
-New clone: `make setup-hooks`. It installs the current cinch onto `PATH` (the shims
-exec it) and runs `cinch init`, which renders `.docs/workflows/*` and the shims and
-sets `core.hooksPath`. Rendered files are generated. Never edit them by hand. Change
-the templates or `cinch.yml` and re-render. After changing cinch's checks or
-templates, run `make install` again so the hooks use the new build.
+The one git doc: branch model, commit shapes, the hooks, the version bump, releases. The rule
+items live in [Conventions](conventions.md#git); the mechanics live here. `.githooks/*` are shims
+rendered by `cinch init`: they call `cinch hook <event>`, which runs cinch's own checks and then
+the scripts registered under `hooks.*` in `cinch.yml`. cinch runs on itself, so this repo's hooks
+are its own checks: the message shapes are cinch's `commit` check (CINCH-015, CINCH-016,
+CINCH-020, CINCH-021). The hooks exec the installed `cinch`; after changing a check or a template,
+run `make install-bin` so they use the new build.
 
 ## Branch model
 
-- `dev` — integration branch. Feature/fix/refactor/chore work squash-merges here.
-- `main` — release branch. Only receives the manual `dev -> main` release merge.
+Trunk with tags. `main` is the only long-lived branch.
+
+- Topic branches (`feature/`, `fix/`, `refactor/`, `perf/`, `ui/`, `chore/`, `docs/`) start from
+  `main`, one per change. A hotfix is a `fix/` branch: there is no `hotfix/` and no `dev`.
+- `make merge`, run from the topic branch, squashes it onto `main` as one commit
+  `merge: <branch>`, runs the hooks on it, and leaves you on `main`. The topic branch is kept.
+- `make prune` lists local topic branches whose squash already landed on `main`;
+  `make prune confirm=1` deletes them.
+- Nothing is committed on `main` except that squash. A conflicting squash stops on `main` with the
+  files listed: resolve, `git add`, then `git commit -m "merge: <branch>"`.
 
 ## Commit message shapes
 
-- **Squash-merge onto `dev`:** `merge: <branch-name>`, where `<branch-name>` must
-  start with `feature/`, `refactor/`, `fix/`, `chore/`, `docs/`, `perf/` or `ui/`.
-  Enforced by `commit.squash.dev` in `cinch.yml`, which the commit-msg hook applies only
-  while `$GIT_DIR/SQUASH_MSG` exists (i.e. mid `git merge --squash`).
-- **Squash-merge onto `main`:** `merge: hotfix/<name>` (`commit.squash.main`).
-- **Every other commit:** `<type>[!] [<scope>]: <description>` — types: `feat`, `fix`,
-  `ui`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`; `!` marks a breaking
-  change; scope optional, lowercase letters, `+` and `-` only (`commit.pattern`).
-- Real merge commits (`git merge --no-ff` — the release cut) are exempt
-  (`commit.merge: exempt`): git's own default merge message stands.
+- **Squash onto `main`:** `merge: <branch-name>`, where `<branch-name>` starts with `feature/`,
+  `refactor/`, `fix/`, `chore/`, `docs/`, `perf/` or `ui/`. `commit.squash.main` in `cinch.yml`
+  enforces it, and the commit-msg hook applies it only while `$GIT_DIR/SQUASH_MSG` exists (that
+  is, mid `git merge --squash`).
+- **Every other commit** (on a topic branch): `<type>[!] [<scope>]: <description>`. Types: `feat`,
+  `fix`, `ui`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`; `!` marks a breaking change;
+  scope is optional, lowercase letters, `+` and `-` only (`commit.pattern`).
+- A real merge commit (`git merge`, `--no-ff` or not) is rejected: `commit.merge: reject` fails
+  any commit made while `$GIT_DIR/MERGE_HEAD` exists and names `make merge`.
 
-## Trunk-flow guards
+## Enforcement
 
-Two `cinch.yml` keys enforce the trunk flow of
-[plan 33](plans/33-harness-alignment.md) (`main` only, topic branches land as squash
-commits through `make merge`). Both run in the commit-msg hook. This repo turns them on
-when it switches to that flow (plan 33 T12); until then it keeps `commit.merge: exempt`
-for the release cut and protects no branch.
+Three `commit:` keys in `cinch.yml`, all checked by the commit-msg hook:
 
-- **`commit.merge: reject`** (CINCH-020): any commit made while `$GIT_DIR/MERGE_HEAD`
-  exists fails, whatever its subject, and the finding points at `make merge`. A
-  `--no-ff` merge can't land, so no bump is lost to a 2-parent commit.
-- **`commit.protect: [main]`** (CINCH-021): a commit on a listed branch passes only
-  mid squash merge (`SQUASH_MSG` exists), or mid merge when `commit.merge` isn't
-  `reject`. A plain commit on `main` fails. The first commit on an unborn
-  branch and a commit on a detached HEAD pass. The version bump's
-  `--no-verify` amend runs no hooks, so it isn't checked.
+- `commit.squash.main`: the subject shape of a squash onto `main`.
+- `commit.merge: reject`: no merge commits (CINCH-020), so no bump is lost to a 2-parent commit.
+- `commit.protect: [main]`: a commit on `main` passes only mid squash merge (`SQUASH_MSG` exists).
+  The first commit on an unborn `main` and a commit on a detached HEAD pass (CINCH-021).
 
-## Version bump table
+Both keys came with [plan 33](plans/33-harness-alignment.md), and this repo has them on: before
+the switch it kept `commit.merge: exempt` for the release cut and protected no branch. A
+`--no-ff` merge can't land now, so no bump is lost to a 2-parent commit.
 
-`internal/version/{major,minor,patch,hotfix}` each hold one plain integer — the
-version is `x.y.z[+letter]`, where the hotfix letter is a bijective base-26
-encoding of the hotfix integer (`0` → no `+letter` suffix at all, `1` → `+a`,
-`26` → `+z`, `27` → `+aa`, …), computed on demand by
-`scripts/update-version.sh show`. The letter is attached as semver *build
-metadata* (`+a`), not a pre-release (`-a`): a bare suffix (`0.2.3a`) isn't valid
-semver at all and breaks goreleaser's tag parsing, and a `-a` pre-release segment
-would parse but gets flagged as a pre-release release on GitHub, which isn't the
-intent — these are real bumps, not release candidates. Build metadata is ignored
-for semver *precedence* (`0.2.3+a` and `0.2.3+b` compare equal), but nothing here
-relies on semver-precedence ordering — git tags are distinct strings and release
-order follows tag/push order.
+The version bump's `--no-verify` amend runs no hooks, so it is not checked: git skips them by
+design.
 
-Kept as four separate files rather
-than one combined file: even edits to *different* fields can conflict when two
-people's direct/squash-merge commits on `dev` are later reconciled (rebase/merge),
-because git's default 3-line diff context overlaps adjacent single-line edits in a
-small file — two different files can never conflict with each other.
+## Setup
 
-`scripts/post-commit-version-bump.sh` reads the commit subject to decide the bump, then folds the
-change into the triggering commit via `git commit --amend --no-edit --no-verify`.
+`make install` installs the dependencies and runs `cinch init`, which renders `.docs/workflows/*`
+and the `.githooks/` shims and sets `core.hooksPath`. Rendered files are generated: never edit
+them by hand, change the templates or `cinch.yml` and re-render.
 
-| Field | Trigger |
+A fresh clone, including every cloud session, has no hooks until `cinch init` has run. The Claude
+Code SessionStart hook `.claude/hooks/check-git-setup.sh` runs it when `core.hooksPath` is unset
+and `cinch` is installed. Otherwise it only warns: that `cinch` is missing, that `core.hooksPath`
+points elsewhere (it is never changed), or that the session starts on `main`.
+
+## Hooks
+
+Configured under `hooks.*` in `cinch.yml`, not in the shims. cinch runs `cinch check` first
+(pre-commit only), then each entry whose `when` path prefixes match the staged set (for
+post-commit, the committed set).
+
+- **`pre-commit`** runs `cinch check`, then `make check`. A squash also runs the tests:
+  `scripts/pre-commit-merge-test.sh make test` does nothing unless `$GIT_DIR/SQUASH_MSG` exists.
+  Per-area entries (`make check-backend` when `backend/` is staged) are an alternative to the
+  single `make check`.
+- **`commit-msg`** checks the subject and the branch guard as described above.
+- **`post-commit`** runs `scripts/post-commit-version-bump.sh`, which bumps the version as below
+  and folds it into the commit with `git commit --amend --no-edit --no-verify`.
+
+## Version
+
+One version per repo, tag `v<x.y.z>`. It is stored in the root `VERSION` file, one line `x.y.z`.
+Where a stack differs (Flutter's `pubspec.yaml` `x.y.z+N`, Android's `version.properties`), the
+stack conventions doc says so. `scripts/version.sh` reads and writes it; never hand-edit the file.
+`make version` prints it; Go binaries get it through `-ldflags -X`, and a SPA through a vite
+`define`.
+
+The post-commit hook bumps only on `main`, only for a single-parent commit whose subject is a
+`merge: <prefix>/...` squash, and only if the squash touches a path matching one of the arguments
+`cinch.yml` passes to the script (``main.go`, `internal/*`, `go.mod`, `go.sum``). A docs-only or tooling-only squash never
+bumps. The binary is `main.go` plus `internal/`, including the embedded non-`.go` workflow
+templates, so a change there bumps; `bench/` code, docs, the Makefile and CI do not.
+
+| Squash subject | Bump |
 |---|---|
-| major | manual only — `make version-major` |
-| minor | auto: `merge: feature/…` squash-merged onto `dev` |
-| patch | auto: `merge: fix/…`, `merge: refactor/…`, `merge: perf/…` or `merge: ui/…` squash-merged onto `dev` |
-| hotfix (letter) | auto: a direct `fix: …` or `refactor: …` commit landing on `dev` (not a squash-merge) |
+| `merge: feature/...` | minor |
+| `merge: fix/...`, `refactor/...`, `perf/...`, `ui/...` | patch |
+| `merge: chore/...`, `docs/...` | none |
+| major | by hand: `make version-major` |
 
-`merge: chore/…` and `merge: docs/…` squash-merges never bump anything. A bump only
-fires for a single-parent commit (squash-merge result, or a direct commit) that
-touches `main.go`, `internal/`, or `Makefile` — docs/notes-only commits never bump.
-
-A minor bump resets patch and hotfix to 0; a patch bump resets hotfix to 0; a hotfix
-bump resets nothing (it's the lowest field).
+A minor bump resets patch; a major bump resets both.
 
 ## Release
 
 ```
-git checkout main
-git merge --no-ff dev -m "merge: dev"   # resolve conflicts if any, then commit
-make release
-make push-release
+make release     # tag v<version> on main, push main and the tag to origin
+make ship        # make release, then the stack's delivery
 ```
 
-`make release` tags `v$(scripts/update-version.sh show)` (skipping if that tag
-already exists — i.e. no version change since the last release) and fast-forwards
-`dev` to `main`. `make push-release` runs `git push --follow-tags origin main dev` —
-a separate, deliberate step so nothing publishes until you choose to (and so the
-tag can't be dropped by pushing without `--follow-tags`).
+`make release` (`scripts/release.sh`) refuses to run off `main`, with uncommitted changes to
+tracked files, or with a merge or squash in progress. The tag is annotated. It can be rerun: a tag
+already on `HEAD` is reported and the push still happens; a tag on an older commit means nothing
+version-relevant has landed since, so nothing is tagged and `main` is still pushed.
 
-## Manual version commands
+`make ship` is `release`; for cinch that is the whole delivery. The `v<version>` tag push runs
+`.github/workflows/release.yml`, which runs goreleaser (`.goreleaser.yml`) and publishes the GitHub
+release that `install.sh` and `cinch upgrade` install from. goreleaser stamps `main.Version`, the
+variable `make build` stamps too. `make deploy` and `make logs` do not apply (exit 2).
 
-- `make version-show` — print the current version.
-- `make version-major` — bump major, reset minor/patch.
+`make merge` and `make deploy` print one line per step and a closing summary instead of the raw
+git, hook and build output. `V=1` shows everything, and the logs are kept in `.git/make-logs/`
+(newest 50).
+
+A `make` target and not a git hook: a hook would silently mint a near-permanent tag.

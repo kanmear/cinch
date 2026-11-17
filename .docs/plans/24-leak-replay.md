@@ -1,10 +1,12 @@
 # 24. Leak replay
 
+**Status:** planned
+
 **Tier 4 — evidence. Cost estimate: local runs, one night.**
 
 ## Provenance
 
-**Field data turned into a benchmark.** This is claim #4 in [21](21-benchmark-suite.md): the
+**Field data turned into a benchmark.** This is claim #4 in [21](archive/21-benchmark-suite.md): the
 missing-rule step prevents the realtime-leak kind of bug. The realtime leak was a real bug
 in a real product, a restricted event delivered to recipients who shouldn't receive it. It's
 the example the missing-rule step itself cites ("who may receive a realtime event that carries
@@ -19,7 +21,7 @@ table.
 ## Task
 
 "Add a `tab.updated` realtime event," run on DeltaDocs only, labeled as a private data point.
-[23](23-public-fixture.md) found no public repo with the shape: Budgetron has no realtime
+[23](archive/23-public-fixture.md) found no public repo with the shape: Budgetron has no realtime
 recipients to target. The harness, prompt, hidden test and logs are still published.
 
 The real states on either side of the leak fix are the starting point:

@@ -171,7 +171,7 @@ func TestSeededDefectLinksTargetUnreachableFromRoot(t *testing.T) {
 
 	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
-	// Resolved (not a gap): .docs/plans/05-navigability-check-class.md
+	// Resolved (not a gap): .docs/plans/archive/05-navigability-check-class.md
 	// originally proposed a link-graph reachability pass rooted at a
 	// declared entry doc (e.g. AGENTS.md). That was dropped — cinch doesn't
 	// own AGENTS.md, and cinch's own entry point is `cinch index`, which

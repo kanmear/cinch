@@ -1,6 +1,6 @@
 # 32. Plan lifecycle: archive, one status vocabulary, owed checks out of plans
 
-**Status:** planned
+**Status:** in-progress
 
 Written 2026-11-17 from a review of how cinch is used across `~/code` and `~/work`
 (survey taken 2026-11-12, re-checked on 2026-11-17). The user asked for one
@@ -61,7 +61,7 @@ No other repo does.
 - **Words.** complete, Complete, done, Done, shipped, closed, open, proposal, draft, built,
   planned, in-progress, cut, "code complete", "only AI-009 is left".
 - Plan 31 already picked one form, `**Status:** <word>`
-  ([31-conventions-sweep.md](31-conventions-sweep.md) § 3, "Status line"). That pick was
+  ([31-conventions-sweep.md](archive/31-conventions-sweep.md) § 3, "Status line"). That pick was
   never applied, because nothing enforces it.
 
 ### 1.5 Files in `plans/` that aren't plans
@@ -75,7 +75,7 @@ No other repo does.
   Plan 31 § 3 "Backlog" picked the roadmap's `## Deferred` section, with a reopen condition
   per entry, as their home.
 - **Records and indexes:** fsed `meeting-2026-10-29.md`, pugio `review-decisions.md`, and
-  cinch's own [31-conventions-sweep.md](31-conventions-sweep.md) ("data, not a plan").
+  cinch's own [31-conventions-sweep.md](archive/31-conventions-sweep.md) ("data, not a plan").
 - **Specs and contracts:** fsed `tech_spec.md`, forum `assistant-contract.md`,
   `v1-domain-rules.md` (forum, verus).
 

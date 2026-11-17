@@ -1,3 +1,4 @@
+# harness-template v2
 paths:
   docs: .docs
   hooks: .githooks
@@ -17,25 +18,48 @@ paths:
     # leak replay: DeltaDocs rule IDs quoted in states, patches, hidden tests and probes
     - bench/leak/
 
-# .docs/git-conventions.md § Commit message shapes. The squash entries apply
-# only while $GIT_DIR/SQUASH_MSG exists; the release cut (git merge --no-ff)
-# keeps git's own merge subject.
+# Minimum installed cinch core: `cinch check` errors when the installed one is older.
+# any: hooks run the installed binary while CI runs from source, so a version pin here
+# would only churn.
+require:
+  cinch: any
+
+# Plans: one `**Status:** <word>` line each; finished and cut plans move to
+# .docs/plans/archive/ (`cinch plan archive`).
+plans:
+  lifecycle: enforce
+
+# .docs/git-conventions.md. Trunk flow: `main` is the only long-lived branch and topic
+# branches land on it as one squash commit, `merge: <branch>` (`make merge`).
+#   squash   the subject of a squash onto main; applied only while $GIT_DIR/SQUASH_MSG exists
+#   merge    reject: a merge commit (MERGE_HEAD present) fails, and the finding names `make merge`
+#   protect  a commit on main passes only mid squash merge; the first commit on an unborn
+#            main and a detached HEAD pass. The version bump's `--no-verify` amend isn't checked.
 commit:
   pattern: '^(feat|fix|ui|docs|style|refactor|test|chore|perf)(!)?( \[[a-z+-]+\])?: .+'
   squash:
-    dev: '^merge: (feature|refactor|fix|chore|docs|perf|ui)/.+'
-    main: '^merge: hotfix/.+'
-  merge: exempt
+    main: '^merge: (feature|refactor|fix|chore|docs|perf|ui)/.+'
+  merge: reject
+  protect: [main]
 
 hooks:
-  # generated is left out locally: the shims exec the installed cinch, whose
-  # embedded templates can lag the source being edited. CI runs the full set from source.
-  pre-commit-checks: [links, rules, index, core]
+  # The built-in checks `cinch check` runs first on every commit. generated is left out
+  # locally: the shims exec the installed cinch, whose embedded templates can lag the source
+  # being edited. CI runs the full set from source.
+  pre-commit-checks: [links, rules, index, plans, core]
+  # Then these entries. `when` is an OR gate over path prefixes; leave it out to run on every
+  # commit. Keep them to make targets so TOOL-001 holds.
+  pre-commit:
+    check:
+      run: make check
+    # Tests run only on the squash commit (it is a no-op unless $GIT_DIR/SQUASH_MSG exists).
+    merge-test:
+      run: scripts/pre-commit-merge-test.sh make test
+
+  # After a squash on main: bumps the version and amends the commit (.docs/git-conventions.md
+  # § Version). The arguments are the paths that count as version-relevant, as `case` patterns;
+  # a squash touching none of them bumps nothing. The binary is main.go plus internal/ (the
+  # embedded non-.go templates count); bench/ code must not bump.
   post-commit:
     version-bump:
-      run: scripts/post-commit-version-bump.sh
-
-# any: hooks run the installed binary while CI runs from source, so a
-# version pin here would only churn.
-require:
-  cinch: any
+      run: scripts/post-commit-version-bump.sh main.go 'internal/*' go.mod go.sum

@@ -1,6 +1,6 @@
 # 32a. Plan lifecycle: what to align in each repo
 
-**Status:** planned
+**Status:** in-progress
 
 These are the owner's steps for plan 32's T5 to T18, one section per repo. They were written on
 2026-11-17 from a fresh inventory of every consumer: branch, dirty files, the installed

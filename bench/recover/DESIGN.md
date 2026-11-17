@@ -9,7 +9,7 @@ model call, and the commit is tagged `prereg/recover`. Changes after that are am
 For each rule in a corpus: can an agent that has the **code only** (docs removed, no `AGENTS.md`
 pointer to them) recover what the rule says? The share of rules it cannot recover is the corpus's
 **normative share**: the rules whose content lives only in the docs, the ones worth protecting
-([10](../../.docs/plans/10-kind-normative-vs-descriptive.md)). The rest are descriptive: they
+([10](../../.docs/plans/archive/10-kind-normative-vs-descriptive.md)). The rest are descriptive: they
 restate what the code already tells a reader.
 
 The earlier retrieval battery (`~/code/cinch_bench/FINDINGS.md` §2) found 11 of 16 questions

@@ -15,7 +15,7 @@ session. A fresh session can work from this file, [plan 32](32-plan-lifecycle.md
 ### 1.1 The template is a template in name only
 
 - `~/code/harness-template` has no commits, no remote and isn't the `~/.config` submodule
-  [plan 31](31-conventions-sweep.md) § 6 promised.
+  [plan 31](archive/31-conventions-sweep.md) § 6 promised.
 - It is applied once and never again ("seeded once, then the repo's own"). Three repos were
   seeded (budgetron, pugio, limen); the six older ones never got it: forum and verus (its own
   source trees), lthy, ortho, dd, cinch.
@@ -447,7 +447,7 @@ paths read `.docs` once step 2 has run). The session prepares the branch and pro
 commit; the owner lands it with § 5.2.
 
 #### T12: cinch (stack `go-cli`; dogfood first)
-**Status:** [ ]
+**Status:** [x] — prepared on `chore/harness-v2`; the owner lands it with § 5.2
 **Depends on:** T4, T11
 **Files:** per § 5.1.
 - `VERSION` replaces `internal/version/*` (ldflags already in the Makefile).
@@ -680,67 +680,79 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T11: template `make check` guards the contract, `VERSION` → 2. Template commit
-`72967c9` is on `feature/contract-guards`, stacked on `feature/docs-v2` (T10).
-- **Make contract:** `CONTRACT_VERBS` in the template Makefile holds D3's 15 verbs. For each applied
-  stack, `make -n <verb>` must succeed, and its output must not say `Nothing to be done` or
-  `No rule to make target`, because a verb left in `.PHONY` with no rule exits 0 under `-n` alone.
-  `make help` must list every verb but `help`.
-- **`tests/managed.sh`:** a common managed path is byte-identical in every stack that doesn't list
-  it in its own `managed.txt`. A stack that ships a common managed path without listing it fails
-  as a silent override. android's and flutter's `scripts/version.sh` are the declared overrides.
-- **`tests/ports.sh`:** checks the `## Blocks` rows:
-  - each block is a multiple of 10, and no two are fewer than 10 apart;
-  - "Next free block" is a multiple of 10 and unclaimed;
-  - lab host ports are unique and not 8080/8081.
-- **`VERSION` is 2.** The four literal `harness-template v1` source stamps are dropped, and an
-  applied tree now gets `harness-template v2` in the same position.
-- README's `make check` section and Layout are updated.
+**Last completed:** T12: cinch is on harness v2, uncommitted on `chore/harness-v2` (cut from `dev`
+at `086133c`). The proposed commit (one commit, the plan 32 triage included):
 
-**Verified:**
-- Template `make check` is green: `managed: ok`, `ports: ok (8 blocks)`,
-  `tests/scripts.sh: ok (113 checks)`.
-- Each guard turns it red with a message naming the stack, verb, path or block:
-  - a removed target, a removed help line, and a `$(error)` in a recipe;
-  - an unlisted stack copy of `scripts/step.sh`, and a managed file rendered differently per stack;
-  - an off-grid block, overlapping and duplicate blocks, a duplicate or 8081 host port, and a
-    claimed or off-grid next-free block.
-- Re-checked independently in scratch copies: android without `down:` fails, and limen given
-  verus's host port fails.
+```
+chore [harness]: harness v2 — trunk flow, one version, make contract
+
+Port harness-template v2 (go-cli): trunk on main (commit.squash.main,
+commit.merge: reject, commit.protect: [main]); a root VERSION replaces
+internal/version and update-version.sh; the Makefile follows D3 with the
+bench targets and install-bin kept; managed scripts and .claude hooks;
+AGENTS.md tiers, CLAUDE.md; architecture, testing and stack docs;
+git-conventions rewritten for the trunk flow; CI follows go.mod and make
+check. Plan 32 T5: plans.lifecycle: enforce, 23 plans archived complete
+and 3 cut, 00-overview moved to .docs/roadmap.md with a Deferred table.
+```
+
+- **Before the branch, on `dev` (local, not pushed):**
+  - `e9a692b merge: docs/plan-33-t8-make-contract` holds the T6–T11 handoff commits. The branches
+    `docs/plan-33-t6…`, `-t7…`, `-t8…` are contained in it; `make prune` lists them.
+  - `086133c merge: feature/cli-visual-pass`. The branch was rebased onto `dev`, and its four
+    conflicts were the `root` → `repoRoot` rename plus the help text, which now lists `plans` and
+    groups `mv` and `plan archive` under "move". The merge bumped 0.17.0 → 0.18.0, and the
+    worktree is removed.
+- **Plan 32 T5 triage (owner's calls 2026-11-17):**
+  - Archived as complete: 01–08, 11–18, 21 (superseded by 29), 22, 23, 26–28, 31.
+  - Archived as cut: 09, 10, 30.
+  - Planned: 20, 24 (plan 29's components).
+  - In-progress: 19, 25, 29, 32, 32a, 33.
+  - Roadmap § Deferred has rows for 07's expensive half, 09, 10, 28 Part B and 03's dead-`owns:`
+    case. § "Open from plan 31" carries Forum F0/F1 and the paid runs; the release cut is
+    superseded by D1.
+- **The port.** Choices:
+  - `main.Version` stays the stamped variable; `stack-conventions.md` was edited to match.
+  - The bump paths are `main.go 'internal/*' go.mod go.sum`: embedded templates count, bench code
+    doesn't, and a Makefile-only squash no longer bumps.
+  - `check` = vet and gofmt over non-`/hidden` packages and tracked files.
+  - `install` keeps D3's meaning; `install-bin` (`go install`) is how cinch itself gets installed.
+  - `ARGS ?= help`, so `make dev` = `make run` exits 0.
+  - `.docs/domain/overview.md` is not seeded (rules live in `rules.md`); `conventions.md` gained
+    GIT-001 and TOOL-001 with `cinch:ignore`, as in the template.
+  - CI: `test.yml` triggers on `main` only, runs `make check`, and uses `go-version-file: go.mod`;
+    `release.yml` pins goreleaser `~> v2`.
+  - `bench/leak`'s `TestFakeEngineProvisioningAndSandbox` now skips when the installed cinch isn't
+    `PINS`' version, as its sibling states test already did. It failed before and would have
+    blocked the merge-test pre-commit on the landing commit.
+
+**Verified:** `make check`, `make test` (every package), `go run . check` (all checks, `generated`
+included) green. `make help` lists the D3 verbs; `make -n merge|release|ship` plan the expected
+steps; `make version` and `bin/cinch version` print 0.18.0. A second `make sync` changes nothing.
+`main` is an ancestor of `dev`, so § 5.2's `git branch -f main dev` holds.
 
 **Not verified:**
-- Carried from T9: goreleaser and actionlint runs, android `WITH_DEVICE` on a device, and the T8
-  hand check of `make dev`/`make down` in a real TTY.
-- Not added (out of T11's scope): a `go build` of go-cli's stub to guard the ldflags stamp.
+- The installed cinch (0.17.0) reports one `generated` finding on `docs-philosophy.md`. Its
+  embedded templates lag the visual pass; `make install-bin` after landing fixes it. `generated`
+  isn't in the local hook list, so it doesn't block the commit.
+- The § 5.2 landing itself, and the next session start on `main`.
+- `make dev`/`make down` inside tmux: go-cli's `dev` is one foreground process, so there is no
+  session to check.
+- Carried: goreleaser and actionlint runs (the first `make ship` runs goreleaser for real).
 
-**Resume at:** T12 (cinch, stack `go-cli`; dogfood first). Part B is done apart from T5's remote.
-- Apply from the template's `feature/contract-guards` checkout. It holds T6–T11, and none of it
-  is on the template's `main` yet.
-- § 5.1 step 0 wants a clean tree on `dev`. This repo is on `docs/plan-33-t8-make-contract`, with
-  the plan-33 handoff commits since T7 on it and earlier `docs/plan-33-*` branches beside it. Land
-  or fold those docs branches into `dev` first.
+**Resume at:** the owner lands cinch with § 5.2, then runs `make install-bin`. `make release` tags
+v0.18.0. Then T13 (limen).
 
 **Notes:**
-- **cinch 0.17.0 is installed** (2026-11-17, `go install` from the `v0.17.0` tag with the version
-  stamped). Every active repo passes `cinch check --only generated,core` with it. The three red ones
-  were red before: `limen-bench` (retired), `budgetron-recurring-payments` (a stale worktree), and
-  `fsed-odin-mono` (pins `0.5.0+b`).
-- **Owner decisions (2026-11-17):**
-  - The live `make check` and merge-test pre-commit entries stay live. In a brand-new repo the
-    first commit fails until the targets work, and README "After applying" says to comment the
-    entry out until then.
-  - `ports.md` keeps "next free block" (update it with each claim) and "+6 to +9 free for the repo".
-- Template branches stack: `feature/contract-guards` → `feature/docs-v2` → `feature/stacks` → `feature/make-contract` →
-  `feature/managed-scripts` → `feature/managed-sync` → `chore/plan-lifecycle`. None of them is on
-  the template's `main` yet. T5's GitHub remote is still deferred.
-- **Design choices in T8:**
-  - Every tmux path needs `[ -t 0 ]`, even inside tmux, so an agent's `make dev` falls back to
-    `-j2` instead of switching the owner's tmux client.
-  - `dev` calls make through `SELF`, so `make -n dev` starts nothing.
-  - go-svelte's `build` also builds `bin/$(NAME)` for the ldflags stamp.
-- **For T14/T16:** the vite proxy reads `APP_PORT`, not `GO_PORT`, so forum's and lthy's vite
-  configs need the rename.
+- `make diff` drift left on purpose: the goreleaser filters and owner, the Makefile extras,
+  `main.Version`, the filled docs, cinch's own `conventions.md` style rules, the CINCH-015/016/020/021
+  notes in `git-conventions.md`, `VERSION` 0.18.0, and `cinch.yml`'s excludes and `require: any`.
+- Release notes will list `merge: chore/…` and `merge: docs/…` subjects; neither changelog filter
+  matches the squash shape. A template follow-up for every go-cli repo.
+- `mise.toml` pins go 1.26 (installed); `go.mod` stays `go 1.22` as the language floor.
+- Template branches still stack, unmerged: `feature/contract-guards` → … → `chore/plan-lifecycle`.
+  T5's GitHub remote is still deferred. T13 should apply from `feature/contract-guards` too.
 - **Cinch follow-up, noted in the template README Gaps:** the plan Layers field goes into
-  `cinch workflow dev-plan-feature`'s output, now that `TEMPLATE-plan.md` is gone.
+  `cinch workflow dev-plan-feature`'s output.
 - `prune.sh` also lists a branch that sits level with main (no commits of its own). Deleting it
   loses nothing.

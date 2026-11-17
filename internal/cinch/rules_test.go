@@ -534,7 +534,7 @@ func TestCheckRulesFromTripleDuplicate(t *testing.T) {
 // should (or, for documented gaps, currently does not) report. Together
 // with the links/generated battery cases in their own files, this is the
 // checker's own regression suite — see
-// .docs/plans/03-rule-grammar-holes-and-seed-defects.md.
+// .docs/plans/archive/03-rule-grammar-holes-and-seed-defects.md.
 
 // catch-matrix: rules | caught | rule with no marker and no cinch:ignore
 func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
