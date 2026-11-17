@@ -132,8 +132,8 @@ func buildHookShims(hooksDirectory string) []renderFile {
 	return files
 }
 
-func CmdRender(root string) int {
-	m, err := loadManifest(root)
+func CmdRender(repoRoot string) int {
+	m, err := loadManifest(repoRoot)
 	if err != nil {
 		return output.Fail("render", err)
 	}
@@ -143,15 +143,15 @@ func CmdRender(root string) int {
 		return output.Fail("render", err)
 	}
 
-	if _, err := writeRenderedFiles(root, files); err != nil {
+	if _, err := writeRenderedFiles(repoRoot, files); err != nil {
 		return output.Fail("render", err)
 	}
 
-	if _, err := removeOrphanedFiles(root, files); err != nil {
+	if _, err := removeOrphanedFiles(repoRoot, files); err != nil {
 		return output.Fail("render", err)
 	}
 
-	if err := syncRequireCinch(root, false); err != nil {
+	if err := syncRequireCinch(repoRoot, false); err != nil {
 		return output.Fail("render", err)
 	}
 
@@ -159,10 +159,12 @@ func CmdRender(root string) int {
 }
 
 // writeRenderedFiles reports changed when any file's bytes differ from what
-// was on disk, including files that didn't exist yet.
-func writeRenderedFiles(root string, files []renderFile) (changed bool, err error) {
+// was on disk, including files that didn't exist yet. It names only the files
+// it changed and counts the rest, so a re-render that changes nothing says so.
+func writeRenderedFiles(repoRoot string, files []renderFile) (changed bool, err error) {
+	upToDate := 0
 	for _, f := range files {
-		destination := filepath.Join(root, f.destination)
+		destination := filepath.Join(repoRoot, f.destination)
 		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 			return changed, err
 		}
@@ -171,22 +173,31 @@ func writeRenderedFiles(root string, files []renderFile) (changed bool, err erro
 		if mode == 0 {
 			mode = 0o644
 		}
-		if existing, err := os.ReadFile(destination); err != nil || string(existing) != content {
-			changed = true
+		fileChanged := true
+		if existing, err := os.ReadFile(destination); err == nil && string(existing) == content {
+			fileChanged = false
 		}
 		if err := os.WriteFile(destination, []byte(content), mode); err != nil {
 			return changed, err
 		}
+		if !fileChanged {
+			upToDate++
+			continue
+		}
+		changed = true
 		output.Step("rendered %s", f.destination)
+	}
+	if upToDate > 0 {
+		output.Step("%d %s up to date", upToDate, output.Plural(upToDate, "file"))
 	}
 	return changed, nil
 }
 
 // removeOrphanedFiles deletes only what orphanedGeneratedFiles reports, so a
 // file without cinch's generated header is never touched.
-func removeOrphanedFiles(root string, files []renderFile) (removed bool, err error) {
-	for _, rel := range orphanedGeneratedFiles(workingTreeRoots(root), files) {
-		if err := os.Remove(filepath.Join(root, rel)); err != nil {
+func removeOrphanedFiles(repoRoot string, files []renderFile) (removed bool, err error) {
+	for _, rel := range orphanedGeneratedFiles(workingTreeRoots(repoRoot), files) {
+		if err := os.Remove(filepath.Join(repoRoot, rel)); err != nil {
 			return removed, err
 		}
 		removed = true
@@ -199,12 +210,12 @@ func removeOrphanedFiles(root string, files []renderFile) (removed bool, err err
 // remediation true: it updates an exact require.cinch pin to match the
 // installed version. A ">=" floor moves only when raiseFloor is set, and only
 // upward. Unset pins, any, and dev builds are left alone.
-func syncRequireCinch(root string, raiseFloor bool) error {
+func syncRequireCinch(repoRoot string, raiseFloor bool) error {
 	if Version == "dev" {
 		return nil
 	}
 
-	path := filepath.Join(root, manifestPath)
+	path := filepath.Join(repoRoot, manifestPath)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {

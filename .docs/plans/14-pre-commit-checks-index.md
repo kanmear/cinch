@@ -45,7 +45,11 @@ and `buildImpact`; every check (`checkLinks`, `checkIndex`, `scanRuleDocs`,
 
 As shipped, `buildImpact` and `dispatchHooks` kept reading the working tree. The impact
 advisory moved onto the snapshot later (`fix/impact-reads-snapshot`); project hook scripts
-still see the working tree.
+still see the working tree. The fast path also trusted `git diff --quiet` for assume-unchanged
+and skip-worktree entries, which it never compares, and `checkout-index --all` left
+skip-worktree entries out of the snapshot; `fix/snapshot-flagged-entries` sends any such entry
+down the snapshot path and writes them into it. [26](26-snapshot-parity.md) then made every
+staged check read only indexed paths, so untracked files no longer rule out the fast path.
 
 ## Tests (`internal/cinch/staged_test.go`)
 

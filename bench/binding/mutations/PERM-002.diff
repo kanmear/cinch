@@ -1,0 +1,13 @@
+diff --git c/backend/models/role_category_permission.go w/backend/models/role_category_permission.go
+index 6795f0e..eea0591 100644
+--- c/backend/models/role_category_permission.go
++++ w/backend/models/role_category_permission.go
+@@ -40,7 +40,7 @@ func (r *roleCategoryPermissionRepository) SetPermission(roleID, categoryID int,
+ 	err := r.db.QueryRow(
+ 		`INSERT INTO role_category_permissions (role_id, category_id, permission_level)
+ 		 VALUES ($1, $2, $3)
+-		 ON CONFLICT (role_id, category_id) DO UPDATE SET permission_level = EXCLUDED.permission_level
++		 ON CONFLICT (role_id, category_id) DO NOTHING
+ 		 RETURNING id, role_id, category_id, permission_level, created_at`,
+ 		roleID, categoryID, permissionLevel,
+ 	).Scan(&perm.ID, &perm.RoleID, &perm.CategoryID, &perm.PermissionLevel, &perm.CreatedAt)

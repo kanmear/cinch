@@ -1,8 +1,11 @@
 package cinch
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,6 +23,7 @@ import (
 var (
 	ruleItemRe = regexp.MustCompile(`^\s*\d+\.\s+\*\*([A-Z0-9]+-[0-9]+)\*\*`)
 	anyItemRe  = regexp.MustCompile(`^\s*\d+\.\s`)
+	headingRe  = regexp.MustCompile(`^ {0,3}#{1,6}(\s|$)`)
 	ignoreRe   = regexp.MustCompile(`<!--\s*cinch:ignore\s*(?::\s*(.*?))?\s*-->`)
 	markerRe   = regexp.MustCompile(`(?://|#|--|<!--|/\*|%|;)\s*cinch:rule\s+([A-Z0-9]+-[0-9]+)\b`)
 )
@@ -155,10 +159,25 @@ func duplicateLocsMessage(locs []ruleItem) string {
 	return fmt.Sprintf("declared in %d places (%s) — rule IDs must be unique", len(pairs), strings.Join(pairs, ", "))
 }
 
+// indentedContinuation reports whether a line after a blank line still
+// belongs to the list item above it: at least two spaces or a tab. That is
+// an approximation of CommonMark's "as far as the item's content", which
+// would need the marker width; two spaces also admits the common two-space
+// indent under "1.".
+func indentedContinuation(line string) bool {
+	return strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "\t")
+}
+
+// parseRuleItems reads the rule items of one doc. An item runs from its
+// "N. **ID**" line to the next list item, the next ATX heading, or a
+// non-blank line that follows a blank line and isn't indented; a line
+// directly after the item with no blank between is a lazy continuation and
+// stays. Only lines inside that span can supply the item's cinch:ignore.
 func parseRuleItems(file string, content []byte) []ruleItem {
 	var items []ruleItem
 	var cur *ruleItem
 	var textLines []string
+	afterBlank := false
 
 	flush := func() {
 		if cur == nil {
@@ -168,6 +187,7 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		items = append(items, *cur)
 		cur = nil
 		textLines = nil
+		afterBlank = false
 	}
 
 	_ = mdscan.ForEachFencedLineBytes(content, func(lineNumber int, line string) {
@@ -184,6 +204,20 @@ func parseRuleItems(file string, content []byte) []ruleItem {
 		if cur == nil {
 			return
 		}
+		if headingRe.MatchString(line) {
+			flush()
+			return
+		}
+		if strings.TrimSpace(line) == "" {
+			afterBlank = true
+			textLines = append(textLines, line)
+			return
+		}
+		if afterBlank && !indentedContinuation(line) {
+			flush()
+			return
+		}
+		afterBlank = false
 		textLines = append(textLines, line)
 		if !cur.hasIgnore {
 			if m := ignoreRe.FindStringSubmatch(line); m != nil {
@@ -206,8 +240,8 @@ func parseRuleDoc(path string) ([]ruleItem, error) {
 	return parseRuleItems(path, data), nil
 }
 
-func scanRuleDocs(docsRoot string) ([]ruleItem, error) {
-	return mdscan.Collect(docsRoot, parseRuleDoc)
+func scanRuleDocs(roots checkRoots, docsRoot string) ([]ruleItem, error) {
+	return collectDocs(roots, docsRoot, parseRuleDoc)
 }
 
 func underPath(path, directory string) bool {
@@ -255,6 +289,17 @@ type scannedFile struct {
 	fsPath  string
 	display string
 }
+
+// scanFileError is a per-file scan failure. It keeps the file's display path
+// so checkRules can report the finding at the file that failed instead of at
+// the repository root.
+type scanFileError struct {
+	display string
+	err     error
+}
+
+func (e *scanFileError) Error() string { return e.err.Error() }
+func (e *scanFileError) Unwrap() error { return e.err }
 
 // resolveRuleScanRoots turns rules.roots entries into scan roots, splitting
 // out any that don't exist on disk (a docs-only clone, or a CI job that only
@@ -305,19 +350,30 @@ func markerScanFiles(root ruleScanRoot, docsRoot string) ([]scannedFile, error) 
 			if underPath(sf.fsPath, docsRoot) || excludedPath(f, root.exclude) {
 				continue
 			}
-			// git ls-files lists a submodule as one gitlink entry — a path that
-			// is actually a directory on disk, not a blob. Opening it as a file
-			// below would succeed (Linux permits open() on a directory) but
-			// fail on the first read with EISDIR, surfacing as a bogus scan
-			// error. Skip it; rules.roots is the supported way to also scan a
-			// submodule's own content. An index snapshot holds no entry at all
-			// for a gitlink (checkout-index doesn't write one), so a missing
-			// precomputed entry is skipped for the same reason.
+			// Skip a candidate with no file content to scan:
+			//  - A directory. git ls-files lists a submodule as one gitlink
+			//    entry, a path that is a directory on disk, not a blob. Opening
+			//    it would succeed (Linux permits open() on a directory) but
+			//    fail on the first read with EISDIR, surfacing as a bogus scan
+			//    error. rules.roots is the supported way to also scan a
+			//    submodule's own content. A symlink to a directory fails the
+			//    same way, so os.Stat follows the link.
+			//  - A path missing from disk. ls-files --cached still lists a
+			//    tracked file that was deleted but not staged, and an index
+			//    snapshot holds no entry for a gitlink (checkout-index doesn't
+			//    write one). Either way the working tree has nothing to read.
+			// A dangling symlink is not missing: Lstat sees the link itself,
+			// so it stays a candidate and fails visibly when opened.
 			info, statErr := os.Lstat(sf.fsPath)
-			if statErr == nil && info.IsDir() {
+			if errors.Is(statErr, fs.ErrNotExist) {
 				continue
 			}
-			if statErr != nil && root.files != nil {
+			if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+				if target, err := os.Stat(sf.fsPath); err == nil {
+					info = target
+				}
+			}
+			if statErr == nil && info.IsDir() {
 				continue
 			}
 			out = append(out, sf)
@@ -391,35 +447,130 @@ func scanMarkers(r io.Reader, path string, fenced bool) (map[string][]markerLoc,
 	return markers, err
 }
 
+// binarySniffLen is how much of a file git reads to decide it is binary.
+const binarySniffLen = 8 << 10
+
+// markerNeedle is the literal every marker contains: markerRe allows nothing
+// between "cinch:" and "rule". A file without it can't hold a marker.
+var markerNeedle = []byte("cinch:rule")
+
+// scanFileMarkers reads a file once and line-scans it only when it can hold
+// a marker. A binary file (a NUL in its first binarySniffLen bytes, git's own
+// test) is skipped before the rest of it is read: markers are comments, which
+// don't survive compilation, and one 12 MB server binary scanned line by line
+// took a consumer's rules check from 50 ms to 850 ms. Most text files hold no
+// marker, so the needle check spares them the line scan, which was most of
+// the hook's cost on large repos.
 func scanFileMarkers(path string) (map[string][]markerLoc, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return scanMarkers(f, path, strings.HasSuffix(path, ".md"))
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	buffer := bytes.NewBuffer(make([]byte, 0, info.Size()+bytes.MinRead))
+	if _, err := io.CopyN(buffer, f, binarySniffLen); err != nil && err != io.EOF {
+		return nil, err
+	}
+	if bytes.IndexByte(buffer.Bytes(), 0) >= 0 {
+		return map[string][]markerLoc{}, nil
+	}
+	if _, err := buffer.ReadFrom(f); err != nil {
+		return nil, err
+	}
+	if !bytes.Contains(buffer.Bytes(), markerNeedle) {
+		return map[string][]markerLoc{}, nil
+	}
+	return scanMarkers(bytes.NewReader(buffer.Bytes()), path, strings.HasSuffix(path, ".md"))
+}
+
+// scanFileMarkersFunc is the per-file scan the worker pool calls; tests wrap
+// it to count scans.
+var scanFileMarkersFunc = scanFileMarkers
+
+// markerScanCache keeps each root's marker scan for the length of one run,
+// so the pre-commit hook's rules check and impact advisory share one pass
+// over the tree instead of reading every file twice. It's keyed per scan
+// root because the two scan different root sets: impact leaves out
+// rules.roots siblings. A nil cache scans every time.
+type markerScanCache struct {
+	mu    sync.Mutex
+	roots map[string]map[string][]markerLoc
+}
+
+func newMarkerScanCache() *markerScanCache {
+	return &markerScanCache{roots: map[string]map[string][]markerLoc{}}
+}
+
+// scan returns root's markers. Callers must not modify the result: it may be
+// the cached map another check also reads.
+func (c *markerScanCache) scan(root ruleScanRoot, docsRoot string) (map[string][]markerLoc, error) {
+	if c == nil {
+		return scanRootMarkers(root, docsRoot)
+	}
+	key := strings.Join(append([]string{root.path, root.display, docsRoot}, root.exclude...), "\x00")
+	c.mu.Lock()
+	found, ok := c.roots[key]
+	c.mu.Unlock()
+	if ok {
+		return found, nil
+	}
+	found, err := scanRootMarkers(root, docsRoot)
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	c.roots[key] = found
+	c.mu.Unlock()
+	return found, nil
 }
 
 // scanRuleMarkers reads every in-scope file (roots.fsRoot plus any present
-// rules.roots sibling) looking for // cinch:rule markers, using a bounded
-// worker pool since each file is an independent os.Open + scan. The merge
-// order across files is not guaranteed, so the location order within
-// markers[id] is not stable run-to-run when the same ID appears in more than
-// one file. missingRoots names any configured extraRoots entry that doesn't
-// exist on disk, so the caller can decide whether to skip rather than report.
+// rules.roots sibling) looking for // cinch:rule markers, reusing a root's
+// scan from roots.scans when an earlier check already did it. Each markers[id]
+// is a fresh slice, sorted by file, then line: the same tree must give the
+// same output. missingRoots names any configured extraRoots entry that
+// doesn't exist on disk, so the caller can decide whether to skip rather than
+// report.
 func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOptions) (markers map[string][]markerLoc, missingRoots []string, err error) {
 	scanRoots, missing := resolveRuleScanRoots(roots, options)
 
-	var files []scannedFile
+	out := map[string][]markerLoc{}
 	for _, root := range scanRoots {
-		rootFiles, ferr := markerScanFiles(root, docsRoot)
-		if ferr != nil {
-			return nil, nil, ferr
+		found, err := roots.scans.scan(root, docsRoot)
+		if err != nil {
+			return nil, nil, err
 		}
-		files = append(files, rootFiles...)
+		for id, locs := range found {
+			out[id] = append(out[id], locs...)
+		}
 	}
+	for _, locs := range out {
+		sort.Slice(locs, func(i, j int) bool {
+			if locs[i].file != locs[j].file {
+				return locs[i].file < locs[j].file
+			}
+			return locs[i].line < locs[j].line
+		})
+	}
+	return out, missing, nil
+}
+
+// scanRootMarkers scans one root's candidate files with a bounded worker
+// pool, since each file is an independent open and scan. Workers finish in
+// any order; scanRuleMarkers sorts the merged result.
+func scanRootMarkers(root ruleScanRoot, docsRoot string) (map[string][]markerLoc, error) {
+	files, err := markerScanFiles(root, docsRoot)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]markerLoc{}
 	if len(files) == 0 {
-		return map[string][]markerLoc{}, missing, nil
+		return out, nil
 	}
 
 	type fileResult struct {
@@ -436,7 +587,7 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 		go func() {
 			defer wg.Done()
 			for f := range jobs {
-				m, ferr := scanFileMarkers(f.fsPath)
+				m, ferr := scanFileMarkersFunc(f.fsPath)
 				if ferr == nil {
 					for id, locs := range m {
 						relabeled := make([]markerLoc, len(locs))
@@ -445,6 +596,9 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 						}
 						m[id] = relabeled
 					}
+				}
+				if ferr != nil {
+					ferr = &scanFileError{display: f.display, err: ferr}
 				}
 				results <- fileResult{markers: m, err: ferr}
 			}
@@ -461,7 +615,6 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 		close(results)
 	}()
 
-	out := map[string][]markerLoc{}
 	var firstErr error
 	for r := range results {
 		if r.err != nil {
@@ -475,9 +628,9 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 		}
 	}
 	if firstErr != nil {
-		return nil, nil, firstErr
+		return nil, firstErr
 	}
-	return out, missing, nil
+	return out, nil
 }
 
 // checkRules cross-references documented rule IDs under docsRoot against
@@ -488,13 +641,20 @@ func scanRuleMarkers(roots checkRoots, docsRoot string, options markerScanOption
 // skipped instead: there's no code available to check against, not a real
 // gap.
 func checkRules(roots checkRoots, docsRoot string, options markerScanOptions) rulesReport {
-	items, err := scanRuleDocs(docsRoot)
+	items, err := scanRuleDocs(roots, docsRoot)
 	if err != nil {
 		return rulesReport{findings: scanErrorFinding("rules", docsRoot, err)}
 	}
 	markers, missingRoots, err := scanRuleMarkers(roots, docsRoot, options)
 	if err != nil {
-		return rulesReport{findings: scanErrorFinding("rules", roots.repoRoot, err)}
+		// A failure reading one file is reported at that file; anything else
+		// (git failing, a walk error) has no file to name.
+		scope := roots.repoRoot
+		var fileErr *scanFileError
+		if errors.As(err, &fileErr) {
+			scope = fileErr.display
+		}
+		return rulesReport{findings: scanErrorFinding("rules", scope, err)}
 	}
 	if len(options.extraRoots) > 0 && len(missingRoots) == len(options.extraRoots) {
 		return rulesReport{skip: "configured code roots not present (" + strings.Join(missingRoots, ", ") + ")"}
@@ -598,7 +758,7 @@ func checkRulesFrom(items []ruleItem, markers map[string][]markerLoc) rulesRepor
 }
 
 func CmdIgnores(docsRoot string) int {
-	items, err := scanRuleDocs(docsRoot)
+	items, err := scanRuleDocs(workingTreeRoots(docsRoot), docsRoot)
 	if err != nil {
 		return output.Fail("ignores", err)
 	}
@@ -612,7 +772,7 @@ func CmdIgnores(docsRoot string) int {
 		fmt.Println("0 cinch:ignore declarations found")
 		return 0
 	}
-	fmt.Printf("%d cinch:ignore declarations:\n\n", len(ignored))
+	fmt.Printf("%d cinch:ignore %s:\n\n", len(ignored), output.Plural(len(ignored), "declaration"))
 	for _, item := range ignored {
 		reason := item.ignoreReason
 		if reason == "" {

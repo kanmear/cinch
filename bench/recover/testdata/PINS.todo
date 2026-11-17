@@ -1,0 +1,6 @@
+# A PINS whose fixtures are not filled in: the harness must refuse to run.
+BUDGETRON_REF=cinch-bench/upkeep-v1
+BUDGETRON_SHA=TODO
+DELTADOCS_REF=TODO
+DELTADOCS_SHA=TODO
+SCHEDULE_SEED=20261101

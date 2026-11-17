@@ -11,7 +11,7 @@ func TestCheckIndexMissingTitle(t *testing.T) {
 	docsRoot := t.TempDir()
 	writeTestFile(t, docsRoot, "a.md", "Just some prose, no heading.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 1 {
 		t.Fatalf("findings = %+v, want exactly one", report.findings)
@@ -25,7 +25,7 @@ func TestCheckIndexTitled(t *testing.T) {
 	docsRoot := t.TempDir()
 	writeTestFile(t, docsRoot, "a.md", "# A\nSome prose.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none (doc has a title)", report.findings)
@@ -42,7 +42,7 @@ func TestCheckIndexExcludesPlans(t *testing.T) {
 	}
 	writeTestFile(t, filepath.Join(docsRoot, "plans"), "00-draft.md", "Untitled planning notes.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none (plans/ is excluded, same as indexList)", report.findings)
@@ -54,6 +54,7 @@ func TestCheckIndexExcludesPlans(t *testing.T) {
 
 // --- Seeded defect battery: index.go ---
 
+// catch-matrix: index | caught | doc with no H1, silently dropped from cinch index
 func TestSeededDefectIndexMissingH1(t *testing.T) {
 	docsRoot := t.TempDir()
 	// Looks like a complete doc — real content, just no leading "# " line.
@@ -62,7 +63,7 @@ func TestSeededDefectIndexMissingH1(t *testing.T) {
 	// and before this check there was no path to a finding at all.
 	writeTestFile(t, docsRoot, "orphaned-heading.md", "## Not an H1\n\nThis doc has real content but no top-level heading.\n")
 
-	report := checkIndex(docsRoot)
+	report := checkIndex(workingTreeRoots(docsRoot), docsRoot)
 
 	ok := false
 	for _, f := range report.findings {
@@ -212,5 +213,44 @@ func TestLinksListAcceptsDocsRootPrefix(t *testing.T) {
 	}
 	if !strings.Contains(list, "2 docs link to backend/architecture.md") {
 		t.Fatalf("list = %q, want the docs-root-prefixed path to resolve", list)
+	}
+}
+
+func TestLinksListAgreesVerbWithCount(t *testing.T) {
+	docsRoot := t.TempDir()
+	writeTestFile(t, docsRoot, "a.md", "# A\n\n[b](b.md)\n")
+	writeTestFile(t, docsRoot, "b.md", "# B\n")
+	writeTestFile(t, docsRoot, "c.md", "# C\n\n[b](b.md)\n")
+
+	one, err := linksList(docsRoot, "a.md", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(one, "a.md links to 1 doc:") {
+		t.Fatalf("outbound = %q, want %q", one, "a.md links to 1 doc:")
+	}
+	oneInbound, err := linksList(docsRoot, "a.md", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(oneInbound, "nothing links to a.md") {
+		t.Fatalf("inbound = %q, want the nothing-links message", oneInbound)
+	}
+
+	two, err := linksList(docsRoot, "b.md", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(two, "2 docs link to b.md:") {
+		t.Fatalf("inbound = %q, want %q", two, "2 docs link to b.md:")
+	}
+
+	writeTestFile(t, docsRoot, "c.md", "# C\n")
+	single, err := linksList(docsRoot, "b.md", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(single, "1 doc links to b.md:") {
+		t.Fatalf("inbound = %q, want %q", single, "1 doc links to b.md:")
 	}
 }

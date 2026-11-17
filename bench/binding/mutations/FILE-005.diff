@@ -1,0 +1,19 @@
+diff --git c/backend/models/file.go w/backend/models/file.go
+index dd972fd..f9c330f 100644
+--- c/backend/models/file.go
++++ w/backend/models/file.go
+@@ -199,14 +199,6 @@ func (r *fileRepository) MoveFile(id int, parentID *int, position int) (*File, e
+ 		}
+ 	}
+ 
+-	oldSiblings, err := siblingIDs(tx, projectID, oldParentID, id)
+-	if err != nil {
+-		return nil, fmt.Errorf("error getting old siblings: %w", err)
+-	}
+-	if err = renumberFiles(tx, oldSiblings); err != nil {
+-		return nil, fmt.Errorf("error renumbering old siblings: %w", err)
+-	}
+-
+ 	newSiblings, err := siblingIDs(tx, projectID, parentID, id)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error getting new siblings: %w", err)

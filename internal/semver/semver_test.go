@@ -1,6 +1,8 @@
 package semver
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestEqual(t *testing.T) {
 	cases := []struct {

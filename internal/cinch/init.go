@@ -26,21 +26,42 @@ type hookEntry struct {
 	when string
 }
 
-func CmdInit(root string) int {
-	if !ManifestExists(root) {
-		var answers initAnswers
+func CmdInit(repoRoot string) int {
+	var answers initAnswers
+	var hooksDirectory string
+	writing := !ManifestExists(repoRoot)
+	if writing {
 		if output.IsInteractiveStdin(os.Stdin) {
 			answers = askInit()
 		} else {
 			answers = initAnswers{docsPath: defaultDocsPath, hooksPath: defaultHooksPath}
 		}
+		hooksDirectory = answers.hooksPath
+		if hooksDirectory == "" {
+			hooksDirectory = defaultHooksPath
+		}
+	} else {
+		existing, err := loadManifest(repoRoot)
+		if err != nil {
+			return output.Fail("init", err)
+		}
+		hooksDirectory = hooksPathValue(existing)
+	}
+
+	// Checked before anything is written: a refused init must leave the
+	// repository as it found it (CINCH-003).
+	if code := checkHooksPathFree(repoRoot, hooksDirectory); code != 0 {
+		return code
+	}
+
+	if writing {
 		// A floor, not an exact pin: it turns an older binary's confusing
 		// generated drift into "reinstall", and never forces a commit on
 		// every release.
 		if Version != "dev" {
 			answers.require = ">=" + Version
 		}
-		if err := writeInitManifest(root, answers); err != nil {
+		if err := writeInitManifest(repoRoot, answers); err != nil {
 			return output.Fail("init", err)
 		}
 		output.Step("wrote %s", manifestPath)
@@ -48,23 +69,17 @@ func CmdInit(root string) int {
 		output.Step("%s already exists — left as-is", manifestPath)
 	}
 
-	m, err := loadManifest(root)
+	m, err := loadManifest(repoRoot)
 	if err != nil {
 		return output.Fail("init", err)
 	}
 
-	if code := CmdRender(root); code != 0 {
+	if code := CmdRender(repoRoot); code != 0 {
 		return code
 	}
 
-	if gitutil.IsRepo(root) {
-		hooksDirectory := hooksPathValue(m)
-		if existing, err := gitutil.Output(root, "config", "--get", "core.hooksPath"); err == nil {
-			if got := strings.TrimSpace(string(existing)); got != "" && !sameHooksDirectory(root, got, hooksDirectory) {
-				return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
-			}
-		}
-		if out, err := gitutil.CombinedOutput(root, "config", "core.hooksPath", hooksDirectory); err != nil {
+	if gitutil.IsRepo(repoRoot) {
+		if out, err := gitutil.CombinedOutput(repoRoot, "config", "core.hooksPath", hooksDirectory); err != nil {
 			return output.Failf("init", "git config core.hooksPath failed: %v\n%s", err, out)
 		}
 		output.Step("activated hooks: core.hooksPath = %s", hooksDirectory)
@@ -76,12 +91,29 @@ func CmdInit(root string) int {
 		output.Skip("init", fmt.Sprintf("%s is false — %s left alone", agentsPointerKey, agentsFile))
 		return 0
 	}
-	if err := ensureAgentPointer(root, manifestVar(m, pathsDocsKey, defaultDocsPath)); err != nil {
+	if err := ensureAgentPointer(repoRoot, manifestVar(m, pathsDocsKey, defaultDocsPath)); err != nil {
 		return output.Fail("init", err)
 	}
-	hintClaudeMd(root)
+	hintClaudeMd(repoRoot)
 
 	return 0
+}
+
+// checkHooksPathFree fails when core.hooksPath already points somewhere other
+// than hooksDirectory, so init never overwrites another tool's hook wiring.
+func checkHooksPathFree(root, hooksDirectory string) int {
+	if !gitutil.IsRepo(root) {
+		return 0
+	}
+	existing, err := gitutil.Output(root, "config", "--get", "core.hooksPath")
+	if err != nil {
+		return 0
+	}
+	got := strings.TrimSpace(string(existing))
+	if got == "" || sameHooksDirectory(root, got, hooksDirectory) {
+		return 0
+	}
+	return output.Failf("init", "core.hooksPath is already %q (expected %q) — cinch init refuses to overwrite another tool's hook wiring; point paths.hooks at %q or resolve the conflict by hand", got, hooksDirectory, got)
 }
 
 func askInit() initAnswers {
@@ -126,7 +158,7 @@ func askLine(prompt, defaultValue string) string {
 	return line
 }
 
-func writeInitManifest(root string, a initAnswers) error {
+func writeInitManifest(repoRoot string, a initAnswers) error {
 	var b strings.Builder
 
 	b.WriteString("paths:\n")
@@ -155,6 +187,6 @@ func writeInitManifest(root string, a initAnswers) error {
 		}
 	}
 
-	path := filepath.Join(root, manifestPath)
+	path := filepath.Join(repoRoot, manifestPath)
 	return os.WriteFile(path, []byte(b.String()), 0o644)
 }

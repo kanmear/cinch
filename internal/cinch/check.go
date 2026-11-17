@@ -2,10 +2,15 @@ package cinch
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
+	"syscall"
 
+	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -26,9 +31,11 @@ type checkResult struct {
 // checkRoots separates where git runs from where checked content is read.
 // git never runs inside an index snapshot; stagedSnapshot says why.
 type checkRoots struct {
-	repoRoot   string   // real repository: git commands, rules.roots siblings, core.hooksPath
-	fsRoot     string   // where file content is read: == repoRoot, or an index snapshot
-	indexFiles []string // staged mode only: `git ls-files --cached`, repo-relative
+	repoRoot   string           // real repository: git commands, rules.roots siblings, core.hooksPath
+	fsRoot     string           // where file content is read: == repoRoot, or an index snapshot
+	indexFiles []string         // staged mode only: `git ls-files --cached`, repo-relative
+	index      *indexSet        // staged mode only: indexFiles plus their directories; nil reads everything
+	scans      *markerScanCache // optional: lets checks in one run share marker scans
 }
 
 func scanErrorFinding(check, scope string, err error) []finding {
@@ -39,6 +46,12 @@ func scanErrorFinding(check, scope string, err error) []finding {
 }
 
 func CmdCheck(messageFile string, changed, staged bool, only []string) int {
+	// A pre-commit script runs against the working tree, but the commit holds
+	// only what is staged (CINCH-012). An explicit --changed keeps its scope.
+	if !staged && !changed && os.Getenv(hookEnvironmentVariable) == "pre-commit" {
+		output.Note("check", "inside the pre-commit hook: checking the staged content (as --staged)")
+		staged = true
+	}
 	if !staged {
 		return runChecks(workingTreeRoots("."), messageFile, changed, only...)
 	}
@@ -54,6 +67,55 @@ func workingTreeRoots(repoRoot string) checkRoots {
 	return checkRoots{repoRoot: repoRoot, fsRoot: repoRoot}
 }
 
+// inCommit reports whether a staged check may read path, one joined onto
+// fsRoot (a filesystem walk's output, or filepath.Join(fsRoot, ...)). In
+// staged mode the working tree can hold files the commit doesn't — untracked,
+// ignored — so a check that walks or stats the disk asks here first. A path
+// outside fsRoot is not the index's to judge: linkTargetExists resolves it.
+func (roots checkRoots) inCommit(path string) bool {
+	if roots.index == nil {
+		return true
+	}
+	rel, err := filepath.Rel(roots.fsRoot, path)
+	if err != nil {
+		return true
+	}
+	rel = filepath.ToSlash(rel)
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") {
+		return true
+	}
+	return roots.index.files[rel] || roots.index.directories[rel]
+}
+
+// walkDocs walks the markdown under docsRoot that the commit contains. A
+// docsRoot the commit lacks entirely fails the way a snapshot, which has no
+// such directory, would.
+func (roots checkRoots) walkDocs(docsRoot string, fn func(path string) error) error {
+	if !roots.inCommit(docsRoot) {
+		return &fs.PathError{Op: "lstat", Path: docsRoot, Err: syscall.ENOENT}
+	}
+	return mdscan.WalkMarkdownFilesIf(docsRoot, roots.inCommit, fn)
+}
+
+// collectDocs is mdscan.Collect over walkDocs.
+func collectDocs[T any](roots checkRoots, docsRoot string, fn func(path string) ([]T, error)) ([]T, error) {
+	var out []T
+	err := roots.walkDocs(docsRoot, func(path string) error {
+		more, err := fn(path)
+		out = append(out, more...)
+		return err
+	})
+	return out, err
+}
+
+// readFile reads path unless the commit lacks it, which reads as absent.
+func (roots checkRoots) readFile(path string) ([]byte, error) {
+	if !roots.inCommit(path) {
+		return nil, fs.ErrNotExist
+	}
+	return os.ReadFile(path)
+}
+
 // relabel maps a finding read from an index snapshot back to the path it
 // has in the repository, so output never names the temporary directory and
 // reads exactly as it would for the same content in the working tree.
@@ -61,19 +123,35 @@ func (roots checkRoots) relabel(f finding) finding {
 	if roots.fsRoot == roots.repoRoot {
 		return f
 	}
-	prefix := roots.fsRoot + string(filepath.Separator)
-	replacement := ""
-	if roots.repoRoot != "." {
-		replacement = roots.repoRoot + string(filepath.Separator)
-	}
+	prefix, replacement := roots.snapshotPrefix()
 	switch {
 	case f.file == roots.fsRoot:
 		f.file = roots.repoRoot
 	case strings.HasPrefix(f.file, prefix):
 		f.file = replacement + strings.TrimPrefix(f.file, prefix)
 	}
-	f.message = strings.ReplaceAll(f.message, prefix, replacement)
+	f.message = roots.relabelText(f.message)
 	return f
+}
+
+// relabelText is relabel for free text: an error that read a file in the
+// snapshot would otherwise print the temporary directory it was read from.
+func (roots checkRoots) relabelText(text string) string {
+	if roots.fsRoot == roots.repoRoot {
+		return text
+	}
+	prefix, replacement := roots.snapshotPrefix()
+	return strings.ReplaceAll(text, prefix, replacement)
+}
+
+// snapshotPrefix is the path prefix of a file in the snapshot and what it
+// reads as in the repository.
+func (roots checkRoots) snapshotPrefix() (prefix, replacement string) {
+	prefix = roots.fsRoot + string(filepath.Separator)
+	if roots.repoRoot != "." {
+		replacement = roots.repoRoot + string(filepath.Separator)
+	}
+	return prefix, replacement
 }
 
 const (
@@ -82,14 +160,14 @@ const (
 )
 
 var (
-	defaultPreCommitChecks = []string{"links", "rules", "index", "generated", "core"}
+	defaultPreCommitChecks = []string{"links", "rules", "index", "plans", "generated", "core"}
 	defaultCommitMsgChecks = []string{"commit"}
 
 	// checkLaunchOrder is both the order checks start in and the order their
 	// status lines print in, so the two can't drift apart. Checks finish in
 	// whatever order the scheduler picks; printing in this order is what
 	// keeps the output stable run to run.
-	checkLaunchOrder = []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
+	checkLaunchOrder = []string{"links", "rules", "index", "plans", "generated", "commit", "core", "hooks"}
 )
 
 // preCommitChecks and commitMsgChecks each load their own manifest copy
@@ -136,14 +214,14 @@ func commitMsgChecks(root, messageFile string) int {
 // finding.file already uses — including when root is an absolute test temp
 // dir, since git itself always reports paths relative to the repo root
 // regardless of how root was spelled when invoking it.
-func changedFileSet(root string) (map[string]bool, error) {
-	paths, err := unstagedPaths(root)
+func changedFileSet(repoRoot string) (map[string]bool, error) {
+	paths, err := unstagedPaths(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 	set := make(map[string]bool, len(paths))
 	for _, p := range paths {
-		set[filepath.Join(root, p)] = true
+		set[filepath.Join(repoRoot, p)] = true
 	}
 	return set, nil
 }
@@ -208,13 +286,22 @@ func generatedRelevant(root, docsRoot string, m *manifest, changed map[string]bo
 	return changedUnder(changed, filepath.Join(root, hooksPathValue(m)))
 }
 
+// plansRelevant reports whether a change can affect checkPlans: markdown under
+// the plans folder, or the manifest, whose plans.lifecycle key may just have
+// been turned on. The manifest finding is on cinch.yml itself, so scoped keeps
+// it too.
+func plansRelevant(root, docsRoot string, changed map[string]bool) bool {
+	return changed[filepath.Join(root, manifestPath)] ||
+		changedMarkdownUnder(changed, filepath.Join(docsRoot, "plans"))
+}
+
 // runChecks reads every checked file under roots.fsRoot. changed is only
 // meaningful for working-tree roots: unstaged paths say nothing about a
 // snapshot of the index.
 func runChecks(roots checkRoots, messageFile string, changed bool, only ...string) int {
 	docsRoot, err := ResolveDocsRoot(roots.fsRoot)
 	if err != nil {
-		return output.Fail("check", err)
+		return output.Failf("check", "%s", roots.relabelText(err.Error()))
 	}
 
 	m, mErr := loadManifestOptional(roots.fsRoot)
@@ -255,6 +342,9 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 	type plannedCheck struct {
 		enabled bool
 		fn      func() checkResult
+		// gated marks a check that --changed can switch off, which then
+		// prints a skip line instead of vanishing from the run.
+		gated bool
 	}
 	type namedResult struct {
 		name   string
@@ -263,28 +353,37 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 
 	planned := map[string]plannedCheck{
 		"links": {relevant(changedMarkdownUnder(changedSet, docsRoot)),
-			scoped(func() checkResult { return linksCheckResult(checkLinks(docsRoot)) })},
+			scoped(func() checkResult { return linksCheckResult(checkLinks(roots, docsRoot)) }), true},
 		"rules": {relevant(len(changedSet) > 0),
-			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) })},
+			scoped(func() checkResult { return rulesCheckResult(checkRules(roots, docsRoot, markerScanOptionsFor(m))) }), true},
 		"index": {relevant(changedMarkdownUnder(changedSet, docsRoot, "plans")),
-			scoped(func() checkResult { return indexCheckResult(checkIndex(docsRoot)) })},
+			scoped(func() checkResult { return indexCheckResult(checkIndex(roots, docsRoot)) }), true},
+		"plans": {relevant(plansRelevant(roots.fsRoot, docsRoot, changedSet)),
+			scoped(func() checkResult { return checkPlans(roots, docsRoot, m) }), true},
 		"generated": {relevant(generatedRelevant(roots.fsRoot, docsRoot, m, changedSet)),
-			func() checkResult { return checkGenerated(roots, m, mErr) }},
-		// commit is unconditionally suppressed without a MSGFILE, not just under
-		// --changed: nobody hand-invokes `cinch check somefile.txt` in ordinary
-		// use (the commit-msg hook goes through commitMsgChecks instead), so
-		// "no commit message file given" is noise on every plain `cinch check`,
-		// not a diff-scoping question.
-		"commit": {messageFile != "", func() checkResult { return checkCommit(messageFile, m) }},
-		"core":   {true, func() checkResult { return checkPin(Version, m) }},
-		"hooks":  {true, func() checkResult { return checkHooks(roots.repoRoot, m, mErr) }},
+			func() checkResult { return checkGenerated(roots, m, mErr) }, true},
+		// Without a MSGFILE commit stays silent unless it was asked for by
+		// name: nobody hand-invokes `cinch check somefile.txt` in ordinary use
+		// (the commit-msg hook goes through commitMsgChecks instead), so "no
+		// commit message file given" is noise on every plain `cinch check`. An
+		// explicit --only commit that printed nothing would read as a pass.
+		"commit": {messageFile != "" || onlySet["commit"], func() checkResult { return checkCommit(roots.repoRoot, messageFile, m) }, false},
+		"core":   {true, func() checkResult { return checkPin(Version, m) }, false},
+		"hooks":  {true, func() checkResult { return checkHooks(roots.repoRoot, m, mErr) }, false},
 	}
 
 	results := make(chan namedResult, len(checkLaunchOrder))
 	launched := 0
+	finished := make(map[string]checkResult, len(checkLaunchOrder))
 	for _, name := range checkLaunchOrder {
 		check := planned[name]
-		if !run(name) || !check.enabled {
+		if !run(name) {
+			continue
+		}
+		if !check.enabled {
+			if check.gated {
+				finished[name] = checkResult{noOp: "nothing relevant changed"}
+			}
 			continue
 		}
 		launched++
@@ -293,7 +392,6 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 		}()
 	}
 
-	finished := make(map[string]checkResult, launched)
 	for i := 0; i < launched; i++ {
 		r := <-results
 		finished[r.name] = r.result
@@ -314,7 +412,7 @@ func runChecks(roots checkRoots, messageFile string, changed bool, only ...strin
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.check != b.check {
-			return a.check < b.check
+			return slices.Index(checkLaunchOrder, a.check) < slices.Index(checkLaunchOrder, b.check)
 		}
 		if a.file != b.file {
 			return a.file < b.file

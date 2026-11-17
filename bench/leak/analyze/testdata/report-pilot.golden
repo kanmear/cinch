@@ -1,0 +1,19 @@
+# bench/leak/analyze/testdata/pilot-fixture.csv: 16 pilot runs (final attempt per run_id)
+pilot rule (DESIGN § Pilot and cap): keep a task if (a) calibration passed [checked by the calibration runs, assumed here], (b) >= 2 of 3 arm-1 pilots commit, (c) the arm-3 pilot commits (else one more; dropped if that fails too), (d) not all 3 arm-1 pilots are safe deliveries
+cap C = max(30, 1.5 x slowest committing pilot) minutes, rounded up to 5, at most 75
+
+task  arm1 n    arm1 commit arm1 safe arm3 n      arm3 commit slowest  cap    
+T1    3         2           1         1           1         41.0     65     
+T2    3         1           0         1           1         60.0     75     
+T3    3         3           3         1           1         22.0     35     
+T4    3         3           1         1           0         16.0     30     
+
+T1: KEEP, cap 65 minutes
+T2: not kept: (b) fails: 1 of 3 arm-1 pilots committed (need 2 of 3)
+T3: not kept: (d) fails: all 3 arm-1 pilots are safe deliveries: the task leaves the primary, runs at N = 5 in arm 1 only
+    cap if run at N = 5 in arm 1 only: 35 minutes
+T4: not kept: (c) the arm-3 pilot did not commit: run one more arm-3 pilot
+
+KEPT_TASKS=T1
+CAP_T1=65
+fewer than two of T1-T3 survive (1): the primary is not run; the owner decides whether to replace tasks under a new pilot tag

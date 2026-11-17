@@ -1,0 +1,415 @@
+diff --git c/.docs/domain/entries.md i/.docs/domain/entries.md
+index 22569bb..5772888 100644
+--- c/.docs/domain/entries.md
++++ i/.docs/domain/entries.md
+@@ -19,3 +19,4 @@ Entries are income or expense records tied to a category and optionally an accou
+    `EntryService` runs each of these in one `UnitOfWork`; deleting also decrements the category usages (never below 0), and an edit that changes the category moves one usage from the old category to the new one. Budget spent and account balances are derived on read, so no write maintains them.
+ 6. **ENTRY-006** Inside a period group, sorting by amount lists income categories before expense categories, each side ordered by the absolute value of the category total: largest first for "amount, descending" (the default), smallest first for "amount, ascending". "Recent" keeps categories in the order of their newest entry.
+ 7. **ENTRY-007** A period group and each of its categories expose their income sum and their expense sum separately; income plus expense equals the signed total (ENTRY-001).
++8. **ENTRY-008** A category whose name starts with `#` is sealed. Sealing follows the name, so renaming a category to or from a `#` name seals or unseals it. No write adds an entry to a sealed category, moves one into it, or edits or deletes one in it: `EntryService` create, edit and delete throw `SealedCategory` and write nothing, and so does confirming a pending SMS entry with a sealed category (SMS-004). Confirm-all skips pending entries whose category is sealed and confirms the rest.
+diff --git c/.docs/domain/sms-import.md i/.docs/domain/sms-import.md
+index f59352f..a1af22c 100644
+--- c/.docs/domain/sms-import.md
++++ i/.docs/domain/sms-import.md
+@@ -14,7 +14,7 @@ Banking SMS are read from the Android inbox (on demand, and in the background wh
+ 1. **SMS-001** An SMS becomes at most one pending entry, ever: messages are recognized by a key (provider id plus receive time) whatever the pending entry's status (pending, confirmed, dismissed); a scan never recreates a dismissed one, but the user can undo a dismissal, which sets that entry back to pending (re-resolving its category by the current rules, SMS-003). A scan reads only messages received after its start point; the stored scan point only moves forward.
+ 2. **SMS-002** A message is parsed by the first enabled template (by id) whose sender filter and keywords match (template regexes and keywords are case-insensitive); the type is the keyword that occurs first; the amount is parsed into `Money` with the app currency's minor units and must be above zero; without a date match the receive time is used. A template error (bad regex, unparseable date) skips the message and never aborts the scan.
+ 3. **SMS-003** A category rule matches the merchant case-insensitively and, when no rule matches it (or there is no merchant), the whole SMS text, as its match mode says: `contains` (the default, and what rules stored without a mode mean) finds the keyword anywhere, `word` only as a whole word (bounded by the text's ends or a character that is neither a letter nor a digit), `prefix` only at the start of the text. Only categories of the pending entry's type count; within each pass the longest keyword wins and the earlier rule wins a tie. A pending entry's category only ever comes from the rules (the user sets one only by confirming), so rules are re-applied to all pending entries whenever one is saved, edited or removed, in the same transaction as the rule write: each category becomes whatever the current rules resolve, possibly none. Rules are editable (keyword, category, mode). Keywords are unique case-insensitively: saving a new rule with an existing keyword updates that rule, an edit that would give a rule another rule's keyword is refused and writes nothing.
+-4. **SMS-004** Confirming a pending entry creates the entry (ENTRY-001, ENTRY-005), marks the pending entry confirmed and, when the user gave a rule keyword (not blank after trimming; the form offers the whole merchant), saves the rule "keyword means the entry's category" (SMS-003), in one transaction. Confirm-all confirms only pending entries whose category has the pending entry's type.
++4. **SMS-004** Confirming a pending entry creates the entry (ENTRY-001, ENTRY-005), marks the pending entry confirmed and, when the user gave a rule keyword (not blank after trimming; the form offers the whole merchant), saves the rule "keyword means the entry's category" (SMS-003), in one transaction. Confirm-all confirms only pending entries whose category has the pending entry's type. A sealed category refuses the entry (ENTRY-008).
+ 5. **SMS-005** Deleting a category deletes its rules and clears it from pending entries in the same transaction.
+ 6. **SMS-006** A background scan (app start or resume) runs only when the read permission is already granted and a scan point exists; it never prompts and never asks for a start point. Scans run at most once a minute and never concurrently.
+ 7. **SMS-007** A template may read the currency code; a pending entry whose code differs from the app currency is never confirmed by confirm-all and is marked on the list.
+diff --git c/lib/logic/category/sealed_category.dart i/lib/logic/category/sealed_category.dart
+new file mode 100644
+index 0000000..ef80bf9
+--- /dev/null
++++ i/lib/logic/category/sealed_category.dart
+@@ -0,0 +1,21 @@
++import 'package:budgetron/models/category/category.dart';
++
++/// Thrown when a write would add an entry to a sealed category, move one into
++/// it, or edit or delete one in it (ENTRY-008).
++class SealedCategory implements Exception {
++  final String name;
++
++  const SealedCategory(this.name);
++
++  /// Sealing is derived from the name, never stored: a name starting with `#`
++  /// seals its category, so a rename seals or unseals it (ENTRY-008).
++  static bool isSealed(EntryCategory category) => category.name.startsWith('#');
++
++  /// Throws [SealedCategory] when [category] is sealed.
++  static void guard(EntryCategory category) {
++    if (isSealed(category)) throw SealedCategory(category.name);
++  }
++
++  @override
++  String toString() => 'SealedCategory($name)';
++}
+diff --git c/lib/logic/entry/entry_service.dart i/lib/logic/entry/entry_service.dart
+index 300fa8b..92b433e 100644
+--- c/lib/logic/entry/entry_service.dart
++++ i/lib/logic/entry/entry_service.dart
+@@ -4,6 +4,7 @@ import 'package:budgetron/utils/interfaces.dart';
+ import 'package:budgetron/db/category_repository.dart';
+ import 'package:budgetron/db/entry_repository.dart';
+ import 'package:budgetron/db/unit_of_work.dart';
++import 'package:budgetron/logic/category/sealed_category.dart';
+ import 'package:budgetron/models/account/account.dart';
+ import 'package:budgetron/models/category/category.dart';
+ 
+@@ -35,8 +36,10 @@ class EntryService {
+   /// Stores [entry] under [category] and updates the category usages in one
+   /// transaction (ENTRY-005). Budgets, balances and the earliest dates are
+   /// derived on read. If anything fails nothing is stored and the in-memory
+-  /// [entry] and [category] are restored.
++  /// [entry] and [category] are restored. Throws [SealedCategory], writing
++  /// nothing, when [category] is sealed (ENTRY-008).
+   void createEntry(Entry entry, EntryCategory category) {
++    SealedCategory.guard(category);
+     final restore = _snapshot(category, entry);
+ 
+     try {
+@@ -57,9 +60,11 @@ class EntryService {
+ 
+   /// Removes [entry] and reverts its effect on the category usages in one
+   /// transaction (ENTRY-005). If anything fails nothing is changed and the
+-  /// in-memory category is restored.
++  /// in-memory category is restored. Throws [SealedCategory], writing nothing,
++  /// when the entry's category is sealed (ENTRY-008).
+   void deleteEntry(Entry entry) {
+     final EntryCategory category = entry.category.target!;
++    SealedCategory.guard(category);
+     final restore = _snapshot(category);
+ 
+     try {
+@@ -79,16 +84,21 @@ class EntryService {
+   /// value, date, category and account are replaced by [update]. If the
+   /// category changed, the usages of both categories follow. Everything runs in
+   /// one transaction (ENTRY-005); budgets and balances are derived, so nothing
+-  /// else needs maintaining. Throws [StateError] for an unknown [id].
++  /// else needs maintaining. Throws [StateError] for an unknown [id], and
++  /// [SealedCategory], writing nothing, when the entry's current category or
++  /// the new one is sealed (ENTRY-008).
+   void update(int id, EntryUpdate update) {
+     _unitOfWork.run(() {
+       final Entry entry =
+           _entries.get(id) ?? (throw StateError('No entry with id $id'));
+ 
+       final int oldCategoryId = entry.category.targetId;
++      final EntryCategory? current = _categories.get(oldCategoryId);
++      if (current != null) SealedCategory.guard(current);
+       final EntryCategory category =
+           _categories.get(update.category.id) ??
+           (throw StateError('No category with id ${update.category.id}'));
++      SealedCategory.guard(category);
+ 
+       if (oldCategoryId != category.id) {
+         final EntryCategory? old = _categories.get(oldCategoryId);
+diff --git c/lib/logic/sms/sms_import_service.dart i/lib/logic/sms/sms_import_service.dart
+index 1fc8d65..f735eb6 100644
+--- c/lib/logic/sms/sms_import_service.dart
++++ i/lib/logic/sms/sms_import_service.dart
+@@ -2,6 +2,7 @@ import 'package:budgetron/db/account_repository.dart';
+ import 'package:budgetron/db/settings_repository.dart';
+ import 'package:budgetron/db/sms_repository.dart';
+ import 'package:budgetron/db/unit_of_work.dart';
++import 'package:budgetron/logic/category/sealed_category.dart';
+ import 'package:budgetron/logic/entry/entry_service.dart';
+ import 'package:budgetron/logic/sms/sms_parser.dart';
+ import 'package:budgetron/logic/sms/sms_source.dart';
+@@ -151,7 +152,8 @@ class SmsImportService {
+   /// entry's category" matched as [ruleMode], all in one transaction
+   /// (SMS-004); if any step fails nothing is written. The entry goes through
+   /// [EntryService.createEntry], so its sign follows the category (ENTRY-001).
+-  /// Throws [StateError] when [pendingId] is unknown or not pending.
++  /// Throws [StateError] when [pendingId] is unknown or not pending, and
++  /// [SealedCategory], writing nothing, when the category is sealed (ENTRY-008).
+   void confirm(
+     int pendingId,
+     EntryUpdate values, {
+@@ -182,7 +184,8 @@ class SmsImportService {
+   /// (SMS-004), with its own values, in one transaction; returns how many.
+   /// Entries without a category, or whose category is of the other type, stay
+   /// pending, and so do entries in a currency other than [currencyCode], the
+-  /// app currency's ISO code (SMS-007).
++  /// app currency's ISO code (SMS-007). Entries whose category is sealed stay
++  /// pending too (ENTRY-008).
+   int confirmAll({required String currencyCode}) {
+     return _unitOfWork.run(() {
+       // One instance per category: it is read once and the usages of several
+@@ -199,6 +202,7 @@ class SmsImportService {
+           () => pending.category.target!,
+         );
+         if (category.isExpense != pending.isExpense) continue;
++        if (SealedCategory.isSealed(category)) continue;
+ 
+         _confirmWith(
+           pending,
+diff --git c/lib/routes/pages/sms/cubit/pending_entries_state.dart i/lib/routes/pages/sms/cubit/pending_entries_state.dart
+index 29220a9..7e86a02 100644
+--- c/lib/routes/pages/sms/cubit/pending_entries_state.dart
++++ i/lib/routes/pages/sms/cubit/pending_entries_state.dart
+@@ -1,5 +1,7 @@
+ import 'package:equatable/equatable.dart';
+ 
++import 'package:budgetron/logic/category/sealed_category.dart';
++
+ import 'package:budgetron/models/category/category.dart';
+ import 'package:budgetron/models/sms/pending_entry.dart';
+ 
+@@ -68,12 +70,13 @@ final class PendingEntriesLoaded extends PendingEntriesState {
+ 
+   /// How many entries confirm all would create: those with a category of
+   /// their own type, except those in a currency other than [currencyCode]
+-  /// (SMS-007).
++  /// (SMS-007) and those in a sealed category (ENTRY-008).
+   int confirmableCount(String currencyCode) => items
+       .where(
+         (item) =>
+             item.category != null &&
+             item.category!.isExpense == item.entry.isExpense &&
++            !SealedCategory.isSealed(item.category!) &&
+             !item.entry.isForeign(currencyCode),
+       )
+       .length;
+diff --git c/test/logic/entry/entry_service_sealed_test.dart i/test/logic/entry/entry_service_sealed_test.dart
+new file mode 100644
+index 0000000..8dc6575
+--- /dev/null
++++ i/test/logic/entry/entry_service_sealed_test.dart
+@@ -0,0 +1,123 @@
++import 'package:flutter_test/flutter_test.dart';
++
++import 'package:budgetron/logic/category/sealed_category.dart';
++import 'package:budgetron/logic/entry/entry_service.dart';
++import 'package:budgetron/models/category/category.dart';
++import 'package:budgetron/models/entry.dart';
++import 'package:budgetron/models/money.dart';
++import 'package:budgetron/objectbox.g.dart';
++
++import '../../support/fixtures.dart';
++import '../../support/store_snapshot.dart';
++import '../../support/test_services.dart';
++import '../../support/test_store.dart';
++
++void main() {
++  late Store store;
++  late TestServices services;
++  late EntryService service;
++  late EntryCategory food, vault;
++
++  final day = DateTime(2024, 3, 10, 12);
++
++  EntryUpdate updateTo(EntryCategory category) =>
++      EntryUpdate(amount: const Money(900), dateTime: day, category: category);
++
++  Entry create(EntryCategory category) {
++    final entry = makeEntry(amount: const Money(1250), dateTime: day);
++    service.createEntry(entry, category);
++    return entry;
++  }
++
++  void rename(EntryCategory category, String name) {
++    category.name = name;
++    services.categoryService.updateCategory(category);
++  }
++
++  setUp(() {
++    store = openTestStore();
++    services = TestServices(store);
++    service = services.entryService;
++    food = makeCategory(name: 'Food');
++    vault = makeCategory(name: '#Vault');
++    services.categories.add(food);
++    services.categories.add(vault);
++  });
++  tearDown(() => store.close());
++
++  // cinch:rule ENTRY-008
++  group('sealed categories', () {
++    test('creating an entry in one throws and writes nothing', () {
++      final before = snapshotAll(store);
++      final entry = makeEntry(amount: const Money(1250), dateTime: day);
++
++      expect(
++        () => service.createEntry(entry, vault),
++        throwsA(isA<SealedCategory>()),
++      );
++
++      expect(snapshotAll(store), before);
++      expect(vault.usages, 0);
++      expect(entry.id, 0);
++    });
++
++    test('moving an entry into one throws and writes nothing', () {
++      final entry = create(food);
++      final before = snapshotAll(store);
++
++      expect(
++        () => service.update(entry.id, updateTo(vault)),
++        throwsA(isA<SealedCategory>()),
++      );
++
++      expect(snapshotAll(store), before);
++    });
++
++    test('editing, moving or deleting an entry in one throws', () {
++      final entry = create(food);
++      rename(food, '#Food');
++      final before = snapshotAll(store);
++
++      expect(
++        () => service.update(entry.id, updateTo(food)),
++        throwsA(isA<SealedCategory>()),
++      );
++      expect(
++        () => service.update(
++          entry.id,
++          updateTo(services.categories.get(vault.id)!),
++        ),
++        throwsA(isA<SealedCategory>()),
++      );
++      expect(
++        () => service.deleteEntry(services.entries.get(entry.id)!),
++        throwsA(isA<SealedCategory>()),
++      );
++
++      expect(snapshotAll(store), before);
++    });
++
++    test('renaming to a plain name unseals, renaming to # seals', () {
++      final entry = create(food);
++
++      rename(food, '#Food');
++      expect(() => create(food), throwsA(isA<SealedCategory>()));
++
++      rename(food, 'Food');
++      service.update(entry.id, updateTo(food));
++      service.deleteEntry(services.entries.get(entry.id)!);
++
++      expect(services.entries.count(), 0);
++    });
++
++    test('a plain category is not affected', () {
++      final entry = create(food);
++
++      service.update(entry.id, updateTo(food));
++      service.deleteEntry(services.entries.get(entry.id)!);
++
++      expect(services.entries.count(), 0);
++      expect(services.categories.get(food.id)!.usages, 0);
++    });
++  });
++}
+diff --git c/test/logic/sms/sms_import_service_test.dart i/test/logic/sms/sms_import_service_test.dart
+index fede55a..aa1570e 100644
+--- c/test/logic/sms/sms_import_service_test.dart
++++ i/test/logic/sms/sms_import_service_test.dart
+@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
+ 
+ import 'package:budgetron/db/entry_repository.dart';
+ import 'package:budgetron/db/objectbox/object_box_sms_repository.dart';
++import 'package:budgetron/logic/category/sealed_category.dart';
+ import 'package:budgetron/logic/entry/entry_service.dart';
+ import 'package:budgetron/logic/sms/sms_import_service.dart';
+ import 'package:budgetron/models/account/account.dart';
+@@ -18,6 +19,7 @@ import 'package:budgetron/objectbox.g.dart';
+ 
+ import '../../support/fake_sms_source.dart';
+ import '../../support/fixtures.dart';
++import '../../support/store_snapshot.dart';
+ import '../../support/test_services.dart';
+ import '../../support/test_store.dart';
+ 
+@@ -816,6 +818,63 @@ void main() {
+     });
+   });
+ 
++  group('sealed categories', () {
++    late EntryCategory sealed;
++    late PendingEntry shop;
++
++    setUp(() async {
++      sealed = makeCategory(name: '#Private');
++      services.categories.add(sealed);
++      source.messages.addAll([
++        _card(1, 'SHOP MARKET'),
++        _card(2, 'SHOP MARKET 2', amount: '7.00'),
++      ]);
++      await scan();
++      shop = pendingFor('SHOP MARKET');
++    });
++
++    // cinch:rule ENTRY-008
++    test('confirming into a sealed category throws and writes nothing', () {
++      final before = snapshotAll(store);
++
++      expect(
++        () => service.confirm(
++          shop.id,
++          valuesFor(shop, sealed),
++          ruleKeyword: 'MARKET',
++        ),
++        throwsA(isA<SealedCategory>()),
++      );
++
++      expect(snapshotAll(store), before);
++      expect(storedPending(shop.id).status, PendingEntryStatus.pending);
++    });
++
++    // cinch:rule ENTRY-008
++    test('confirm all skips entries in a sealed category', () {
++      service.saveRule('shop market 2', sealed);
++      service.saveRule('shop market', food);
++      expect(pendingFor('SHOP MARKET 2').category.targetId, sealed.id);
++
++      expect(service.confirmAll(currencyCode: 'BYN'), 1);
++
++      expect(entryCount(), 1);
++      expect(storedCategory(sealed).usages, 0);
++      expect(pendingFor('SHOP MARKET 2').status, PendingEntryStatus.pending);
++      expect(pendingFor('SHOP MARKET').status, PendingEntryStatus.confirmed);
++    });
++
++    // cinch:rule ENTRY-008
++    test('renaming the category back to a plain name lets it be confirmed', () {
++      sealed.name = 'Private';
++      services.categories.update(sealed);
++
++      service.confirm(shop.id, valuesFor(shop, sealed));
++
++      expect(entryCount(), 1);
++    });
++  });
++
+   group('SMS-007 foreign currency', () {
+     // cinch:rule SMS-007
+     test('confirm all skips entries in another currency', () async {
+diff --git c/test/routes/pages/sms/cubit/pending_entries_cubit_test.dart i/test/routes/pages/sms/cubit/pending_entries_cubit_test.dart
+index 4f99113..5d7b8c7 100644
+--- c/test/routes/pages/sms/cubit/pending_entries_cubit_test.dart
++++ i/test/routes/pages/sms/cubit/pending_entries_cubit_test.dart
+@@ -96,6 +96,21 @@ void main() {
+       await cubit.close();
+     });
+ 
++    // cinch:rule ENTRY-008
++    test('does not count entries in a sealed category', () async {
++      final cubit = newCubit();
++      final sealed = makeCategory(name: '#Private')..id = 3;
++
++      pending.add([
++        makePending(1, category: food),
++        makePending(2, category: sealed),
++      ]);
++      await pumpEventQueue();
++
++      expect(loaded(cubit).confirmableCount('BYN'), 1);
++      await cubit.close();
++    });
++
+     test('a failing duplicate lookup is no flag', () async {
+       when(
+         () => entries.existsWithAmountBetween(any(), any(), any()),

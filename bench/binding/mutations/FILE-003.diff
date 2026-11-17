@@ -1,0 +1,16 @@
+diff --git c/backend/models/file.go w/backend/models/file.go
+index dd972fd..d888fbc 100644
+--- c/backend/models/file.go
++++ w/backend/models/file.go
+@@ -52,6 +52,11 @@ func (r *fileRepository) CreateFile(projectID int, parentID *int, name string, f
+ 		return nil, fmt.Errorf("error creating file: %w", err)
+ 	}
+ 
++	if file.ParentID == nil {
++		zero := 0
++		file.ParentID = &zero
++	}
++
+ 	return &file, nil
+ }
+ 

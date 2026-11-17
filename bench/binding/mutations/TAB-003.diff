@@ -1,0 +1,13 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..31a7f4e 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -285,7 +285,7 @@ func (r *tabRepository) UpdateTab(id int, content string, editorID int) (*Tab, e
+ 	_, err = tx.Exec(
+ 		`INSERT INTO tab_history (tab_id, content, editor_id, saved_at)
+ 		VALUES ($1, $2, $3, $4)`,
+-		id, content, editorID, now,
++		id, oldContent, editorID, now,
+ 	)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error saving tab history: %w", err)

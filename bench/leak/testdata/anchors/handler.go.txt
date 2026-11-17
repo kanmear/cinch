@@ -1,0 +1,19 @@
+package handlers
+
+import "net/http"
+
+// Update renames a thing. The doc comment goes with the function.
+//
+// It is documented over two lines.
+func (h *ThingHandler) Update(w http.ResponseWriter, r *http.Request) {
+	if r == nil {
+		return
+	}
+	h.things.Rename(1, "x")
+}
+
+func (h *ThingHandler) UpdateAll(w http.ResponseWriter, r *http.Request) {
+	h.things.RenameAll()
+}
+
+func helper() {}

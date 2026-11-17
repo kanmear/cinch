@@ -28,6 +28,10 @@ leave two copies.
 - The test that enforces a rule carries a `cinch:rule <ID>` comment above it. A rule that can't be
   tested gets `<!-- cinch:ignore: <reason> -->` directly under its item instead. The reason is
   what tells a real exception apart from a skipped test.
+- A rule written before its test (a plan's new rules come first) fails `cinch check` for want of a
+  marker. Give it `<!-- cinch:ignore: test lands in <plan> T<n> -->` under the item until then. The
+  task that adds the test deletes that line, because a rule that is both ignored and marked is
+  reported as an error.
 - When you change a rule's meaning, check that its marked test still enforces the new meaning.
 - To retire a rule, keep its item, state that it is retired, and put
   `<!-- cinch:ignore: retired — <why> -->` under it. The ID stays taken.

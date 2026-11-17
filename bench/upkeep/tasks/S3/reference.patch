@@ -1,0 +1,87 @@
+diff --git a/lib/models/money_format.dart b/lib/models/money_format.dart
+index e0c7448..7805113 100644
+--- a/lib/models/money_format.dart
++++ b/lib/models/money_format.dart
+@@ -77,3 +77,40 @@ String formatPercent(Money part, Money whole) {
+ 
+   return '${negative && quotient != BigInt.zero ? '-' : ''}$quotient';
+ }
++
++const _romanDigits = [
++  (900, 'CM'),
++  (500, 'D'),
++  (400, 'CD'),
++  (100, 'C'),
++  (90, 'XC'),
++  (50, 'L'),
++  (40, 'XL'),
++  (10, 'X'),
++  (9, 'IX'),
++  (5, 'V'),
++  (4, 'IV'),
++  (1, 'I'),
++];
++
++/// The whole units of [money] as a Roman numeral, in standard subtractive
++/// form (`1994` is `MCMXCIV`). The minor units (hundredths, as for every
++/// [Currency]) are dropped, truncating toward zero, so `-0.50` is zero. Zero
++/// is `N`, a negative amount is prefixed with `-`, and a value of 4000 or more
++/// repeats `M` (`5000` is `MMMMM`). Text only: [money] is never changed.
++String formatMoneyRoman(Money money) {
++  var units = money.minor.abs() ~/ 100;
++  if (units == 0) return 'N';
++
++  final text = StringBuffer(money.minor < 0 ? '-' : '');
++  text.write('M' * (units ~/ 1000));
++  units %= 1000;
++  for (final (value, numeral) in _romanDigits) {
++    while (units >= value) {
++      text.write(numeral);
++      units -= value;
++    }
++  }
++
++  return text.toString();
++}
+diff --git a/test/models/money_format_test.dart b/test/models/money_format_test.dart
+index f3130c8..f5da7b2 100644
+--- a/test/models/money_format_test.dart
++++ b/test/models/money_format_test.dart
+@@ -88,6 +88,37 @@ void main() {
+       '1,234,567.89',
+     );
+   });
++
++  test('formatMoneyRoman writes the whole units as a Roman numeral', () {
++    const expected = {
++      100: 'I',
++      400: 'IV',
++      900: 'IX',
++      4000: 'XL',
++      9000: 'XC',
++      40000: 'CD',
++      90000: 'CM',
++      199400: 'MCMXCIV',
++      244400: 'MMCDXLIV',
++      399900: 'MMMCMXCIX',
++      500000: 'MMMMM',
++      499900: 'MMMMCMXCIX',
++    };
++
++    expected.forEach((minor, numeral) {
++      expect(formatMoneyRoman(Money(minor)), numeral, reason: '$minor');
++      expect(formatMoneyRoman(Money(-minor)), '-$numeral', reason: '-$minor');
++    });
++  });
++
++  test('formatMoneyRoman drops the minor units and writes zero as N', () {
++    expect(formatMoneyRoman(Money.zero), 'N');
++    expect(formatMoneyRoman(const Money(99)), 'N');
++    expect(formatMoneyRoman(const Money(-99)), 'N');
++    expect(formatMoneyRoman(const Money(199)), 'I');
++    expect(formatMoneyRoman(const Money(-199)), '-I');
++    expect(formatMoneyRoman(const Money(199499)), 'MCMXCIV');
++  });
+ }
+ 
+ String _format(Money money, {required int digits}) =>

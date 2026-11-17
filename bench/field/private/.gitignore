@@ -1,0 +1,4 @@
+# Rows, findings and narrative that name private-repo branches, paths and rule IDs
+# (plan 29 G). bench/private-manifest.txt records a sha256 of each file.
+*
+!.gitignore

@@ -1,0 +1,13 @@
+diff --git c/backend/models/project.go w/backend/models/project.go
+index 9900439..3d01e1d 100644
+--- c/backend/models/project.go
++++ w/backend/models/project.go
+@@ -201,7 +201,7 @@ func (r *projectRepository) TransferProjectOwnership(projectID, newOwnerID, oldO
+ 
+ 	_, err = tx.Exec(
+ 		`UPDATE members SET role_id = $1 WHERE project_id = $2 AND user_id = $3`,
+-		oldOwnerNewRoleID, projectID, oldOwnerID,
++		ownerRoleID, projectID, oldOwnerID,
+ 	)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error reassigning old owner role: %w", err)

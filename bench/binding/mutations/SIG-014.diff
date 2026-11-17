@@ -1,0 +1,19 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..4869ee6 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -1045,9 +1045,11 @@ func fetchSignedBy(q querier, sigID int) ([]SignedByUser, error) {
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	users := make([]SignedByUser, len(signers))
+-	for i, s := range signers {
+-		users[i] = SignedByUser{TabUser: s.User, SignedAt: *s.ResolvedAt}
++	users := []SignedByUser{}
++	for _, s := range signers {
++		if s.Status != SignerStatusAccepted {
++			users = append(users, SignedByUser{TabUser: s.User, SignedAt: *s.ResolvedAt})
++		}
+ 	}
+ 	return users, nil
+ }

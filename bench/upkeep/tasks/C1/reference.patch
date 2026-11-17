@@ -1,0 +1,1374 @@
+diff --git c/.docs/architecture.md i/.docs/architecture.md
+index ab35754..868d319 100644
+--- c/.docs/architecture.md
++++ i/.docs/architecture.md
+@@ -8,7 +8,7 @@ Budgetron is a Flutter app (Android first) storing everything locally in ObjectB
+ |---|---|
+ | `lib/models/` | `Money` (integer minor units), `formatMoney`, the ObjectBox `@Entity` classes (SMS ones in `lib/models/sms/`), enums (`lib/models/enums/`). Generated code is `lib/objectbox.g.dart` (gitignored, `make gen`). |
+ | `lib/db/` | Abstract `*Repository` interfaces, `UnitOfWork`, `SmsRepository` (templates, category rules, pending entries, unrecognized SMS), `openAppStore()` (`object_box_helper.dart`, which also takes the pre-migration backup), `migrations/` (`Migrator`, one file per step, `backupDatabase`, `backupOpenStore`) and `transfer/` (export and import, below). ObjectBox implementations are in `lib/db/objectbox/` and take a `Store`. Reads are synchronous (`find`, `get`) or `watch` streams; no business rules. Widgets and services never touch `Store`/`Box`. |
+-| `lib/logic/` | `EntryService`, `BudgetService`, `AccountService`, `CategoryService`, `SmsImportService` are instances built from repositories (plus a `UnitOfWork`, a `Clock` for budgets and an `SmsSource` for SMS import); their pure helpers (colors, totals) stay `static`. `BudgetCalculator`, `BalanceCalculator`, `PeriodRange`, `AmountExpression` and the grouping functions `groupEntries` / `groupOperations` (`entry_grouping.dart`) and `totalsOf` (`category_total.dart`) and the SMS parser (`sms/sms_parser.dart`) are pure: no store, no clock (`BudgetCalculator` and `PeriodRange` take `now` as a parameter). Business rules and multi-entity writes. |
++| `lib/logic/` | `EntryService`, `BudgetService`, `AccountService`, `CategoryService`, `SmsImportService` are instances built from repositories (plus a `UnitOfWork`, a `Clock` for budgets and an `SmsSource` for SMS import); their pure helpers (totals) stay `static`. `BudgetCalculator`, `BalanceCalculator`, `PeriodRange`, `AmountExpression` and the grouping functions `groupEntries` / `groupOperations` (`entry_grouping.dart`) and `totalsOf` (`category_total.dart`) and the SMS parser (`sms/sms_parser.dart`) are pure: no store, no clock (`BudgetCalculator` and `PeriodRange` take `now` as a parameter). Business rules and multi-entity writes. |
+ | `lib/cubit/` | App-level cubits: `SmsScanCubit` (inbox scans, also in the background, SMS-006), `PendingCountCubit` (the pending-entry badge), `UnrecognizedCountCubit` (the unrecognized-SMS row) and `SettingsCubit`, the app-level settings state. It reads the settings row synchronously at creation, persists every setter through `SettingsRepository` and follows writes made elsewhere through `SettingsRepository.watchChanges`. |
+ | `lib/routes/` | `pages/<domain>/` full screens, each with its cubits in `pages/<domain>/cubit/`, and `popups/<domain>/` dialogs. A page or dialog creates its cubit with `BlocProvider(create: ...)`, reading repositories and services with `context.read<T>()` only there; widgets below it read cubit state. |
+ | `lib/ui/` | Reusable stateless widgets (`ui/classes/`) and design tokens (`ui/data/`). They take values and callbacks, never notifiers. `ui/labels.dart` turns enums and `RemainingTime` into text with `label(l10n)`. |
+@@ -30,16 +30,17 @@ Widget --> Cubit --> domain service --> Repository --> ObjectBox store
+ ```
+ 
+ - Reads are `watch` streams from repositories (or services built on them). A cubit owns the subscription and re-subscribes when its parameters change (`setPeriod`, `shift`, `setType`); widgets never build streams or queries. Screens that browse by period (entries, stats, account operations, group overview) hold a `PeriodRange`.
+-- Cubits call services and repositories and hold no business rule; validation a form needs (a parseable target, two different accounts, an amount above zero) is state derived in the cubit. Widgets under a page never call a repository or a service (the pure `static` helpers aside: `CategoryService.stringToColor`...).
++- Cubits call services and repositories and hold no business rule; validation a form needs (a parseable target, two different accounts, an amount above zero) is state derived in the cubit. Widgets under a page never call a repository or a service (the pure `static` helpers aside: `CategoryService.stringToColor`, `categoryColorFor`...).
+ - Multi-entity writes run inside `UnitOfWork.run`, which wraps `store.runInTransaction`: the callback is synchronous, so services call only synchronous repository methods inside it, and an exception aborts every write. A nested `run` joins the outer transaction. `EntryService` create, update and delete are atomic ([entries](domain/entries.md) ENTRY-005); they write only the entry and the category usages. `AccountService.deleteAccount` is one transaction too: it clears the account from entries, SMS templates and pending entries, removes its transactions and transfers and the account, and resets the default account setting ([accounts](domain/accounts.md) ACCT-004).
+ - Lists are grouped once, in the cubit: `groupEntries` / `groupOperations` turn entries into `PeriodGroup`s (period, then category, totals included) in one pass, resolving each entry's category through `entry.category.targetId` against one `CategoryRepository.byId()` read per refresh (never `entry.category.target`, which is a store lookup per entry; an unattached `ToOne` throws on `targetId`, so tests attach with `makeEntry(store:)`). Widgets render the typed groups and never regroup. Range limits go into the query (`EntryQuery.from/to`), so a screen reads only what it shows; group overview's earliest date and either-or flag are separate cheap probes.
+ - Nothing is stored that can be computed. Budget periods and spent come from `BudgetRevision` rows plus the category's entries (`BudgetService.summaries` / `watchSummaries`, `BudgetCalculator`); an account's balance is `openingBalanceMinor` plus the sums of its operations (`AccountService.balanceOf` / `watchBalance`, `AccountRepository.sums`); the earliest entry and operation dates are `min(dateTime)` queries. Reads never write (BUDGET-008). See [budgets](domain/budgets.md) and [accounts](domain/accounts.md).
++- A category's color is derived from its name (`categoryColorFor` in `lib/logic/category/category_color.dart`, [categories](domain/categories.md) CAT-002); the `EntryCategory.color` column is retired. Accounts still store theirs.
+ - Money is `Money`, formatted only at display ([money](domain/money.md)).
+ - Time comes from an injected `Clock`, never `DateTime.now()`; see [conventions](conventions.md).
+ 
+ ## Export and import
+ 
+-`lib/db/transfer/` moves all data between installs as one JSON file ([data transfer](domain/data-transfer.md)). `transfer_format.dart` is pure Dart: versioned DTOs (`TransferDocument`) with file-local ids, strict `fromJson` validation that throws `TransferFormatException`, and `formatVersion` (4; a newer file is rejected, a version 1 file reads as having no `smsTemplates` or `categoryRules`, and a missing rule `mode` or template `currencyRegex` reads as `contains` or empty). `DataExporter` reads the repositories in one transaction and numbers each kind 1..n, so exporting an imported store gives the same file. `DataImporter` validates, then in one `UnitOfWork.run` removes every row and writes the file's, mapping file ids to new store ids; it also replaces the SMS templates and category rules and removes the pending SMS entries, keeping `Settings.lastSmsScanAt` ([data transfer](domain/data-transfer.md) XFER-006); it stores only facts and recomputes the rest (`isBudgetTracked` from the budgets, `Account.isDefault` from the file's `settings.defaultAccountId`, balances and budget periods on read), sets the one settings row to the file's currency, theme and default periods and stamps `schemaVersion`. `DataTransferService.importDocument` is the only import entry point: it takes the backup first and a failed backup (`BackupFailedException`) imports nothing.
++`lib/db/transfer/` moves all data between installs as one JSON file ([data transfer](domain/data-transfer.md)). `transfer_format.dart` is pure Dart: versioned DTOs (`TransferDocument`) with file-local ids, strict `fromJson` validation that throws `TransferFormatException`, and `formatVersion` (5; a newer file is rejected, a version 1 file reads as having no `smsTemplates` or `categoryRules`, a missing rule `mode` or template `currencyRegex` reads as `contains` or empty, and a category `color` from a file of version 4 or older is ignored). `DataExporter` reads the repositories in one transaction and numbers each kind 1..n, so exporting an imported store gives the same file. `DataImporter` validates, then in one `UnitOfWork.run` removes every row and writes the file's, mapping file ids to new store ids; it also replaces the SMS templates and category rules and removes the pending SMS entries, keeping `Settings.lastSmsScanAt` ([data transfer](domain/data-transfer.md) XFER-006); it stores only facts and recomputes the rest (`isBudgetTracked` from the budgets, `Account.isDefault` from the file's `settings.defaultAccountId`, balances and budget periods on read), sets the one settings row to the file's currency, theme and default periods and stamps `schemaVersion`. `DataTransferService.importDocument` is the only import entry point: it takes the backup first and a failed backup (`BackupFailedException`) imports nothing.
+ 
+ - **Backup of the open store.** ObjectBox's backup API is server-only and closing the store would invalidate every repository and cubit, so `backupOpenStore` (`migrations/backup.dart`) copies `data.mdb` inside a read transaction: the file is copy-on-write, so while a reader is open no writer reuses its snapshot's pages and the copy is one committed state. Same temporary-name-then-rename rule as the migration backup; the name is `data.mdb.pre-import-<UTC yyyyMMdd-HHmmss-SSS>`.
+ - **No restart after an import.** The store stays open, so repositories and services stay valid; every screen follows the replaced rows through its `watch` streams and `SettingsCubit` through `watchChanges`. The one thing a screen can keep is a filter that names a removed id.
+@@ -55,13 +56,13 @@ Banking SMS are read on demand from the Android inbox and become entries only wh
+ - **Pending entries** are rows with a status (pending, confirmed, dismissed) and an indexed `smsKey`; the key is kept after confirm or dismiss so a message is never imported twice. `EntryFormCubit.fromPending` pre-fills the entry form from one; submitting calls `SmsImportService.confirm`, which creates the entry through `EntryService` and marks the row confirmed, in the same transaction. Swipe-dismiss and confirm all go through the service as well. A pending entry in another currency than the app's is skipped by confirm all and marked on the list and the form. `PendingEntriesCubit` also flags a "possible duplicate" per item (an entry with the same absolute amount within a day of the SMS time, `EntryRepository.existsWithAmountBetween`): a UI hint only, it blocks nothing.
+ - **Unrecognized SMS.** `UnrecognizedSms` rows (unique `smsKey`, a `dismissed` flag) keep the messages that no enabled template reads but `looksLikeTransaction` (pure, in the parser) accepts; `scan` stores them in the same transaction as the pending entries, once per key, and a message is never both (a kept one a template now reads becomes pending and its row goes). `retryUnrecognized(digits:)` re-reads the non-dismissed ones with the enabled templates and turns the ones read into pending entries through the same construction as `scan`; `SmsTemplateFormCubit.submit` calls it after saving (enabling happens in that form too). `UnrecognizedSmsCubit` lists them (swipe = `dismissUnrecognized`) and "Create template" opens the template form with the message as the test sample (`initialSample`). `SmsRepository.isKnown` is about pending entries only, so a kept message can still become pending ([SMS import](domain/sms-import.md) SMS-008).
+ - **Scan point.** `Settings.lastSmsScanAt` is the latest message time seen; null means never scanned, and the pending-entries cubit then asks the page for a start point (`ScanStartDialog`) instead of scanning the whole inbox. The stored point only moves forward, so a scan from an earlier point is safe.
+-- **Export scope.** Templates and category rules are exported (format version 4); pending entries, unrecognized SMS and the scan point are not, and an import removes pending entries and unrecognized SMS and keeps the scan point ([data transfer](domain/data-transfer.md) XFER-006).
++- **Export scope.** Templates and category rules are exported (since format version 2); pending entries, unrecognized SMS and the scan point are not, and an import removes pending entries and unrecognized SMS and keeps the scan point ([data transfer](domain/data-transfer.md) XFER-006).
+ - **UI.** `routes/pages/sms/` (pending entries, templates with a live parse preview, category rules) and `routes/popups/sms/` (scan start, new rule); the drawer tile shows only when `SmsSource.isSupported`, and so does the optional Home button (`Settings.smsImportOnHome`). Opening the pending-entries screen scans from the last scan point at once (the first ever scan asks for a start point); the sync button scans again.
+ 
+ ## Schema and backups
+ 
+ - `Settings.schemaVersion` plus the startup `Migrator` (v1 to v2 money, v2 to v3 derived data). `Migrator` runs every pending step and the version bump in one `UnitOfWork.run`; a version newer than the build is a fatal error. See [settings](domain/settings.md) SET-002.
+-- Schema changes only add columns. The legacy `double` amount fields, the raw `currencyId`/`themeModeIndex` and the retired counters (`Budget` window and progress, `Account.balanceMinor` and `earliestOperationDate`, `Settings.earliestEntryDate`, `Entry.budget`, the `BudgetHistory` entity) stay in the model, `@Deprecated` and read only by `lib/db/migrations`, until the separate column-retirement release (plan 5 T11, deferred until v3 is verified on devices). The `deprecated_member_use_from_same_package` lint (and `test/models/legacy_fields_test.dart`) enforce that. `lib/db/migrations/v2_to_v3.dart` derives each account's opening balance and each budget's revisions from them.
++- Schema changes only add columns. The legacy `double` amount fields, the raw `currencyId`/`themeModeIndex` and the retired counters (`Budget` window and progress, `Account.balanceMinor` and `earliestOperationDate`, `Settings.earliestEntryDate`, `Entry.budget`, `EntryCategory.color`, the `BudgetHistory` entity) stay in the model, `@Deprecated` and read only by `lib/db/migrations`, until the separate column-retirement release (plan 5 T11, deferred until v3 is verified on devices). The `deprecated_member_use_from_same_package` lint (and `test/models/legacy_fields_test.dart`) enforce that. `lib/db/migrations/v2_to_v3.dart` derives each account's opening balance and each budget's revisions from them.
+ - **Pre-import backups** (`data.mdb.pre-import-<timestamp>`, one per import) are likewise never deleted by the app; each is as large as the database at that moment. They are the way back from an import the user regrets.
+ - **Pre-migration backups are never deleted.** `data.mdb.pre-v2` and `data.mdb.pre-v3` sit next to the live `data.mdb` and are the only rollback for real user data. There is no automatic cleanup on purpose: until a release with both migrations has been verified on devices and plan 5 T11 (which discards the legacy columns irreversibly) has shipped, deleting one would remove the only way back. Revisit deleting `pre-v2` and `pre-v3` after that; a cleanup would be a small function in the startup path that runs only once `schemaVersion` is at least the backup's version.
+ 
+diff --git c/.docs/domain/categories.md i/.docs/domain/categories.md
+index 4b87cbb..5ef4158 100644
+--- c/.docs/domain/categories.md
++++ i/.docs/domain/categories.md
+@@ -10,4 +10,4 @@ owns:
+ # Category rules
+ 
+ 1. **CAT-001** Category names are unique. Exact match, case-sensitive; adding or renaming to a taken name throws `DuplicateCategoryName` and leaves the stored rows unchanged.
+-2. **CAT-002** A category color string and its `Color` round-trip losslessly.
++2. **CAT-002** A category's color is derived from its name and never stored: `categoryColorFor` hashes the name with a stable hash (not `String.hashCode`) into the fixed `categoryPalette`, so the same name gets the same color on every run and platform, and a renamed category changes color. The color is not exported, and an older file's category color is ignored on import (XFER-004).
+diff --git c/.docs/domain/data-transfer.md i/.docs/domain/data-transfer.md
+index 3a3a78c..ee0ba4e 100644
+--- c/.docs/domain/data-transfer.md
++++ i/.docs/domain/data-transfer.md
+@@ -11,6 +11,6 @@ Export writes all user data to one JSON file; import replaces all data with a fi
+ 1. **XFER-001** Export followed by import into an empty store is lossless: entries, categories, groups, accounts, transactions, transfers, budgets with their revisions, SMS templates, SMS category rules, and settings come back equal, with relations intact. Ids may change.
+ 2. **XFER-002** Import is all-or-nothing. The whole file is validated before any write, and the replace runs in one transaction. An invalid file, or a failure part-way through, leaves the existing data exactly as it was.
+ 3. **XFER-003** Import replaces existing data only after the user explicitly confirms, and only after the current database has been copied to `data.mdb.pre-import-<timestamp>`.
+-4. **XFER-004** Every file carries a format version. A file newer than the app supports is rejected; older formats are upgraded on import (a version-1 file has no SMS templates or category rules; a rule without a `mode`, as in versions 1 and 2, is a `contains` rule; a template without a `currencyRegex`, as in versions 1 to 3, reads no currency). Import switches the app's currency to the file's currency, since the amounts are in that currency's minor units.
+-5. **XFER-005** The file holds stored facts of the current model only: amounts as integer minor units (MONEY-001), opening balances not balances (ACCT-001), budget revisions not spent values (BUDGET-002). Derived values and retired legacy fields are never written.
++4. **XFER-004** Every file carries a format version. A file newer than the app supports is rejected; older formats are upgraded on import (a version-1 file has no SMS templates or category rules; a rule without a `mode`, as in versions 1 and 2, is a `contains` rule; a template without a `currencyRegex`, as in versions 1 to 3, reads no currency; a category `color`, written up to version 4, is ignored, since the color is derived from the name, CAT-002). Import switches the app's currency to the file's currency, since the amounts are in that currency's minor units.
++5. **XFER-005** The file holds stored facts of the current model only: amounts as integer minor units (MONEY-001), opening balances not balances (ACCT-001), budget revisions not spent values (BUDGET-002). Derived values (a category's color, CAT-002) and retired legacy fields are never written.
+ 6. **XFER-006** Import removes every pending SMS entry and every unrecognized SMS (SMS-008, neither is exported), since they point at the replaced categories and accounts, and keeps the SMS scan point.
+diff --git c/lib/db/transfer/exporter.dart i/lib/db/transfer/exporter.dart
+index 40c5c24..4f233f6 100644
+--- c/lib/db/transfer/exporter.dart
++++ i/lib/db/transfer/exporter.dart
+@@ -120,7 +120,6 @@ class DataExporter {
+           TransferCategory(
+             id: categoryIds[category.id]!,
+             name: category.name,
+-            color: category.color,
+             isExpense: category.isExpense,
+             usages: category.usages,
+           ),
+diff --git c/lib/db/transfer/importer.dart i/lib/db/transfer/importer.dart
+index 0cad8c8..f03711f 100644
+--- c/lib/db/transfer/importer.dart
++++ i/lib/db/transfer/importer.dart
+@@ -92,7 +92,6 @@ class DataImporter {
+         name: item.name,
+         isExpense: item.isExpense,
+         usages: item.usages,
+-        color: item.color,
+         isBudgetTracked: budgeted.contains(item.id),
+       );
+       _categories.add(category);
+diff --git c/lib/db/transfer/transfer_format.dart i/lib/db/transfer/transfer_format.dart
+index 03302c2..a6ec7e0 100644
+--- c/lib/db/transfer/transfer_format.dart
++++ i/lib/db/transfer/transfer_format.dart
+@@ -187,22 +187,21 @@ final class TransferSettings {
+ final class TransferCategory {
+   final int id;
+   final String name;
+-  final String color;
+   final bool isExpense;
+   final int usages;
+ 
+   const TransferCategory({
+     required this.id,
+     required this.name,
+-    required this.color,
+     required this.isExpense,
+     required this.usages,
+   });
+ 
++  /// A file of version 4 or older carries a `color` per category; it is not
++  /// read, since the color is derived from the name (CAT-002).
+   factory TransferCategory._read(_Reader r) => TransferCategory(
+     id: r.integer('id'),
+     name: r.string('name'),
+-    color: r.string('color'),
+     isExpense: r.boolean('isExpense'),
+     usages: r.integer('usages'),
+   );
+@@ -210,7 +209,6 @@ final class TransferCategory {
+   Map<String, Object?> toJson() => {
+     'id': id,
+     'name': name,
+-    'color': color,
+     'isExpense': isExpense,
+     'usages': usages,
+   };
+@@ -548,8 +546,9 @@ final class TransferDocument {
+   /// `smsTemplates` and `categoryRules`; a version 1 file reads as having none.
+   /// Version 3 added the rules' `mode`; an older file reads as `contains`.
+   /// Version 4 added the templates' `currencyRegex`; an older file reads as
+-  /// empty.
+-  static const formatVersion = 4;
++  /// empty. Version 5 dropped the categories' `color`; an older file's is
++  /// ignored.
++  static const formatVersion = 5;
+ 
+   final DateTime exportedAt;
+   final Currency currency;
+diff --git c/lib/l10n/arb/app_en.arb i/lib/l10n/arb/app_en.arb
+index f379313..75844e4 100644
+--- c/lib/l10n/arb/app_en.arb
++++ i/lib/l10n/arb/app_en.arb
+@@ -739,9 +739,9 @@
+   "@categoryFormNewTitle": {
+     "description": "Title of the dialog for creating a category."
+   },
+-  "categoryFormColorAndName": "Color and category name",
+-  "@categoryFormColorAndName": {
+-    "description": "Label above the color and name fields of a category."
++  "categoryFormName": "Category name",
++  "@categoryFormName": {
++    "description": "Label above the name field of a category."
+   },
+   "categoryFormNameHint": "Enter category name",
+   "@categoryFormNameHint": {
+diff --git c/lib/logic/category/category_color.dart i/lib/logic/category/category_color.dart
+new file mode 100644
+index 0000000..efcb6ff
+--- /dev/null
++++ i/lib/logic/category/category_color.dart
+@@ -0,0 +1,38 @@
++import 'dart:convert';
++import 'dart:ui';
++
++/// The colors a category can have, in a fixed order: [categoryColorFor]
++/// indexes into this list, so reordering or resizing it recolors every
++/// category.
++const List<Color> categoryPalette = [
++  Color(0xffF44336),
++  Color(0xffE91E63),
++  Color(0xff9C27B0),
++  Color(0xff673AB7),
++  Color(0xff3F51B5),
++  Color(0xff2196F3),
++  Color(0xff00BCD4),
++  Color(0xff009688),
++  Color(0xff4CAF50),
++  Color(0xff8BC34A),
++  Color(0xffCDDC39),
++  Color(0xffFFEB3B),
++  Color(0xffFFC107),
++  Color(0xffFF9800),
++  Color(0xffFF5722),
++  Color(0xff795548),
++  Color(0xff607D8B),
++  Color(0xff608b6e),
++];
++
++/// The color of the category called [name] (CAT-002): a hash of the name's
++/// UTF-8 bytes picks an entry of [categoryPalette]. The hash is spelled out
++/// here because `String.hashCode` is not stable across runs or platforms; the
++/// same name always gets the same color. Nothing is stored.
++Color categoryColorFor(String name) {
++  var hash = 5381;
++  for (final byte in utf8.encode(name)) {
++    hash = ((hash * 33) + byte) & 0xFFFFFFFF;
++  }
++  return categoryPalette[hash % categoryPalette.length];
++}
+diff --git c/lib/logic/category/category_service.dart i/lib/logic/category/category_service.dart
+index 91c31aa..2f7c67c 100644
+--- c/lib/logic/category/category_service.dart
++++ i/lib/logic/category/category_service.dart
+@@ -26,12 +26,13 @@ class CategoryService {
+     this._unitOfWork,
+   );
+ 
+-  /// The color as eight hex digits, `aarrggbb` (CAT-002). An opaque color
++  /// The color as eight hex digits, `aarrggbb`, as accounts store it. An opaque color
+   /// reads `ffrrggbb`, as in every row stored before alpha was kept.
+   static String colorToString(Color color) =>
+       color.toARGB32().toRadixString(16).padLeft(8, '0');
+ 
+-  //TODO move to a more generic service
++  //TODO move to a more generic service; categories no longer store a color
++  // ([categoryColorFor])
+   static Color stringToColor(String string) {
+     return Color(int.parse(string, radix: 16));
+   }
+diff --git c/lib/logic/entry/category_total.dart i/lib/logic/entry/category_total.dart
+index 102fca2..553debe 100644
+--- c/lib/logic/entry/category_total.dart
++++ i/lib/logic/entry/category_total.dart
+@@ -8,19 +8,12 @@ import 'package:budgetron/models/money.dart';
+ /// its entries. This is what the pie charts and their legends show.
+ class CategoryTotal extends Equatable {
+   final String name;
+-
+-  /// The stored color string of the category.
+-  final String color;
+   final Money amount;
+ 
+-  const CategoryTotal({
+-    required this.name,
+-    required this.color,
+-    required this.amount,
+-  });
++  const CategoryTotal({required this.name, required this.amount});
+ 
+   @override
+-  List<Object?> get props => [name, color, amount];
++  List<Object?> get props => [name, amount];
+ }
+ 
+ /// The total per category of [entries] in one pass, the biggest first (equal
+@@ -67,8 +60,5 @@ List<CategoryTotal> totalsFromSums(
+   ];
+ }
+ 
+-CategoryTotal _total(EntryCategory category, int minor) => CategoryTotal(
+-  name: category.name,
+-  color: category.color,
+-  amount: Money(minor),
+-);
++CategoryTotal _total(EntryCategory category, int minor) =>
++    CategoryTotal(name: category.name, amount: Money(minor));
+diff --git c/lib/models/account/account.dart i/lib/models/account/account.dart
+index a72781d..e3f56d0 100644
+--- c/lib/models/account/account.dart
++++ i/lib/models/account/account.dart
+@@ -1,6 +1,8 @@
+ // The retired field is initialized here, in its own declaration.
+ // ignore_for_file: deprecated_member_use_from_same_package
+ 
++import 'dart:ui';
++
+ import 'package:budgetron/utils/interfaces.dart';
+ import 'package:objectbox/objectbox.dart';
+ 
+@@ -11,7 +13,6 @@ class Account implements Selectable {
+   @Unique()
+   String name;
+ 
+-  @override
+   String color;
+ 
+   bool isDefault;
+@@ -48,6 +49,9 @@ class Account implements Selectable {
+   }) : earliestOperationDate =
+            earliestOperationDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+ 
++  @override
++  Color resolveColor() => Color(int.parse(color, radix: 16));
++
+   @override
+   String toString() {
+     return name;
+diff --git c/lib/models/category/category.dart i/lib/models/category/category.dart
+index 2afb405..e2bb96f 100644
+--- c/lib/models/category/category.dart
++++ i/lib/models/category/category.dart
+@@ -1,3 +1,9 @@
++// The retired field is initialized here, in its own declaration.
++// ignore_for_file: deprecated_member_use_from_same_package
++
++import 'dart:ui';
++
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/utils/interfaces.dart';
+ import 'package:objectbox/objectbox.dart';
+ 
+@@ -8,7 +14,10 @@ class EntryCategory implements Selectable {
+   @Unique()
+   String name;
+ 
+-  @override
++  /// Retired stored color (CAT-002): a category's color is derived from its
++  /// name by [categoryColorFor]. Not written by the app any more; the column
++  /// stays in the schema.
++  @Deprecated('Derived from the name; kept in the schema only.')
+   String color;
+ 
+   bool isBudgetTracked;
+@@ -19,10 +28,13 @@ class EntryCategory implements Selectable {
+     required this.name,
+     required this.isExpense,
+     this.usages = 0,
+-    required this.color,
++    this.color = '',
+     this.isBudgetTracked = false,
+   });
+ 
++  @override
++  Color resolveColor() => categoryColorFor(name);
++
+   @override
+   String toString() {
+     return name;
+diff --git c/lib/routes/pages/budget/budgets_page.dart i/lib/routes/pages/budget/budgets_page.dart
+index ea923ef..3d045a9 100644
+--- c/lib/routes/pages/budget/budgets_page.dart
++++ i/lib/routes/pages/budget/budgets_page.dart
+@@ -12,7 +12,7 @@ import 'package:budgetron/models/money.dart';
+ import 'package:budgetron/models/money_format.dart';
+ import 'package:budgetron/models/enums/currency.dart';
+ import 'package:budgetron/logic/budget/budget_service.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/routes/popups/budget/budget_form_dialog.dart';
+ import 'package:budgetron/routes/pages/budget/cubit/budgets_cubit.dart';
+ import 'package:budgetron/routes/pages/budget/budget_overview_page.dart';
+@@ -231,7 +231,7 @@ class BudgetListTile extends StatelessWidget {
+         Icon(
+           Icons.square_rounded,
+           size: 18,
+-          color: CategoryService.stringToColor(category.color),
++          color: categoryColorFor(category.name),
+         ),
+         const SizedBox(width: 4),
+         Flexible(
+diff --git c/lib/routes/pages/category/category_page.dart i/lib/routes/pages/category/category_page.dart
+index b511845..5ecf0af 100644
+--- c/lib/routes/pages/category/category_page.dart
++++ i/lib/routes/pages/category/category_page.dart
+@@ -7,7 +7,7 @@ import 'package:budgetron/models/enums/entry_category_type.dart';
+ import 'package:budgetron/ui/classes/tab_switch.dart';
+ import 'package:budgetron/ui/classes/tab_swipe_detector.dart';
+ import 'package:budgetron/db/category_repository.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/models/category/category.dart';
+ import 'package:budgetron/routes/pages/category/cubit/category_search_bloc.dart';
+ import 'package:budgetron/routes/popups/category/category_form_dialog.dart';
+@@ -143,7 +143,7 @@ class CategoriesList extends StatelessWidget {
+         leadingIcon: Icon(
+           Icons.square_rounded,
+           size: 18,
+-          color: CategoryService.stringToColor(category.color),
++          color: categoryColorFor(category.name),
+         ),
+         leadingString: category.name,
+       ),
+diff --git c/lib/routes/pages/category/category_selection_page.dart i/lib/routes/pages/category/category_selection_page.dart
+index 26fd476..0033151 100644
+--- c/lib/routes/pages/category/category_selection_page.dart
++++ i/lib/routes/pages/category/category_selection_page.dart
+@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
+ import 'package:budgetron/ui/labels.dart';
+ import 'package:budgetron/l10n/app_localizations.dart';
+ import 'package:budgetron/db/category_repository.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/models/category/category.dart';
+ import 'package:budgetron/models/enums/entry_category_type.dart';
+ import 'package:budgetron/routes/pages/category/cubit/categories_cubit.dart';
+@@ -205,7 +205,7 @@ class CategoryListTile extends StatelessWidget {
+                     child: Icon(
+                       Icons.square_rounded,
+                       size: 18,
+-                      color: CategoryService.stringToColor(category.color),
++                      color: categoryColorFor(category.name),
+                     ),
+                   ),
+                   Flexible(
+diff --git c/lib/routes/pages/category/cubit/category_form_cubit.dart i/lib/routes/pages/category/cubit/category_form_cubit.dart
+index 450ed9d..14d94ef 100644
+--- c/lib/routes/pages/category/cubit/category_form_cubit.dart
++++ i/lib/routes/pages/category/cubit/category_form_cubit.dart
+@@ -1,5 +1,4 @@
+ import 'package:equatable/equatable.dart';
+-import 'package:flutter/material.dart';
+ import 'package:flutter_bloc/flutter_bloc.dart';
+ 
+ import 'package:budgetron/db/category_repository.dart';
+@@ -19,7 +18,6 @@ final class CategoryFormEditing extends CategoryFormState {
+   /// The category being edited; null while creating.
+   final EntryCategory? category;
+   final String name;
+-  final Color? color;
+ 
+   /// Create mode only: edited categories keep their type.
+   final EntryCategoryType type;
+@@ -30,7 +28,6 @@ final class CategoryFormEditing extends CategoryFormState {
+   const CategoryFormEditing({
+     required this.category,
+     required this.name,
+-    required this.color,
+     required this.type,
+     required this.isUnused,
+   });
+@@ -44,26 +41,21 @@ final class CategoryFormEditing extends CategoryFormState {
+     final category = this.category;
+     if (category == null) return true;
+ 
+-    return name.trim() != category.name ||
+-        color != CategoryService.stringToColor(category.color);
++    return name.trim() != category.name;
+   }
+ 
+-  bool get canSubmit => name.trim().isNotEmpty && color != null && isDirty;
++  bool get canSubmit => name.trim().isNotEmpty && isDirty;
+ 
+-  CategoryFormEditing copyWith({
+-    String? name,
+-    Color? color,
+-    EntryCategoryType? type,
+-  }) => CategoryFormEditing(
+-    category: category,
+-    name: name ?? this.name,
+-    color: color ?? this.color,
+-    type: type ?? this.type,
+-    isUnused: isUnused,
+-  );
++  CategoryFormEditing copyWith({String? name, EntryCategoryType? type}) =>
++      CategoryFormEditing(
++        category: category,
++        name: name ?? this.name,
++        type: type ?? this.type,
++        isUnused: isUnused,
++      );
+ 
+   @override
+-  List<Object?> get props => [category, name, color, type, isUnused];
++  List<Object?> get props => [category, name, type, isUnused];
+ }
+ 
+ /// The category was created, saved or deleted; the dialog closes.
+@@ -99,7 +91,6 @@ class CategoryFormCubit extends Cubit<CategoryFormState> {
+         CategoryFormEditing(
+           category: null,
+           name: '',
+-          color: null,
+           type: type,
+           isUnused: false,
+         ),
+@@ -111,7 +102,6 @@ class CategoryFormCubit extends Cubit<CategoryFormState> {
+         CategoryFormEditing(
+           category: category,
+           name: category.name,
+-          color: CategoryService.stringToColor(category.color),
+           type: category.isExpense
+               ? EntryCategoryType.expense
+               : EntryCategoryType.income,
+@@ -121,8 +111,6 @@ class CategoryFormCubit extends Cubit<CategoryFormState> {
+ 
+   void setName(String name) => _change((form) => form.copyWith(name: name));
+ 
+-  void setColor(Color color) => _change((form) => form.copyWith(color: color));
+-
+   void setType(EntryCategoryType type) =>
+       _change((form) => form.isEditing ? form : form.copyWith(type: type));
+ 
+@@ -135,10 +123,8 @@ class CategoryFormCubit extends Cubit<CategoryFormState> {
+     }
+ 
+     final name = form.name.trim();
+-    final colorText = CategoryService.colorToString(form.color!);
+     final category = form.category;
+     final oldName = category?.name;
+-    final oldColor = category?.color;
+ 
+     try {
+       if (category == null) {
+@@ -146,26 +132,18 @@ class CategoryFormCubit extends Cubit<CategoryFormState> {
+           EntryCategory(
+             name: name,
+             isExpense: form.type == EntryCategoryType.expense,
+-            color: colorText,
+           ),
+         );
+       } else {
+         category.name = name;
+-        category.color = colorText;
+         _categories.updateCategory(category);
+       }
+     } on DuplicateCategoryName {
+-      if (category != null) {
+-        category.name = oldName!;
+-        category.color = oldColor!;
+-      }
++      if (category != null) category.name = oldName!;
+       emit(CategoryFormFailure(form, CategoryFormError.duplicateName));
+       return;
+     } catch (_) {
+-      if (category != null) {
+-        category.name = oldName!;
+-        category.color = oldColor!;
+-      }
++      if (category != null) category.name = oldName!;
+       emit(CategoryFormFailure(form, CategoryFormError.saveFailed));
+       return;
+     }
+diff --git c/lib/routes/pages/entry/widgets/entry_list_tile.dart i/lib/routes/pages/entry/widgets/entry_list_tile.dart
+index f7f06aa..4a886ff 100644
+--- c/lib/routes/pages/entry/widgets/entry_list_tile.dart
++++ i/lib/routes/pages/entry/widgets/entry_list_tile.dart
+@@ -8,7 +8,7 @@ import 'package:budgetron/models/money_format.dart';
+ import 'package:budgetron/models/enums/currency.dart';
+ import 'package:budgetron/utils/interfaces.dart';
+ 
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ 
+ import 'package:budgetron/models/entry.dart';
+ import 'package:budgetron/models/category/category.dart';
+@@ -87,7 +87,7 @@ class _EntryListTileState extends State<EntryListTile> {
+   Icon _getLeadingIcon() => Icon(
+     Icons.square_rounded,
+     size: 18,
+-    color: CategoryService.stringToColor(category.color),
++    color: categoryColorFor(category.name),
+   );
+ 
+   Widget _resolveLeadingOption() => entries.length > 1
+diff --git c/lib/routes/pages/group/group_page.dart i/lib/routes/pages/group/group_page.dart
+index 37f50e2..b3ea199 100644
+--- c/lib/routes/pages/group/group_page.dart
++++ i/lib/routes/pages/group/group_page.dart
+@@ -6,7 +6,7 @@ import 'package:budgetron/ui/data/icons.dart';
+ import 'package:budgetron/ui/classes/app_bar.dart';
+ import 'package:budgetron/models/category/group.dart';
+ import 'package:budgetron/models/category/category.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/ui/classes/floating_action_button.dart';
+ import 'package:budgetron/routes/popups/group/group_form_dialog.dart';
+ import 'package:budgetron/routes/pages/group/cubit/groups_cubit.dart';
+@@ -182,7 +182,7 @@ class GroupCategoryTile extends StatelessWidget {
+             child: Icon(
+               Icons.square_rounded,
+               size: 18,
+-              color: CategoryService.stringToColor(category.color),
++              color: categoryColorFor(category.name),
+             ),
+           ),
+           Text(category.name, style: theme.textTheme.bodyMedium),
+diff --git c/lib/routes/pages/home/favorite_budgets.dart i/lib/routes/pages/home/favorite_budgets.dart
+index 64febda..ec1c9f7 100644
+--- c/lib/routes/pages/home/favorite_budgets.dart
++++ i/lib/routes/pages/home/favorite_budgets.dart
+@@ -9,7 +9,7 @@ import 'package:budgetron/models/money_format.dart';
+ import 'package:budgetron/models/enums/currency.dart';
+ import 'package:budgetron/logic/budget/budget_service.dart';
+ import 'package:budgetron/routes/pages/home/cubit/favorite_budgets_cubit.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/ui/classes/data_visualization/elements/progress_bar.dart';
+ 
+ class FavoriteBudgets extends StatelessWidget {
+@@ -81,7 +81,7 @@ class BudgetListContainer extends StatelessWidget {
+ 
+     return BudgetListTile(
+       name: category.name,
+-      color: CategoryService.stringToColor(category.color),
++      color: categoryColorFor(category.name),
+       progress: moneyRatio(currentValue, targetValue),
+       leftString: formatMoney(currentValue, currency: currency),
+       rightString: formatMoney(
+diff --git c/lib/routes/pages/home/latest_entries.dart i/lib/routes/pages/home/latest_entries.dart
+index 61e1ae2..feb8f06 100644
+--- c/lib/routes/pages/home/latest_entries.dart
++++ i/lib/routes/pages/home/latest_entries.dart
+@@ -1,5 +1,5 @@
+ import 'package:budgetron/l10n/app_localizations.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:flutter_bloc/flutter_bloc.dart';
+ import 'package:flutter/material.dart';
+ 
+@@ -108,7 +108,7 @@ class EntryListTile extends StatelessWidget {
+                   Icon(
+                     Icons.square_rounded,
+                     size: 18,
+-                    color: CategoryService.stringToColor(category.color),
++                    color: categoryColorFor(category.name),
+                   ),
+                   const SizedBox(width: 8),
+                   Flexible(
+diff --git c/lib/routes/pages/sms/category_rule_list_page.dart i/lib/routes/pages/sms/category_rule_list_page.dart
+index 107bbd9..a29dadf 100644
+--- c/lib/routes/pages/sms/category_rule_list_page.dart
++++ i/lib/routes/pages/sms/category_rule_list_page.dart
+@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
+ 
+ import 'package:budgetron/l10n/app_localizations.dart';
+ import 'package:budgetron/db/sms_repository.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/logic/sms/sms_import_service.dart';
+ import 'package:budgetron/models/enums/rule_match_mode.dart';
+ import 'package:budgetron/routes/pages/sms/cubit/category_rules_cubit.dart';
+@@ -157,7 +157,7 @@ class _CategoryRuleListTile extends StatelessWidget {
+                 size: 18,
+                 color: category == null
+                     ? theme.colorScheme.surfaceContainerHigh
+-                    : CategoryService.stringToColor(category.color),
++                    : categoryColorFor(category.name),
+               ),
+               const SizedBox(width: 4),
+               Expanded(
+diff --git c/lib/routes/pages/sms/widgets/pending_entry_list_tile.dart i/lib/routes/pages/sms/widgets/pending_entry_list_tile.dart
+index 44c2fca..4b773c2 100644
+--- c/lib/routes/pages/sms/widgets/pending_entry_list_tile.dart
++++ i/lib/routes/pages/sms/widgets/pending_entry_list_tile.dart
+@@ -1,7 +1,7 @@
+ import 'package:flutter/material.dart';
+ 
+ import 'package:budgetron/l10n/app_localizations.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/models/enums/currency.dart';
+ import 'package:budgetron/models/money.dart';
+ import 'package:budgetron/models/money_format.dart';
+@@ -72,7 +72,7 @@ class PendingEntryListTile extends StatelessWidget {
+                           size: 18,
+                           color: category == null
+                               ? hintColor
+-                              : CategoryService.stringToColor(category.color),
++                              : categoryColorFor(category.name),
+                         ),
+                         const SizedBox(width: 8),
+                         Flexible(
+diff --git c/lib/routes/popups/budget/budget_form_dialog.dart i/lib/routes/popups/budget/budget_form_dialog.dart
+index 58f701f..2958283 100644
+--- c/lib/routes/popups/budget/budget_form_dialog.dart
++++ i/lib/routes/popups/budget/budget_form_dialog.dart
+@@ -6,7 +6,7 @@ import 'package:budgetron/l10n/app_localizations.dart';
+ import 'package:budgetron/cubit/settings_cubit.dart';
+ import 'package:budgetron/db/category_repository.dart';
+ import 'package:budgetron/logic/budget/budget_service.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/models/category/category.dart';
+ import 'package:budgetron/models/enums/budget_period.dart';
+ import 'package:budgetron/models/money.dart';
+@@ -255,7 +255,7 @@ class _BudgetFormView extends StatelessWidget {
+         Icon(
+           Icons.square_rounded,
+           size: 18,
+-          color: CategoryService.stringToColor(category.color),
++          color: categoryColorFor(category.name),
+         ),
+         const SizedBox(width: 8),
+       ],
+diff --git c/lib/routes/popups/category/category_form_dialog.dart i/lib/routes/popups/category/category_form_dialog.dart
+index f0fe6b2..6601c57 100644
+--- c/lib/routes/popups/category/category_form_dialog.dart
++++ i/lib/routes/popups/category/category_form_dialog.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_bloc/flutter_bloc.dart';
+ 
+ import 'package:budgetron/l10n/app_localizations.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/logic/category/category_service.dart';
+ import 'package:budgetron/models/category/category.dart';
+ import 'package:budgetron/models/enums/entry_category_type.dart';
+@@ -84,7 +85,7 @@ class _CategoryFormView extends StatelessWidget {
+                 Align(
+                   alignment: Alignment.centerLeft,
+                   child: Text(
+-                    AppLocalizations.of(context).categoryFormColorAndName,
++                    AppLocalizations.of(context).categoryFormName,
+                     style: form.isEditing
+                         ? theme.textTheme.bodyMedium
+                         : theme.textTheme.labelSmall,
+@@ -92,9 +93,8 @@ class _CategoryFormView extends StatelessWidget {
+                 ),
+                 SizedBox(height: form.isEditing ? 8 : 4),
+                 ColorAndNameField(
+-                  color: form.color,
++                  color: categoryColorFor(form.name.trim()),
+                   initialName: form.name,
+-                  onColorChanged: cubit.setColor,
+                   onNameChanged: cubit.setName,
+                   hintText: AppLocalizations.of(context).categoryFormNameHint,
+                 ),
+diff --git c/lib/ui/classes/color_and_name_field.dart i/lib/ui/classes/color_and_name_field.dart
+index 681bd03..482144e 100644
+--- c/lib/ui/classes/color_and_name_field.dart
++++ i/lib/ui/classes/color_and_name_field.dart
+@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
+ import 'package:budgetron/routes/popups/category/category_color_selection_popup.dart';
+ import 'package:budgetron/ui/classes/text_fields/text_field.dart';
+ 
+-/// A color swatch that opens the color picker, next to a name field.
++/// A color swatch next to a name field. The swatch opens the color picker
++/// when [onColorChanged] is set; without it the swatch only shows [color].
+ /// Stateless: the owner holds the [color] and reads the name through
+ /// [onNameChanged].
+ class ColorAndNameField extends StatelessWidget {
+   final Color? color;
+   final String initialName;
+-  final ValueChanged<Color> onColorChanged;
++  final ValueChanged<Color>? onColorChanged;
+   final ValueChanged<String> onNameChanged;
+   final String hintText;
+ 
+@@ -17,7 +18,7 @@ class ColorAndNameField extends StatelessWidget {
+     super.key,
+     required this.color,
+     required this.initialName,
+-    required this.onColorChanged,
++    this.onColorChanged,
+     required this.onNameChanged,
+     required this.hintText,
+   });
+@@ -27,13 +28,16 @@ class ColorAndNameField extends StatelessWidget {
+     return Row(
+       children: [
+         InkWell(
+-          onTap: () async {
+-            final picked = await showDialog<Color>(
+-              context: context,
+-              builder: (BuildContext context) => const CategoryColorDialog(),
+-            );
+-            if (picked != null) onColorChanged(picked);
+-          },
++          onTap: onColorChanged == null
++              ? null
++              : () async {
++                  final picked = await showDialog<Color>(
++                    context: context,
++                    builder: (BuildContext context) =>
++                        const CategoryColorDialog(),
++                  );
++                  if (picked != null) onColorChanged!(picked);
++                },
+           child: Container(
+             padding: EdgeInsets.zero,
+             height: 38,
+diff --git c/lib/ui/classes/data_visualization/pie_data.dart i/lib/ui/classes/data_visualization/pie_data.dart
+index 56dd862..03530e6 100644
+--- c/lib/ui/classes/data_visualization/pie_data.dart
++++ i/lib/ui/classes/data_visualization/pie_data.dart
+@@ -1,4 +1,4 @@
+-import 'package:budgetron/logic/category/category_service.dart';
++import 'package:budgetron/logic/category/category_color.dart';
+ import 'package:budgetron/logic/entry/category_total.dart';
+ import 'package:budgetron/ui/classes/data_visualization/elements/pie_chart.dart';
+ 
+@@ -6,7 +6,7 @@ import 'package:budgetron/ui/classes/data_visualization/elements/pie_chart.dart'
+ List<PieChartData> pieDataOf(List<CategoryTotal> totals) => [
+   for (final total in totals)
+     PieChartData(
+-      color: CategoryService.stringToColor(total.color),
++      color: categoryColorFor(total.name),
+       amount: total.amount,
+       name: total.name,
+     ),
+diff --git c/lib/ui/classes/select_button.dart i/lib/ui/classes/select_button.dart
+index eea39ba..9118295 100644
+--- c/lib/ui/classes/select_button.dart
++++ i/lib/ui/classes/select_button.dart
+@@ -1,7 +1,6 @@
+ import 'package:flutter/material.dart';
+ 
+ import 'package:budgetron/utils/interfaces.dart';
+-import 'package:budgetron/logic/category/category_service.dart';
+ 
+ class BudgetronSelectButton extends StatelessWidget {
+   final Selectable? value;
+@@ -85,11 +84,7 @@ class SelectedItem extends StatelessWidget {
+ 
+     return Row(
+       children: [
+-        Icon(
+-          Icons.square_rounded,
+-          size: 18,
+-          color: CategoryService.stringToColor(value.color),
+-        ),
++        Icon(Icons.square_rounded, size: 18, color: value.resolveColor()),
+         const SizedBox(width: 4),
+         Expanded(
+           child: Text(
+diff --git c/lib/utils/interfaces.dart i/lib/utils/interfaces.dart
+index 8ca04f5..3ecf4f2 100644
+--- c/lib/utils/interfaces.dart
++++ i/lib/utils/interfaces.dart
+@@ -1,7 +1,10 @@
++import 'dart:ui';
++
+ import 'package:budgetron/models/money.dart';
+ 
+ abstract class Selectable {
+-  late String color;
++  /// The swatch shown next to the item's name.
++  Color resolveColor();
+   //String getIcon();
+ }
+ 
+diff --git c/test/db/migrations/v1_fixture.dart i/test/db/migrations/v1_fixture.dart
+index ff26d2b..1c3220e 100644
+--- c/test/db/migrations/v1_fixture.dart
++++ i/test/db/migrations/v1_fixture.dart
+@@ -55,7 +55,6 @@ V1Fixture seedV1(
+   final category = EntryCategory(
+     name: 'Food',
+     isExpense: true,
+-    color: 'ff000000',
+     isBudgetTracked: true,
+   );
+   store.box<EntryCategory>().put(category);
+diff --git c/test/db/migrations/v2_fixture.dart i/test/db/migrations/v2_fixture.dart
+index 23f17cb..336d38a 100644
+--- c/test/db/migrations/v2_fixture.dart
++++ i/test/db/migrations/v2_fixture.dart
+@@ -35,7 +35,6 @@ class V2Seeder {
+     final category = EntryCategory(
+       name: name,
+       isExpense: isExpense,
+-      color: 'ff000000',
+       isBudgetTracked: isExpense,
+     );
+     store.box<EntryCategory>().put(category);
+diff --git c/test/db/transfer/export_schema_test.dart i/test/db/transfer/export_schema_test.dart
+index 109ebbc..bc6cfbb 100644
+--- c/test/db/transfer/export_schema_test.dart
++++ i/test/db/transfer/export_schema_test.dart
+@@ -31,7 +31,7 @@ const _allowed = <String, Set<String>>{
+     'defaultDatePeriodStats',
+     'defaultDatePeriodGroups',
+   },
+-  'category': {'id', 'name', 'color', 'isExpense', 'usages'},
++  'category': {'id', 'name', 'isExpense', 'usages'},
+   'group': {'id', 'name', 'categoryIds'},
+   'account': {'id', 'name', 'color', 'openingBalanceMinor'},
+   'entry': {'id', 'amountMinor', 'dateTime', 'categoryId', 'accountId'},
+diff --git c/test/db/transfer/exporter_test.dart i/test/db/transfer/exporter_test.dart
+index a2b527c..7b33418 100644
+--- c/test/db/transfer/exporter_test.dart
++++ i/test/db/transfer/exporter_test.dart
+@@ -138,8 +138,8 @@ void main() {
+   // cinch:rule XFER-001
+   test('a rule whose category no longer exists is left out, not an error', () {
+     services.settings.ensure();
+-    final gone = makeCategoryRow(services, 'Gone', true, 'ff000000');
+-    final kept = makeCategoryRow(services, 'Kept', true, 'ff111111');
++    final gone = makeCategoryRow(services, 'Gone', true);
++    final kept = makeCategoryRow(services, 'Kept', true);
+     services.sms.putRule(CategoryRule(keyword: 'a')..category.target = gone);
+     services.sms.putRule(CategoryRule(keyword: 'b')..category.target = kept);
+     // Old data: the category row goes without the cascade of SMS-005.
+@@ -216,7 +216,7 @@ void main() {
+         jsonDecode(exporterOf(services).exportJson()) as Map<String, Object?>;
+ 
+     checkSchema(json);
+-    expect(json['formatVersion'], 4);
++    expect(json['formatVersion'], 5);
+     expect(json['format'], 'budgetron');
+     expect((json['entries'] as List).first, {
+       'id': 1,
+diff --git c/test/db/transfer/format_version_test.dart i/test/db/transfer/format_version_test.dart
+index 53ec513..948fdcd 100644
+--- c/test/db/transfer/format_version_test.dart
++++ i/test/db/transfer/format_version_test.dart
+@@ -56,11 +56,11 @@ Map<String, Object?> _v2() => _fixture()
+ 
+ void main() {
+   // cinch:rule XFER-004
+-  test('format version 4 is the current one', () {
+-    expect(TransferDocument.formatVersion, 4);
++  test('format version 5 is the current one', () {
++    expect(TransferDocument.formatVersion, 5);
+     expect(
+       TransferDocument.fromJson(_fixture()).toJson()['formatVersion'],
+-      4,
++      5,
+       reason: 'a version 1 file is upgraded on read',
+     );
+   });
+@@ -143,12 +143,18 @@ void main() {
+     expect(document.categoryRules, isEmpty);
+   });
+ 
+-  test('parse then toJson reproduces the fixture, upgraded to version 4', () {
++  test('parse then toJson reproduces the fixture, upgraded to version 5', () {
+     final text = File('test/db/transfer/fixture_v1.json').readAsStringSync();
++    final fixture = jsonDecode(text) as Map<String, Object?>;
+ 
+     expect(TransferDocument.parse(text).toJson(), {
+-      ...(jsonDecode(text) as Map<String, Object?>),
+-      'formatVersion': 4,
++      ...fixture,
++      // Version 5 drops the category colors the fixture still carries.
++      'categories': [
++        for (final category in fixture['categories']! as List)
++          {...(category as Map<String, Object?>)}..remove('color'),
++      ],
++      'formatVersion': 5,
+       'smsTemplates': <Object?>[],
+       'categoryRules': <Object?>[],
+     });
+@@ -193,7 +199,11 @@ void main() {
+     test('parse then toJson reproduces the document, upgraded', () {
+       final json = _v2();
+       final upgraded = _v2()
+-        ..['formatVersion'] = 4
++        ..['formatVersion'] = 5
++        ..['categories'] = [
++          for (final category in _v2()['categories']! as List)
++            {...(category as Map<String, Object?>)}..remove('color'),
++        ]
+         ..['smsTemplates'] = [
+           for (final template in _v2()['smsTemplates']! as List)
+             {...(template as Map<String, Object?>), 'currencyRegex': ''},
+@@ -262,9 +272,9 @@ void main() {
+     });
+ 
+     // cinch:rule XFER-004
+-    test('a version 5 file is rejected as too new', () {
++    test('a version 6 file is rejected as too new', () {
+       expect(
+-        () => TransferDocument.fromJson(_v2()..['formatVersion'] = 5),
++        () => TransferDocument.fromJson(_v2()..['formatVersion'] = 6),
+         throwsA(
+           isA<TransferFormatException>().having(
+             (e) => e.tooNew,
+diff --git c/test/db/transfer/import_atomic_test.dart i/test/db/transfer/import_atomic_test.dart
+index 8ea798a..4d93fc6 100644
+--- c/test/db/transfer/import_atomic_test.dart
++++ i/test/db/transfer/import_atomic_test.dart
+@@ -180,7 +180,7 @@ void main() {
+     'an unknown theme': _broken(
+       (j) => (j['settings']! as Map<String, Object?>)['themeMode'] = 'neon',
+     ),
+-    'a version newer than supported': _broken((j) => j['formatVersion'] = 5),
++    'a version newer than supported': _broken((j) => j['formatVersion'] = 6),
+     'a version 2 file without templates': _brokenV2(
+       (j) => j.remove('smsTemplates'),
+     ),
+diff --git c/test/db/transfer/round_trip_test.dart i/test/db/transfer/round_trip_test.dart
+index a44e768..dbdb4fc 100644
+--- c/test/db/transfer/round_trip_test.dart
++++ i/test/db/transfer/round_trip_test.dart
+@@ -145,6 +145,25 @@ void main() {
+     expect(observe(to)['ruleModes'], {'MARKET': 'prefix', 'cafe': 'word'});
+   });
+ 
++  // cinch:rule XFER-004
++  test('a file that still carries category colors imports, ignoring them', () {
++    seedAllKinds(from);
++    final json =
++        jsonDecode(exporterOf(from).exportJson()) as Map<String, Object?>;
++    json['formatVersion'] = 4;
++    for (final category in json['categories']! as List) {
++      (category as Map<String, Object?>)['color'] = 'ff123456';
++    }
++    importerOf(to).run(TransferDocument.parse(jsonEncode(json)));
++
++    expect(observe(to), observe(from));
++    expect(
++      exporterOf(to).exportJson(),
++      exporterOf(from).exportJson(),
++      reason: 'the colors are not carried over',
++    );
++  });
++
+   // cinch:rule XFER-004
+   test('a file whose templates have no currency regex imports them empty', () {
+     seedAllKinds(from);
+@@ -179,7 +198,7 @@ void main() {
+     // The target already holds unrelated data with colliding names and ids.
+     seedAllKinds(to);
+     to.categoryService.createCategory(
+-      makeCategoryRow(to, 'Only in target', true, 'ff111111'),
++      makeCategoryRow(to, 'Only in target', true),
+     );
+ 
+     importerOf(to).run(TransferDocument.parse(exporterOf(from).exportJson()));
+diff --git c/test/logic/category/category_color_test.dart i/test/logic/category/category_color_test.dart
+new file mode 100644
+index 0000000..91b5c13
+--- /dev/null
++++ i/test/logic/category/category_color_test.dart
+@@ -0,0 +1,30 @@
++import 'package:flutter_test/flutter_test.dart';
++
++import 'package:budgetron/logic/category/category_color.dart';
++
++void main() {
++  // cinch:rule CAT-002
++  test('a name always gets the same color, from the palette', () {
++    for (final name in ['Groceries', 'Rent', 'Eating Out', 'Кафе', '', ' ']) {
++      expect(categoryColorFor(name), categoryColorFor(name));
++      expect(categoryPalette, contains(categoryColorFor(name)));
++    }
++  });
++
++  // cinch:rule CAT-002
++  test('the color is a fixed function of the name, not of a run', () {
++    // Pinned values: a change here recolors every user's categories.
++    expect(categoryColorFor('Groceries'), categoryPalette[12]);
++    expect(categoryColorFor('Rent'), categoryPalette[16]);
++    expect(categoryColorFor(''), categoryPalette[17]);
++  });
++
++  // cinch:rule CAT-002
++  test('names spread over the palette', () {
++    final used = {
++      for (var i = 0; i < 200; i++) categoryColorFor('Category $i'),
++    };
++
++    expect(used.length, greaterThan(categoryPalette.length ~/ 2));
++  });
++}
+diff --git c/test/logic/category/category_service_test.dart i/test/logic/category/category_service_test.dart
+index 014a52c..7d8a843 100644
+--- c/test/logic/category/category_service_test.dart
++++ i/test/logic/category/category_service_test.dart
+@@ -133,7 +133,7 @@ void main() {
+     });
+   });
+ 
+-  // cinch:rule CAT-002
++  // The stored form of an account's color; categories store none (CAT-002).
+   group('Convert Color to String and back to Color', () {
+     test('Properly converts static Color values back and forth', () {
+       const Color color1 = Colors.white;
+diff --git c/test/logic/sms/sms_parser_test.dart i/test/logic/sms/sms_parser_test.dart
+index 3b1a47f..82a19a8 100644
+--- c/test/logic/sms/sms_parser_test.dart
++++ i/test/logic/sms/sms_parser_test.dart
+@@ -364,18 +364,9 @@ void main() {
+ 
+   // cinch:rule SMS-003
+   group('Category rules', () {
+-    final groceries = EntryCategory(
+-      name: 'Groceries',
+-      isExpense: true,
+-      color: 'ff000000',
+-    )..id = 1;
+-    final meat = EntryCategory(name: 'Meat', isExpense: true, color: 'ff000000')
+-      ..id = 2;
+-    final salary = EntryCategory(
+-      name: 'Salary',
+-      isExpense: false,
+-      color: 'ff000000',
+-    )..id = 3;
++    final groceries = EntryCategory(name: 'Groceries', isExpense: true)..id = 1;
++    final meat = EntryCategory(name: 'Meat', isExpense: true)..id = 2;
++    final salary = EntryCategory(name: 'Salary', isExpense: false)..id = 3;
+ 
+     final rules = [
+       _rule('shop', groceries),
+@@ -404,11 +395,7 @@ void main() {
+     });
+ 
+     test('falls back to the whole text when no rule matches the merchant', () {
+-      final cash = EntryCategory(
+-        name: 'Cash',
+-        isExpense: true,
+-        color: 'ff000000',
+-      )..id = 4;
++      final cash = EntryCategory(name: 'Cash', isExpense: true)..id = 4;
+       final atm = [_rule('bankomat', cash), _rule('shop', groceries)];
+ 
+       expect(
+diff --git c/test/logic/stats/stats_service_test.dart i/test/logic/stats/stats_service_test.dart
+index acb3f22..e77ba18 100644
+--- c/test/logic/stats/stats_service_test.dart
++++ i/test/logic/stats/stats_service_test.dart
+@@ -24,7 +24,6 @@ List<CategoryTotal> formerTotals(List<Entry> entries) {
+ 
+     totals[category.id] = CategoryTotal(
+       name: category.name,
+-      color: category.color,
+       amount: entry.amount.abs() + (previous?.amount ?? Money.zero),
+     );
+   }
+diff --git c/test/routes/pages/category/cubit/category_form_cubit_test.dart i/test/routes/pages/category/cubit/category_form_cubit_test.dart
+index f4e48d3..50e64a8 100644
+--- c/test/routes/pages/category/cubit/category_form_cubit_test.dart
++++ i/test/routes/pages/category/cubit/category_form_cubit_test.dart
+@@ -1,5 +1,4 @@
+ import 'package:bloc_test/bloc_test.dart';
+-import 'package:flutter/material.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ import 'package:mocktail/mocktail.dart';
+ 
+@@ -17,11 +16,8 @@ class _FakeEntryCategory extends Fake implements EntryCategory {}
+ 
+ void main() {
+   late _MockCategoryService service;
+-  const red = Color(0xffF44336);
+ 
+-  EntryCategory existing() => makeCategory(name: 'Food')
+-    ..id = 5
+-    ..color = CategoryService.colorToString(red);
++  EntryCategory existing() => makeCategory(name: 'Food')..id = 5;
+ 
+   CategoryFormCubit newCreate([
+     EntryCategoryType type = EntryCategoryType.expense,
+@@ -44,20 +40,17 @@ void main() {
+       expect(form.isEditing, isFalse);
+       expect(form.type, EntryCategoryType.income);
+       expect(form.name, '');
+-      expect(form.color, isNull);
+       expect(form.canSubmit, isFalse);
+     });
+ 
+-    test('needs a name and a color; the type can be switched', () {
++    test('needs a name; the type can be switched', () {
+       final cubit = newCreate()..setName('  ');
+       expect(cubit.state.form.canSubmit, isFalse);
+ 
+       cubit.setName('Fun');
+-      expect(cubit.state.form.canSubmit, isFalse);
++      expect(cubit.state.form.canSubmit, isTrue);
+ 
+-      cubit
+-        ..setColor(red)
+-        ..setType(EntryCategoryType.income);
++      cubit.setType(EntryCategoryType.income);
+       expect(cubit.state.form.canSubmit, isTrue);
+       expect(cubit.state.form.type, EntryCategoryType.income);
+     });
+@@ -68,10 +61,9 @@ void main() {
+       build: newCreate,
+       act: (cubit) => cubit
+         ..setName('  Fun  ')
+-        ..setColor(red)
+         ..setType(EntryCategoryType.income)
+         ..submit(),
+-      skip: 3,
++      skip: 2,
+       expect: () => [isA<CategoryFormDone>()],
+       verify: (_) {
+         final category =
+@@ -79,7 +71,6 @@ void main() {
+                 as EntryCategory;
+         expect(category.name, 'Fun');
+         expect(category.isExpense, isFalse);
+-        expect(category.color, CategoryService.colorToString(red));
+       },
+     );
+ 
+@@ -91,9 +82,8 @@ void main() {
+       build: newCreate,
+       act: (cubit) => cubit
+         ..setName('Fun')
+-        ..setColor(red)
+         ..submit(),
+-      skip: 2,
++      skip: 1,
+       expect: () => [
+         isA<CategoryFormFailure>().having(
+           (s) => s.error,
+@@ -125,7 +115,6 @@ void main() {
+ 
+       expect(form.isEditing, isTrue);
+       expect(form.name, 'Food');
+-      expect(form.color, red);
+       expect(form.type, EntryCategoryType.expense);
+       expect(form.isUnused, isTrue);
+       expect(form.canSubmit, isFalse);
+@@ -134,16 +123,13 @@ void main() {
+       expect(cubit.state.form.type, EntryCategoryType.expense);
+     });
+ 
+-    test('can only be saved once name or color changed', () {
++    test('can only be saved once the name changed', () {
+       final cubit = newEdit()..setName('Groceries');
+       expect(cubit.state.form.canSubmit, isTrue);
+ 
+       cubit.setName('Food');
+       expect(cubit.state.form.canSubmit, isFalse);
+ 
+-      cubit.setColor(const Color(0xff2196F3));
+-      expect(cubit.state.form.canSubmit, isTrue);
+-
+       cubit.setName('');
+       expect(cubit.state.form.canSubmit, isFalse);
+     });
+diff --git c/test/routes/pages/stats/cubit/stats_cubit_test.dart i/test/routes/pages/stats/cubit/stats_cubit_test.dart
+index dbd9357..6a66196 100644
+--- c/test/routes/pages/stats/cubit/stats_cubit_test.dart
++++ i/test/routes/pages/stats/cubit/stats_cubit_test.dart
+@@ -18,7 +18,7 @@ class _MockStatsService extends Mock implements StatsService {}
+ SideTotals side(List<(String, int)> categories, int total) => SideTotals(
+   categories: [
+     for (final (name, minor) in categories)
+-      CategoryTotal(name: name, color: 'ff00aa00', amount: Money(minor)),
++      CategoryTotal(name: name, amount: Money(minor)),
+   ],
+   total: Money(total),
+ );
+@@ -112,7 +112,6 @@ void main() {
+         ('Rent', const Money(9000)),
+         ('Food', const Money(1200)),
+       ]);
+-      expect(state.overall.first.color, 'ff00aa00');
+       expect(state.overallTotal, const Money(10200));
+       expect(state.topSpendings, state.overall);
+       expect(state.expensesTotal, const Money(10200));
+diff --git c/test/support/data_generator.dart i/test/support/data_generator.dart
+index fd191e7..a5f311a 100644
+--- c/test/support/data_generator.dart
++++ i/test/support/data_generator.dart
+@@ -165,35 +165,15 @@ class DataGenerator {
+       throw Exception('Categories already exist.');
+     }
+ 
+-    _categories.add(
+-      EntryCategory(name: 'Groceries', isExpense: true, color: 'ff8bc34a'),
+-    );
+-    _categories.add(
+-      EntryCategory(name: 'Rent', isExpense: true, color: 'ffff5252'),
+-    );
+-    _categories.add(
+-      EntryCategory(name: 'Transport', isExpense: true, color: 'ff00bcd4'),
+-    );
+-    _categories.add(
+-      EntryCategory(name: 'Utilities', isExpense: true, color: 'ff00d4bb'),
+-    );
+-    _categories.add(
+-      EntryCategory(
+-        name: 'House maintenance',
+-        isExpense: true,
+-        color: 'ffaab2aa',
+-      ),
+-    );
+-    _categories.add(
+-      EntryCategory(name: 'Medicine', isExpense: true, color: 'ff4a5bcd1'),
+-    );
++    _categories.add(EntryCategory(name: 'Groceries', isExpense: true));
++    _categories.add(EntryCategory(name: 'Rent', isExpense: true));
++    _categories.add(EntryCategory(name: 'Transport', isExpense: true));
++    _categories.add(EntryCategory(name: 'Utilities', isExpense: true));
++    _categories.add(EntryCategory(name: 'House maintenance', isExpense: true));
++    _categories.add(EntryCategory(name: 'Medicine', isExpense: true));
+ 
+-    _categories.add(
+-      EntryCategory(name: 'Salary', isExpense: false, color: 'ff5bcd14a'),
+-    );
+-    _categories.add(
+-      EntryCategory(name: 'Trading', isExpense: false, color: 'ff721d8da'),
+-    );
++    _categories.add(EntryCategory(name: 'Salary', isExpense: false));
++    _categories.add(EntryCategory(name: 'Trading', isExpense: false));
+ 
+     return _categories.find();
+   }
+@@ -250,7 +230,6 @@ GeneratedDataset generateDataset(
+         EntryCategory(
+           name: 'Category ${i.toString().padLeft(2, '0')}',
+           isExpense: i % 5 != 4,
+-          color: 'ff${(0x100000 + i * 0x070f13).toRadixString(16)}',
+         ),
+     ];
+     store.box<EntryCategory>().putMany(categoryRows);
+diff --git c/test/support/fixtures.dart i/test/support/fixtures.dart
+index 6c524e7..c26d99e 100644
+--- c/test/support/fixtures.dart
++++ i/test/support/fixtures.dart
+@@ -9,12 +9,10 @@ EntryCategory makeCategory({
+   String name = 'Category',
+   bool isExpense = true,
+   bool isBudgetTracked = false,
+-  String color = 'ff000000',
+ }) => EntryCategory(
+   name: name,
+   isExpense: isExpense,
+   isBudgetTracked: isBudgetTracked,
+-  color: color,
+ );
+ 
+ Account makeAccount({
+diff --git c/test/support/grouping_fixture.dart i/test/support/grouping_fixture.dart
+index d387e94..672f5e5 100644
+--- c/test/support/grouping_fixture.dart
++++ i/test/support/grouping_fixture.dart
+@@ -46,7 +46,7 @@ GroupingFixture seedGroupingFixture(
+ 
+   final categories = [
+     for (var i = 0; i < 8; i++)
+-      EntryCategory(name: 'Category $i', isExpense: i < 6, color: 'ff00000$i'),
++      EntryCategory(name: 'Category $i', isExpense: i < 6),
+   ];
+   store.box<EntryCategory>().putMany(categories);
+   final account = Account(name: 'Main', color: 'ff000000', isDefault: true);
+diff --git c/test/support/store_snapshot.dart i/test/support/store_snapshot.dart
+index 12c993f..f50dfc3 100644
+--- c/test/support/store_snapshot.dart
++++ i/test/support/store_snapshot.dart
+@@ -49,7 +49,7 @@ List<String> snapshotAll(Store store) => [
+     'revision ${r.id} ${r.effectiveFrom.millisecondsSinceEpoch} '
+         '${r.targetMinor} ${r.period} b${r.budget.targetId}',
+   for (final c in store.box<EntryCategory>().getAll())
+-    'category ${c.id} ${c.name} ${c.color} ${c.isBudgetTracked} '
++    'category ${c.id} ${c.name} ${c.isBudgetTracked} '
+         '${c.isExpense} ${c.usages}',
+   for (final g in store.box<CategoryGroup>().getAll())
+     'group ${g.id} ${g.name} '
+diff --git c/test/support/transfer_seed.dart i/test/support/transfer_seed.dart
+index 55e445e..145e55e 100644
+--- c/test/support/transfer_seed.dart
++++ i/test/support/transfer_seed.dart
+@@ -47,11 +47,11 @@ void seedAllKinds(TestServices services) {
+     ..defaultDatePeriodGroups = 0;
+   services.settings.save(settings);
+ 
+-  final groceries = makeCategoryRow(services, 'Groceries', true, 'ff8bc34a');
+-  final rent = makeCategoryRow(services, 'Rent', true, 'ffff5252');
+-  final salary = makeCategoryRow(services, 'Salary', false, '805bcd14');
+-  final coffee = makeCategoryRow(services, 'Coffee', true, 'ff795548');
+-  makeCategoryRow(services, 'Unused', true, 'ff000000');
++  final groceries = makeCategoryRow(services, 'Groceries', true);
++  final rent = makeCategoryRow(services, 'Rent', true);
++  final salary = makeCategoryRow(services, 'Salary', false);
++  final coffee = makeCategoryRow(services, 'Coffee', true);
++  makeCategoryRow(services, 'Unused', true);
+ 
+   final cash = Account(name: 'Cash', color: 'ff000000', isDefault: true);
+   services.accountService.createAccount(cash, balance: const Money(10000));
+@@ -151,13 +151,8 @@ EntryCategory makeCategoryRow(
+   TestServices services,
+   String name,
+   bool isExpense,
+-  String color,
+ ) {
+-  final category = EntryCategory(
+-    name: name,
+-    isExpense: isExpense,
+-    color: color,
+-  );
++  final category = EntryCategory(name: name, isExpense: isExpense);
+   services.categoryService.createCategory(category);
+   return category;
+ }
+@@ -199,7 +194,6 @@ Map<String, Object?> observe(TestServices services) {
+         'tracked': category.isBudgetTracked,
+         'usages': category.usages,
+         'isExpense': category.isExpense,
+-        'color': category.color,
+       },
+   };
+ 

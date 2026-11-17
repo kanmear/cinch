@@ -1,0 +1,642 @@
+diff --git c/.docs/architecture.md i/.docs/architecture.md
+index ab35754..45a5089 100644
+--- c/.docs/architecture.md
++++ i/.docs/architecture.md
+@@ -33,13 +33,13 @@ Widget --> Cubit --> domain service --> Repository --> ObjectBox store
+ - Cubits call services and repositories and hold no business rule; validation a form needs (a parseable target, two different accounts, an amount above zero) is state derived in the cubit. Widgets under a page never call a repository or a service (the pure `static` helpers aside: `CategoryService.stringToColor`...).
+ - Multi-entity writes run inside `UnitOfWork.run`, which wraps `store.runInTransaction`: the callback is synchronous, so services call only synchronous repository methods inside it, and an exception aborts every write. A nested `run` joins the outer transaction. `EntryService` create, update and delete are atomic ([entries](domain/entries.md) ENTRY-005); they write only the entry and the category usages. `AccountService.deleteAccount` is one transaction too: it clears the account from entries, SMS templates and pending entries, removes its transactions and transfers and the account, and resets the default account setting ([accounts](domain/accounts.md) ACCT-004).
+ - Lists are grouped once, in the cubit: `groupEntries` / `groupOperations` turn entries into `PeriodGroup`s (period, then category, totals included) in one pass, resolving each entry's category through `entry.category.targetId` against one `CategoryRepository.byId()` read per refresh (never `entry.category.target`, which is a store lookup per entry; an unattached `ToOne` throws on `targetId`, so tests attach with `makeEntry(store:)`). Widgets render the typed groups and never regroup. Range limits go into the query (`EntryQuery.from/to`), so a screen reads only what it shows; group overview's earliest date and either-or flag are separate cheap probes.
+-- Nothing is stored that can be computed. Budget periods and spent come from `BudgetRevision` rows plus the category's entries (`BudgetService.summaries` / `watchSummaries`, `BudgetCalculator`); an account's balance is `openingBalanceMinor` plus the sums of its operations (`AccountService.balanceOf` / `watchBalance`, `AccountRepository.sums`); the earliest entry and operation dates are `min(dateTime)` queries. Reads never write (BUDGET-008). See [budgets](domain/budgets.md) and [accounts](domain/accounts.md).
++- Nothing is stored that can be computed. Budget periods and spent come from `BudgetRevision` rows plus the category's entries (`BudgetService.summaries` / `watchSummaries`, `BudgetCalculator`); an account's balance is `openingBalanceMinor` plus the sums of its operations (`AccountService.balanceOf` / `watchBalance`, `AccountRepository.sums`), where a halved entry counts `Entry.countedMinor`, half its amount, in both the balance and the budget spent ([entries](domain/entries.md) ENTRY-008); the earliest entry and operation dates are `min(dateTime)` queries. Reads never write (BUDGET-008). See [budgets](domain/budgets.md) and [accounts](domain/accounts.md).
+ - Money is `Money`, formatted only at display ([money](domain/money.md)).
+ - Time comes from an injected `Clock`, never `DateTime.now()`; see [conventions](conventions.md).
+ 
+ ## Export and import
+ 
+-`lib/db/transfer/` moves all data between installs as one JSON file ([data transfer](domain/data-transfer.md)). `transfer_format.dart` is pure Dart: versioned DTOs (`TransferDocument`) with file-local ids, strict `fromJson` validation that throws `TransferFormatException`, and `formatVersion` (4; a newer file is rejected, a version 1 file reads as having no `smsTemplates` or `categoryRules`, and a missing rule `mode` or template `currencyRegex` reads as `contains` or empty). `DataExporter` reads the repositories in one transaction and numbers each kind 1..n, so exporting an imported store gives the same file. `DataImporter` validates, then in one `UnitOfWork.run` removes every row and writes the file's, mapping file ids to new store ids; it also replaces the SMS templates and category rules and removes the pending SMS entries, keeping `Settings.lastSmsScanAt` ([data transfer](domain/data-transfer.md) XFER-006); it stores only facts and recomputes the rest (`isBudgetTracked` from the budgets, `Account.isDefault` from the file's `settings.defaultAccountId`, balances and budget periods on read), sets the one settings row to the file's currency, theme and default periods and stamps `schemaVersion`. `DataTransferService.importDocument` is the only import entry point: it takes the backup first and a failed backup (`BackupFailedException`) imports nothing.
++`lib/db/transfer/` moves all data between installs as one JSON file ([data transfer](domain/data-transfer.md)). `transfer_format.dart` is pure Dart: versioned DTOs (`TransferDocument`) with file-local ids, strict `fromJson` validation that throws `TransferFormatException`, and `formatVersion` (5; a newer file is rejected, a version 1 file reads as having no `smsTemplates` or `categoryRules`, and a missing rule `mode`, template `currencyRegex` or entry `isHalved` reads as `contains`, empty or false). `DataExporter` reads the repositories in one transaction and numbers each kind 1..n, so exporting an imported store gives the same file. `DataImporter` validates, then in one `UnitOfWork.run` removes every row and writes the file's, mapping file ids to new store ids; it also replaces the SMS templates and category rules and removes the pending SMS entries, keeping `Settings.lastSmsScanAt` ([data transfer](domain/data-transfer.md) XFER-006); it stores only facts and recomputes the rest (`isBudgetTracked` from the budgets, `Account.isDefault` from the file's `settings.defaultAccountId`, balances and budget periods on read), sets the one settings row to the file's currency, theme and default periods and stamps `schemaVersion`. `DataTransferService.importDocument` is the only import entry point: it takes the backup first and a failed backup (`BackupFailedException`) imports nothing.
+ 
+ - **Backup of the open store.** ObjectBox's backup API is server-only and closing the store would invalidate every repository and cubit, so `backupOpenStore` (`migrations/backup.dart`) copies `data.mdb` inside a read transaction: the file is copy-on-write, so while a reader is open no writer reuses its snapshot's pages and the copy is one committed state. Same temporary-name-then-rename rule as the migration backup; the name is `data.mdb.pre-import-<UTC yyyyMMdd-HHmmss-SSS>`.
+ - **No restart after an import.** The store stays open, so repositories and services stay valid; every screen follows the replaced rows through its `watch` streams and `SettingsCubit` through `watchChanges`. The one thing a screen can keep is a filter that names a removed id.
+@@ -55,7 +55,7 @@ Banking SMS are read on demand from the Android inbox and become entries only wh
+ - **Pending entries** are rows with a status (pending, confirmed, dismissed) and an indexed `smsKey`; the key is kept after confirm or dismiss so a message is never imported twice. `EntryFormCubit.fromPending` pre-fills the entry form from one; submitting calls `SmsImportService.confirm`, which creates the entry through `EntryService` and marks the row confirmed, in the same transaction. Swipe-dismiss and confirm all go through the service as well. A pending entry in another currency than the app's is skipped by confirm all and marked on the list and the form. `PendingEntriesCubit` also flags a "possible duplicate" per item (an entry with the same absolute amount within a day of the SMS time, `EntryRepository.existsWithAmountBetween`): a UI hint only, it blocks nothing.
+ - **Unrecognized SMS.** `UnrecognizedSms` rows (unique `smsKey`, a `dismissed` flag) keep the messages that no enabled template reads but `looksLikeTransaction` (pure, in the parser) accepts; `scan` stores them in the same transaction as the pending entries, once per key, and a message is never both (a kept one a template now reads becomes pending and its row goes). `retryUnrecognized(digits:)` re-reads the non-dismissed ones with the enabled templates and turns the ones read into pending entries through the same construction as `scan`; `SmsTemplateFormCubit.submit` calls it after saving (enabling happens in that form too). `UnrecognizedSmsCubit` lists them (swipe = `dismissUnrecognized`) and "Create template" opens the template form with the message as the test sample (`initialSample`). `SmsRepository.isKnown` is about pending entries only, so a kept message can still become pending ([SMS import](domain/sms-import.md) SMS-008).
+ - **Scan point.** `Settings.lastSmsScanAt` is the latest message time seen; null means never scanned, and the pending-entries cubit then asks the page for a start point (`ScanStartDialog`) instead of scanning the whole inbox. The stored point only moves forward, so a scan from an earlier point is safe.
+-- **Export scope.** Templates and category rules are exported (format version 4); pending entries, unrecognized SMS and the scan point are not, and an import removes pending entries and unrecognized SMS and keeps the scan point ([data transfer](domain/data-transfer.md) XFER-006).
++- **Export scope.** Templates and category rules are exported (format version 4), and so is each entry's `isHalved` flag with its whole amount (format version 5); pending entries, unrecognized SMS and the scan point are not, and an import removes pending entries and unrecognized SMS and keeps the scan point ([data transfer](domain/data-transfer.md) XFER-006).
+ - **UI.** `routes/pages/sms/` (pending entries, templates with a live parse preview, category rules) and `routes/popups/sms/` (scan start, new rule); the drawer tile shows only when `SmsSource.isSupported`, and so does the optional Home button (`Settings.smsImportOnHome`). Opening the pending-entries screen scans from the last scan point at once (the first ever scan asks for a start point); the sync button scans again.
+ 
+ ## Schema and backups
+diff --git c/.docs/domain/accounts.md i/.docs/domain/accounts.md
+index 49c92b0..5b7be3f 100644
+--- c/.docs/domain/accounts.md
++++ i/.docs/domain/accounts.md
+@@ -12,7 +12,7 @@ owns:
+ 
+ See [entries](entries.md), [money](money.md), [settings](settings.md).
+ 
+-1. **ACCT-001** Balance equals opening balance plus the sum of the account's entries plus the sum of its transactions plus transfers in minus transfers out.
++1. **ACCT-001** Balance equals opening balance plus the sum of the account's entries (a halved entry counting at half its amount, ENTRY-008) plus the sum of its transactions plus transfers in minus transfers out.
+ 2. **ACCT-002** At most one account is default, and `Settings.defaultAccountId` points at it (or is `-1` when none).
+ 3. **ACCT-003** A transfer changes the two balances by equal and opposite amounts.
+ 4. **ACCT-004** Deleting an account, in one transaction, removes its transactions and every transfer from or to it, clears it from its entries, SMS templates and pending entries (they stay), and resets `Settings.defaultAccountId` to `-1` if it was the default.
+diff --git c/.docs/domain/budgets.md i/.docs/domain/budgets.md
+index e8b7c18..eebfa10 100644
+--- c/.docs/domain/budgets.md
++++ i/.docs/domain/budgets.md
+@@ -13,7 +13,7 @@ owns:
+ A budget limits spending for one expense category per period (week, month, year). See [entries](entries.md), [categories](categories.md).
+ 
+ 1. **BUDGET-001** Period starts are: week on Monday, month on day 1, year on January 1.
+-2. **BUDGET-002** Spent for a period is the sum of absolute values of the category's expense entries dated in `[periodStart, periodEnd)`.
++2. **BUDGET-002** Spent for a period is the sum of absolute values of the category's expense entries dated in `[periodStart, periodEnd)`, a halved entry counting at half its amount (ENTRY-008).
+ 3. **BUDGET-003** Any number of elapsed periods roll over, not just one.
+ 4. **BUDGET-004** A past period is evaluated against the target in effect during that period.
+ 5. **BUDGET-005** Creating a budget marks its category budget-tracked; deleting the budget clears the flag; deleting a tracked category deletes its budget.
+diff --git c/.docs/domain/data-transfer.md i/.docs/domain/data-transfer.md
+index 3a3a78c..701b67d 100644
+--- c/.docs/domain/data-transfer.md
++++ i/.docs/domain/data-transfer.md
+@@ -11,6 +11,6 @@ Export writes all user data to one JSON file; import replaces all data with a fi
+ 1. **XFER-001** Export followed by import into an empty store is lossless: entries, categories, groups, accounts, transactions, transfers, budgets with their revisions, SMS templates, SMS category rules, and settings come back equal, with relations intact. Ids may change.
+ 2. **XFER-002** Import is all-or-nothing. The whole file is validated before any write, and the replace runs in one transaction. An invalid file, or a failure part-way through, leaves the existing data exactly as it was.
+ 3. **XFER-003** Import replaces existing data only after the user explicitly confirms, and only after the current database has been copied to `data.mdb.pre-import-<timestamp>`.
+-4. **XFER-004** Every file carries a format version. A file newer than the app supports is rejected; older formats are upgraded on import (a version-1 file has no SMS templates or category rules; a rule without a `mode`, as in versions 1 and 2, is a `contains` rule; a template without a `currencyRegex`, as in versions 1 to 3, reads no currency). Import switches the app's currency to the file's currency, since the amounts are in that currency's minor units.
+-5. **XFER-005** The file holds stored facts of the current model only: amounts as integer minor units (MONEY-001), opening balances not balances (ACCT-001), budget revisions not spent values (BUDGET-002). Derived values and retired legacy fields are never written.
++4. **XFER-004** Every file carries a format version. A file newer than the app supports is rejected; older formats are upgraded on import (a version-1 file has no SMS templates or category rules; a rule without a `mode`, as in versions 1 and 2, is a `contains` rule; a template without a `currencyRegex`, as in versions 1 to 3, reads no currency; an entry without `isHalved`, as in versions 1 to 4, is not halved). Import switches the app's currency to the file's currency, since the amounts are in that currency's minor units.
++5. **XFER-005** The file holds stored facts of the current model only: amounts as integer minor units (MONEY-001), opening balances not balances (ACCT-001), budget revisions not spent values (BUDGET-002), the `isHalved` flag with the whole amount not the halved one (ENTRY-008). Derived values and retired legacy fields are never written.
+ 6. **XFER-006** Import removes every pending SMS entry and every unrecognized SMS (SMS-008, neither is exported), since they point at the replaced categories and accounts, and keeps the SMS scan point.
+diff --git c/.docs/domain/entries.md i/.docs/domain/entries.md
+index 22569bb..8d90b4d 100644
+--- c/.docs/domain/entries.md
++++ i/.docs/domain/entries.md
+@@ -19,3 +19,4 @@ Entries are income or expense records tied to a category and optionally an accou
+    `EntryService` runs each of these in one `UnitOfWork`; deleting also decrements the category usages (never below 0), and an edit that changes the category moves one usage from the old category to the new one. Budget spent and account balances are derived on read, so no write maintains them.
+ 6. **ENTRY-006** Inside a period group, sorting by amount lists income categories before expense categories, each side ordered by the absolute value of the category total: largest first for "amount, descending" (the default), smallest first for "amount, ascending". "Recent" keeps categories in the order of their newest entry.
+ 7. **ENTRY-007** A period group and each of its categories expose their income sum and their expense sum separately; income plus expense equals the signed total (ENTRY-001).
++8. **ENTRY-008** An entry has a stored `isHalved` flag (default false). A halved entry counts at half its amount, `amountMinor ~/ 2` (truncated toward zero, whichever the sign, each entry on its own), in account balances (ACCT-001) and budget spent (BUDGET-002) and nowhere else: its stored amount stays whole, and lists and totals of entries show the whole amount.
+diff --git c/lib/db/account_repository.dart i/lib/db/account_repository.dart
+index b4f3d68..738a91b 100644
+--- c/lib/db/account_repository.dart
++++ i/lib/db/account_repository.dart
+@@ -5,7 +5,7 @@ import 'package:budgetron/models/account/transfer.dart';
+ 
+ /// What an account's operations add up to; see `BalanceCalculator`.
+ class AccountSums {
+-  /// Signed sum of the account's entries.
++  /// Signed sum of the account's entries, a halved one at half its amount.
+   final Money entries;
+ 
+   /// Signed sum of the account's transactions.
+diff --git c/lib/db/objectbox/object_box_account_repository.dart i/lib/db/objectbox/object_box_account_repository.dart
+index d4087f5..937d577 100644
+--- c/lib/db/objectbox/object_box_account_repository.dart
++++ i/lib/db/objectbox/object_box_account_repository.dart
+@@ -83,10 +83,7 @@ class ObjectBoxAccountRepository implements AccountRepository {
+ 
+   @override
+   AccountSums sums(int accountId) => AccountSums(
+-    entries: _sum(
+-      _entries.query(Entry_.account.equals(accountId)),
+-      Entry_.amountMinor,
+-    ),
++    entries: _entriesSum(accountId),
+     transactions: _sum(
+       _transactions.query(Transaction_.account.equals(accountId)),
+       Transaction_.amountMinor,
+@@ -101,6 +98,29 @@ class ObjectBoxAccountRepository implements AccountRepository {
+     ),
+   );
+ 
++  /// The entries' counted amounts: the store sums the whole ones, and each
++  /// halved entry adds its own truncated half (ACCT-001).
++  Money _entriesSum(int accountId) {
++    final whole = _sum(
++      _entries.query(
++        Entry_.account.equals(accountId) & Entry_.isHalved.equals(false),
++      ),
++      Entry_.amountMinor,
++    );
++
++    final halvedQuery = _entries
++        .query(Entry_.account.equals(accountId) & Entry_.isHalved.equals(true))
++        .build();
++    try {
++      return halvedQuery.find().fold(
++        whole,
++        (sum, entry) => sum + Money(entry.countedMinor),
++      );
++    } finally {
++      halvedQuery.close();
++    }
++  }
++
+   static Money _sum<T>(
+     QueryBuilder<T> builder,
+     QueryIntegerProperty<T> property,
+diff --git c/lib/db/transfer/exporter.dart i/lib/db/transfer/exporter.dart
+index 40c5c24..402bc89 100644
+--- c/lib/db/transfer/exporter.dart
++++ i/lib/db/transfer/exporter.dart
+@@ -150,6 +150,7 @@ class DataExporter {
+           TransferEntry(
+             id: index + 1,
+             amountMinor: entry.amountMinor,
++            isHalved: entry.isHalved,
+             dateTime: entry.dateTime,
+             categoryId: categoryId(
+               entry.category.targetId,
+diff --git c/lib/db/transfer/importer.dart i/lib/db/transfer/importer.dart
+index 0cad8c8..89c0582 100644
+--- c/lib/db/transfer/importer.dart
++++ i/lib/db/transfer/importer.dart
+@@ -125,6 +125,7 @@ class DataImporter {
+       final entry = Entry(
+         dateTime: item.dateTime,
+         amountMinor: item.amountMinor,
++        isHalved: item.isHalved,
+       )..category.target = categories[item.categoryId];
+       if (item.accountId != null) {
+         entry.account.target = accounts[item.accountId];
+diff --git c/lib/db/transfer/transfer_format.dart i/lib/db/transfer/transfer_format.dart
+index 03302c2..c68586c 100644
+--- c/lib/db/transfer/transfer_format.dart
++++ i/lib/db/transfer/transfer_format.dart
+@@ -69,6 +69,11 @@ class _Reader {
+   String? stringIfPresent(String key) =>
+       _map.containsKey(key) ? string(key) : null;
+ 
++  /// The bool at [key]; [fallback] when the key is absent (a field added by a
++  /// later format version).
++  bool booleanIfPresent(String key, {required bool fallback}) =>
++      _map.containsKey(key) ? boolean(key) : fallback;
++
+   bool boolean(String key) {
+     final value = _value(key);
+     if (value is! bool) {
+@@ -279,12 +284,17 @@ final class TransferEntry {
+   final int categoryId;
+   final int? accountId;
+ 
++  /// A stored fact: the whole [amountMinor] is kept and the halving is
++  /// applied on read.
++  final bool isHalved;
++
+   const TransferEntry({
+     required this.id,
+     required this.amountMinor,
+     required this.dateTime,
+     required this.categoryId,
+     required this.accountId,
++    this.isHalved = false,
+   });
+ 
+   factory TransferEntry._read(_Reader r) => TransferEntry(
+@@ -293,6 +303,8 @@ final class TransferEntry {
+     dateTime: r.date('dateTime'),
+     categoryId: r.integer('categoryId'),
+     accountId: r.integerOrNull('accountId'),
++    // Added by format version 5; an older file has no flag: not halved.
++    isHalved: r.booleanIfPresent('isHalved', fallback: false),
+   );
+ 
+   Map<String, Object?> toJson() => {
+@@ -301,6 +313,7 @@ final class TransferEntry {
+     'dateTime': _formatDate(dateTime),
+     'categoryId': categoryId,
+     'accountId': accountId,
++    'isHalved': isHalved,
+   };
+ }
+ 
+@@ -548,8 +561,9 @@ final class TransferDocument {
+   /// `smsTemplates` and `categoryRules`; a version 1 file reads as having none.
+   /// Version 3 added the rules' `mode`; an older file reads as `contains`.
+   /// Version 4 added the templates' `currencyRegex`; an older file reads as
+-  /// empty.
+-  static const formatVersion = 4;
++  /// empty. Version 5 added the entries' `isHalved`; an older file reads as
++  /// not halved.
++  static const formatVersion = 5;
+ 
+   final DateTime exportedAt;
+   final Currency currency;
+diff --git c/lib/logic/budget/budget_service.dart i/lib/logic/budget/budget_service.dart
+index 35c60db..5b14a4c 100644
+--- c/lib/logic/budget/budget_service.dart
++++ i/lib/logic/budget/budget_service.dart
+@@ -210,7 +210,7 @@ class BudgetService {
+       category: category,
+       periods: _calculator.results(spans, [
+         for (final Entry entry in entries)
+-          (at: entry.dateTime, amount: Money(entry.amountMinor)),
++          (at: entry.dateTime, amount: Money(entry.countedMinor)),
+       ]),
+     );
+   }
+diff --git c/lib/models/entry.dart i/lib/models/entry.dart
+index c8bdfb1..f33920e 100644
+--- c/lib/models/entry.dart
++++ i/lib/models/entry.dart
+@@ -23,6 +23,11 @@ class Entry implements Listable {
+   @Index()
+   DateTime dateTime;
+ 
++  /// A halved entry counts at half its [amountMinor] (truncated toward zero)
++  /// in account balances and budget spent, see [countedMinor]. The stored
++  /// amount stays whole.
++  bool isHalved;
++
+   final category = ToOne<EntryCategory>();
+   final account = ToOne<Account>();
+ 
+@@ -32,7 +37,16 @@ class Entry implements Listable {
+   @Deprecated('Budgets select entries by category and date; migration only.')
+   final budget = ToOne<Budget>();
+ 
+-  Entry({required this.dateTime, this.amountMinor = 0, this.value = 0});
++  Entry({
++    required this.dateTime,
++    this.amountMinor = 0,
++    this.value = 0,
++    this.isHalved = false,
++  });
++
++  /// What the entry counts for in balances and budget spent: [amountMinor],
++  /// or half of it for a halved entry (`~/ 2`: truncated toward zero).
++  int get countedMinor => isHalved ? amountMinor ~/ 2 : amountMinor;
+ 
+   @override
+   String toString() {
+diff --git c/lib/objectbox-model.json i/lib/objectbox-model.json
+index b2149ed..a6b8065 100644
+--- c/lib/objectbox-model.json
++++ i/lib/objectbox-model.json
+@@ -5,7 +5,7 @@
+   "entities": [
+     {
+       "id": "1:1841081728629343382",
+-      "lastPropertyId": "10:7989958646054255499",
++      "lastPropertyId": "11:1775899889406448464",
+       "name": "Entry",
+       "properties": [
+         {
+@@ -54,6 +54,11 @@
+           "id": "10:7989958646054255499",
+           "name": "amountMinor",
+           "type": 6
++        },
++        {
++          "id": "11:1775899889406448464",
++          "name": "isHalved",
++          "type": 1
+         }
+       ],
+       "relations": []
+diff --git c/test/db/transfer/export_schema_test.dart i/test/db/transfer/export_schema_test.dart
+index 109ebbc..199799d 100644
+--- c/test/db/transfer/export_schema_test.dart
++++ i/test/db/transfer/export_schema_test.dart
+@@ -34,7 +34,14 @@ const _allowed = <String, Set<String>>{
+   'category': {'id', 'name', 'color', 'isExpense', 'usages'},
+   'group': {'id', 'name', 'categoryIds'},
+   'account': {'id', 'name', 'color', 'openingBalanceMinor'},
+-  'entry': {'id', 'amountMinor', 'dateTime', 'categoryId', 'accountId'},
++  'entry': {
++    'id',
++    'amountMinor',
++    'dateTime',
++    'categoryId',
++    'accountId',
++    'isHalved',
++  },
+   'transaction': {'id', 'accountId', 'amountMinor', 'dateTime'},
+   'transfer': {'id', 'fromAccountId', 'toAccountId', 'amountMinor', 'dateTime'},
+   'budget': {'id', 'categoryId', 'onMainPage', 'archivedAt', 'revisions'},
+diff --git c/test/db/transfer/exporter_test.dart i/test/db/transfer/exporter_test.dart
+index a2b527c..a733275 100644
+--- c/test/db/transfer/exporter_test.dart
++++ i/test/db/transfer/exporter_test.dart
+@@ -216,7 +216,7 @@ void main() {
+         jsonDecode(exporterOf(services).exportJson()) as Map<String, Object?>;
+ 
+     checkSchema(json);
+-    expect(json['formatVersion'], 4);
++    expect(json['formatVersion'], 5);
+     expect(json['format'], 'budgetron');
+     expect((json['entries'] as List).first, {
+       'id': 1,
+@@ -224,9 +224,33 @@ void main() {
+       'dateTime': DateTime(2024, 3, 5, 9, 30).toUtc().toIso8601String(),
+       'categoryId': 1,
+       'accountId': 1,
++      'isHalved': false,
+     });
+   });
+ 
++  // cinch:rule XFER-005
++  test('a halved entry is written whole with its flag, and no halved sum', () {
++    seedAllKinds(services);
++    final plain = jsonDecode(exporterOf(services).exportJson()) as Map;
++    final entry = services.entries
++        .find(const EntryQuery())
++        .firstWhere((e) => e.amountMinor == -1230);
++    entry.isHalved = true;
++    services.entries.put(entry);
++
++    final json =
++        jsonDecode(exporterOf(services).exportJson()) as Map<String, Object?>;
++
++    checkSchema(json);
++    final entries = (json['entries']! as List).cast<Map<String, Object?>>();
++    expect(
++      entries.where((e) => e['isHalved'] == true).single['amountMinor'],
++      -1230,
++    );
++    expect(json['accounts'], plain['accounts']);
++    expect(json['budgets'], plain['budgets']);
++  });
++
+   test('a store row that points at a missing category is not exported', () {
+     seedAllKinds(services);
+     services.categories.remove(1);
+diff --git c/test/db/transfer/format_version_test.dart i/test/db/transfer/format_version_test.dart
+index 53ec513..bc9f0e2 100644
+--- c/test/db/transfer/format_version_test.dart
++++ i/test/db/transfer/format_version_test.dart
+@@ -56,11 +56,11 @@ Map<String, Object?> _v2() => _fixture()
+ 
+ void main() {
+   // cinch:rule XFER-004
+-  test('format version 4 is the current one', () {
+-    expect(TransferDocument.formatVersion, 4);
++  test('format version 5 is the current one', () {
++    expect(TransferDocument.formatVersion, 5);
+     expect(
+       TransferDocument.fromJson(_fixture()).toJson()['formatVersion'],
+-      4,
++      5,
+       reason: 'a version 1 file is upgraded on read',
+     );
+   });
+@@ -143,12 +143,17 @@ void main() {
+     expect(document.categoryRules, isEmpty);
+   });
+ 
+-  test('parse then toJson reproduces the fixture, upgraded to version 4', () {
++  test('parse then toJson reproduces the fixture, upgraded to version 5', () {
+     final text = File('test/db/transfer/fixture_v1.json').readAsStringSync();
++    final original = jsonDecode(text) as Map<String, Object?>;
+ 
+     expect(TransferDocument.parse(text).toJson(), {
+-      ...(jsonDecode(text) as Map<String, Object?>),
+-      'formatVersion': 4,
++      ...original,
++      'entries': [
++        for (final entry in original['entries']! as List)
++          {...(entry as Map<String, Object?>), 'isHalved': false},
++      ],
++      'formatVersion': 5,
+       'smsTemplates': <Object?>[],
+       'categoryRules': <Object?>[],
+     });
+@@ -193,7 +198,11 @@ void main() {
+     test('parse then toJson reproduces the document, upgraded', () {
+       final json = _v2();
+       final upgraded = _v2()
+-        ..['formatVersion'] = 4
++        ..['formatVersion'] = 5
++        ..['entries'] = [
++          for (final entry in _v2()['entries']! as List)
++            {...(entry as Map<String, Object?>), 'isHalved': false},
++        ]
+         ..['smsTemplates'] = [
+           for (final template in _v2()['smsTemplates']! as List)
+             {...(template as Map<String, Object?>), 'currencyRegex': ''},
+@@ -262,9 +271,9 @@ void main() {
+     });
+ 
+     // cinch:rule XFER-004
+-    test('a version 5 file is rejected as too new', () {
++    test('a version 6 file is rejected as too new', () {
+       expect(
+-        () => TransferDocument.fromJson(_v2()..['formatVersion'] = 5),
++        () => TransferDocument.fromJson(_v2()..['formatVersion'] = 6),
+         throwsA(
+           isA<TransferFormatException>().having(
+             (e) => e.tooNew,
+diff --git c/test/db/transfer/import_atomic_test.dart i/test/db/transfer/import_atomic_test.dart
+index 8ea798a..4d93fc6 100644
+--- c/test/db/transfer/import_atomic_test.dart
++++ i/test/db/transfer/import_atomic_test.dart
+@@ -180,7 +180,7 @@ void main() {
+     'an unknown theme': _broken(
+       (j) => (j['settings']! as Map<String, Object?>)['themeMode'] = 'neon',
+     ),
+-    'a version newer than supported': _broken((j) => j['formatVersion'] = 5),
++    'a version newer than supported': _broken((j) => j['formatVersion'] = 6),
+     'a version 2 file without templates': _brokenV2(
+       (j) => j.remove('smsTemplates'),
+     ),
+diff --git c/test/db/transfer/round_trip_test.dart i/test/db/transfer/round_trip_test.dart
+index a44e768..67023ce 100644
+--- c/test/db/transfer/round_trip_test.dart
++++ i/test/db/transfer/round_trip_test.dart
+@@ -222,4 +222,47 @@ void main() {
+     expect(rows, hasLength(1));
+     expect(rows.single.schemaVersion, Migrator.currentSchemaVersion);
+   });
++
++  // cinch:rule XFER-001
++  test('the halved flag survives export and import, and so do the balances '
++      'and budget spent it changes', () {
++    seedAllKinds(from);
++    for (final entry in from.entries.find(const EntryQuery())) {
++      if (entry.amountMinor.abs() == 1230 || entry.amountMinor.abs() == 777) {
++        entry.isHalved = true;
++        from.entries.put(entry);
++      }
++    }
++    final first = exporterOf(from).exportJson();
++
++    importerOf(to).run(TransferDocument.parse(first));
++
++    expect(
++      to.entries
++          .find(const EntryQuery())
++          .where((e) => e.isHalved)
++          .map((e) => e.amountMinor),
++      unorderedEquals([-1230, -777]),
++    );
++    expect(observe(to), observe(from));
++    expect(exporterOf(to).exportJson(), first);
++  });
++
++  // cinch:rule XFER-004
++  test('a file whose entries have no halved flag imports them as not '
++      'halved', () {
++    seedAllKinds(from);
++    final json =
++        jsonDecode(exporterOf(from).exportJson()) as Map<String, Object?>;
++    json['formatVersion'] = 4;
++    for (final entry in json['entries']! as List) {
++      (entry as Map<String, Object?>).remove('isHalved');
++    }
++    importerOf(to).run(TransferDocument.parse(jsonEncode(json)));
++
++    expect(to.entries.find(const EntryQuery()).map((e) => e.isHalved).toSet(), {
++      false,
++    });
++    expect(observe(to), observe(from));
++  });
+ }
+diff --git c/test/logic/account/account_balance_test.dart i/test/logic/account/account_balance_test.dart
+index a508612..e749c50 100644
+--- c/test/logic/account/account_balance_test.dart
++++ i/test/logic/account/account_balance_test.dart
+@@ -8,6 +8,7 @@ import 'package:budgetron/logic/entry/entry_service.dart';
+ import 'package:budgetron/models/account/account.dart';
+ import 'package:budgetron/models/account/transaction.dart';
+ import 'package:budgetron/models/account/transfer.dart';
++import 'package:budgetron/models/category/category.dart';
+ import 'package:budgetron/models/entry.dart';
+ import 'package:budgetron/models/money.dart';
+ import 'package:budgetron/objectbox.g.dart';
+@@ -233,4 +234,38 @@ void main() {
+       expect(seen.last.map((x) => x.account.id), [a.id, b.id, b2.id, c.id]);
+     },
+   );
++
++  // cinch:rule ACCT-001
++  test('a halved entry counts at half its amount, truncated toward zero, '
++      'each on its own', () {
++    final cash = create('Cash', 1000);
++    final food = makeCategory(name: 'Food');
++    final salary = makeCategory(name: 'Salary', isExpense: false);
++    TestServices(store).categories.add(food);
++    TestServices(store).categories.add(salary);
++
++    void add(int minor, EntryCategory category, {bool halved = false}) {
++      final entry = makeEntry(
++        amount: Money(minor),
++        account: cash,
++        dateTime: DateTime(2024, 3, 1),
++      )..isHalved = halved;
++      entries.createEntry(entry, category);
++    }
++
++    add(1001, food, halved: true); // -500
++    expect(accounts.balanceOf(cash.id), const Money(500));
++    add(999, salary, halved: true); // +499
++    expect(accounts.balanceOf(cash.id), const Money(999));
++    add(7, food); // whole: -7
++    expect(accounts.balanceOf(cash.id), const Money(992));
++    add(3, food, halved: true); // -1
++    add(3, food, halved: true); // -1, not -3 for the sum
++    expect(accounts.balanceOf(cash.id), const Money(990));
++    add(1, salary, halved: true); // 0
++    expect(accounts.balanceOf(cash.id), const Money(990));
++
++    accounts.updateAccount(cash, balance: const Money(5000));
++    expect(accounts.balanceOf(cash.id), const Money(5000));
++  });
+ }
+diff --git c/test/logic/budget/budget_service_test.dart i/test/logic/budget/budget_service_test.dart
+index 5a37b8e..9dac4cd 100644
+--- c/test/logic/budget/budget_service_test.dart
++++ i/test/logic/budget/budget_service_test.dart
+@@ -219,6 +219,40 @@ void main() {
+       expect(after.periods.map((p) => p.spent.minor), [100, 40]);
+     });
+ 
++    // cinch:rule BUDGET-002
++    test('a halved entry counts at half its amount, truncated toward zero, '
++        'in the period of its date', () {
++      final services = at(DateTime(2024, 3, 20));
++      services.budgetService.create(
++        category: food,
++        target: const Money(10000),
++        period: BudgetPeriod.month,
++      );
++      void spendHalved(int minor, DateTime when) {
++        final entry = makeEntry(amount: Money(minor), dateTime: when)
++          ..isHalved = true;
++        services.entryService.createEntry(entry, food);
++      }
++
++      spendHalved(1001, DateTime(2024, 3, 5)); // 500
++      spendHalved(3, DateTime(2024, 3, 6)); // 1
++      spendHalved(3, DateTime(2024, 3, 7)); // 1, not 3 for the sum
++      spendHalved(1, DateTime(2024, 3, 8)); // 0
++      spend(services, 200, DateTime(2024, 3, 9)); // whole
++      spendHalved(100, DateTime(2024, 4)); // 50, on the boundary
++
++      final summary = at(
++        DateTime(2024, 4, 15),
++      ).budgetService.summaries().single;
++
++      expect(summary.periods.map((p) => p.spent.minor), [702, 50]);
++      expect(
++        store.box<Entry>().getAll().map((e) => e.amountMinor),
++        containsAll([-1001, -3, -1, -100]),
++        reason: 'the stored amounts stay whole',
++      );
++    });
++
+     // cinch:rule BUDGET-002
+     test('other categories and income do not count', () {
+       final services = at(DateTime(2024, 3, 20));
+diff --git c/test/logic/entry/entry_service_test.dart i/test/logic/entry/entry_service_test.dart
+index ce0a4a7..a4804df 100644
+--- c/test/logic/entry/entry_service_test.dart
++++ i/test/logic/entry/entry_service_test.dart
+@@ -1,12 +1,49 @@
+ import 'package:flutter_test/flutter_test.dart';
+ 
++import 'package:budgetron/db/entry_repository.dart';
++import 'package:budgetron/logic/entry/category_total.dart';
+ import 'package:budgetron/logic/entry/entry_service.dart';
+ import 'package:budgetron/models/entry.dart';
+ import 'package:budgetron/models/money.dart';
+ 
+ import '../../support/fixtures.dart';
++import '../../support/test_services.dart';
++import '../../support/test_store.dart';
+ 
+ void main() {
++  // cinch:rule ENTRY-008
++  test('a halved entry keeps its whole amount; lists and totals show it', () {
++    final store = openTestStore();
++    addTearDown(store.close);
++    final services = TestServices(store);
++    final food = makeCategory(name: 'Food');
++    services.categories.add(food);
++
++    expect(makeEntry().isHalved, isFalse);
++    expect(makeEntry().countedMinor, 1000);
++
++    final halved = makeEntry(amount: const Money(1001))..isHalved = true;
++    services.entryService.createEntry(halved, food);
++
++    final stored = services.entries.find(const EntryQuery()).single;
++    expect(stored.isHalved, isTrue);
++    expect(stored.amountMinor, -1001);
++    expect(stored.countedMinor, -500);
++    expect(totalsOf([stored], {food.id: food}).single.amount, Money(1001));
++  });
++
++  // cinch:rule ENTRY-008
++  test('the counted amount truncates toward zero for both signs', () {
++    int counted(int minor) =>
++        (makeEntry(amount: Money(minor))..isHalved = true).countedMinor;
++
++    expect(
++      [counted(1001), counted(-1001), counted(1), counted(-1)],
++      [500, -500, 0, 0],
++    );
++    expect([counted(3), counted(-3), counted(0)], [1, -1, 0]);
++  });
++
+   group('calculateTotalValue', () {
+     Entry amount(int minor) => makeEntry(amount: Money(minor));
+ 

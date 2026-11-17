@@ -64,12 +64,12 @@ func hooksPathValue(m *manifest) string {
 	return manifestVar(m, pathsHooksKey, defaultHooksPath)
 }
 
-func ResolveDocsRoot(root string) (string, error) {
-	m, err := loadManifestOptional(root)
+func ResolveDocsRoot(repoRoot string) (string, error) {
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(root, docsPathValue(m)), nil
+	return filepath.Join(repoRoot, docsPathValue(m)), nil
 }
 
 func titleAndTrigger(body string) (title, trigger string) {

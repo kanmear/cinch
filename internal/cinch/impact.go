@@ -100,7 +100,7 @@ func ownsMatches(changed string, owns []string) bool {
 // buildImpact reads content from roots.fsRoot, so docsRoot must sit under it:
 // the hook passes an index snapshot and CmdImpact the working tree.
 func buildImpact(roots checkRoots, docsRoot string, changedFiles, exclude []string) ([]impactHit, error) {
-	docs, err := scanDocFrontmatter(docsRoot)
+	docs, err := scanDocFrontmatter(roots, docsRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func buildImpact(roots checkRoots, docsRoot string, changedFiles, exclude []stri
 		}
 		markers[id] = normalized
 	}
-	items, err := scanRuleDocs(docsRoot)
+	items, err := scanRuleDocs(roots, docsRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -150,24 +150,30 @@ func buildImpact(roots checkRoots, docsRoot string, changedFiles, exclude []stri
 }
 
 // maxImpactListed caps how many changed files and rule IDs one owns line
-// names before collapsing the rest into "+N more".
+// names before collapsing the rest into "+N more". Only the pre-commit hook
+// caps; 'cinch impact' run directly lists everything.
 const maxImpactListed = 3
 
-func capList(items []string) string {
-	if len(items) <= maxImpactListed {
-		return strings.Join(items, ", ")
+// capList joins items, collapsing the tail into "+N more" when capped and
+// longer than maxImpactListed. cut reports whether it collapsed anything.
+func capList(items []string, capped bool) (list string, cut bool) {
+	if !capped || len(items) <= maxImpactListed {
+		return strings.Join(items, ", "), false
 	}
-	return fmt.Sprintf("%s +%d more", strings.Join(items[:maxImpactListed], ", "), len(items)-maxImpactListed)
+	return fmt.Sprintf("%s +%d more", strings.Join(items[:maxImpactListed], ", "), len(items)-maxImpactListed), true
 }
 
 // printImpact is the advisory-only output path: never a finding, never
 // affects an exit code. Prints nothing when there's nothing to report.
 // Marker lines come first, then one owns line per doc, then a single
-// closing reminder.
-func printImpact(hits []impactHit) {
+// closing reminder. capped is true on the pre-commit hook, which prints on
+// every commit; when it actually cut something, the reminder points at
+// 'cinch impact' for the full list.
+func printImpact(hits []impactHit, capped bool) {
 	if len(hits) == 0 {
 		return
 	}
+	anyCut := false
 	fmt.Fprintln(os.Stderr, "cinch impact: this diff plausibly touches:")
 	for _, h := range hits {
 		switch h.kind {
@@ -178,8 +184,15 @@ func printImpact(hits []impactHit) {
 			}
 			fmt.Fprintf(os.Stderr, "  %s — marker at %s\n", h.ruleID, strings.Join(locs, ", "))
 		case "owns":
-			fmt.Fprintf(os.Stderr, "  %s — owns %s — rules %s\n", h.doc, capList(h.files), capList(h.ruleIDs))
+			files, filesCut := capList(h.files, capped)
+			ids, idsCut := capList(h.ruleIDs, capped)
+			anyCut = anyCut || filesCut || idsCut
+			fmt.Fprintf(os.Stderr, "  %s — owns %s — rules %s\n", h.doc, files, ids)
 		}
+	}
+	if anyCut {
+		fmt.Fprintln(os.Stderr, "confirm the docs still match (cinch impact lists every ID)")
+		return
 	}
 	fmt.Fprintln(os.Stderr, "confirm the docs still match")
 }
@@ -188,25 +201,25 @@ func printImpact(hits []impactHit) {
 // files are given it defaults to the staged diff. Unlike the pre-commit
 // hook's use of buildImpact, a scan error here surfaces loudly — the user
 // asked for this data directly and didn't get it.
-func CmdImpact(root string, files []string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdImpact(repoRoot string, files []string) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("impact", err)
 	}
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("impact", err)
 	}
 	if len(files) == 0 {
-		files, err = stagedPaths(root)
+		files, err = stagedPaths(repoRoot)
 		if err != nil {
 			return output.Fail("impact", err)
 		}
 	}
-	hits, err := buildImpact(workingTreeRoots(root), docsRoot, files, m.list(pathsExcludeKey))
+	hits, err := buildImpact(workingTreeRoots(repoRoot), docsRoot, files, m.list(pathsExcludeKey))
 	if err != nil {
 		return output.Fail("impact", err)
 	}
-	printImpact(hits)
+	printImpact(hits, false)
 	return 0
 }

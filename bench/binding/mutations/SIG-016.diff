@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..6fb2694 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -699,7 +699,7 @@ func (h *TabHandler) RespondToSignature(w http.ResponseWriter, r *http.Request)
+ 		return
+ 	}
+ 
+-	if !h.requireSign(w, access, tab.CategoryID) {
++	if !h.requireView(w, access, tab.CategoryID) {
+ 		return
+ 	}
+ 

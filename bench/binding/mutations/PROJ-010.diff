@@ -1,0 +1,14 @@
+diff --git c/backend/handlers/project.go w/backend/handlers/project.go
+index fed7247..3590179 100644
+--- c/backend/handlers/project.go
++++ w/backend/handlers/project.go
+@@ -110,7 +110,8 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
+ 	}
+ 
+ 	user := middleware.GetUserFromContext(r)
+-	if existing.OwnerID != user.ID {
++	member, err := h.members.GetMemberByProjectAndUser(id, user.ID)
++	if err != nil || member == nil {
+ 		RespondForbidden(w)
+ 		return
+ 	}

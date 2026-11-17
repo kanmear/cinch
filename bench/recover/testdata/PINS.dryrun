@@ -1,0 +1,14 @@
+# Dry-run pins: the scrubbed Budgetron mirror at cinch-bench/upkeep-v1.
+# Tests and the end-to-end dry run use this file; the real run uses ../PINS.
+BUDGETRON_REF=cinch-bench/upkeep-v1
+BUDGETRON_SHA=2907c92cdf886eb269d7bb91573e6c0841a9022a
+BUDGETRON_GEN=make gen
+BUDGETRON_DOCS=.docs
+BUDGETRON_OBJECTBOX=~/code/budgetron/.objectbox/lib
+PI_PROVIDER=llama-cpp
+PI_MODEL=Qwen3.8-27B-UD-Q4_K_M
+PI_THINKING=high
+JUDGE_MODEL=claude-sonnet-5-5
+REPS=1
+WALL_CLOCK_MINUTES=2
+SCHEDULE_SEED=20261101

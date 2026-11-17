@@ -17,7 +17,7 @@ tier three is small in isolation but compounds.
 | 1 | [Strip build metadata before parsing semver](01-strip-build-metadata-semver.md) | 1 — trust the checker | **Shipped** (`a35cbe1`) — kept for provenance |
 | 2 | [`cinch upgrade`](02-cinch-upgrade.md) | 1 — trust the checker | **Shipped** (`cf3edcf`) |
 | 3 | [Close rule-grammar holes, then seed defects](03-rule-grammar-holes-and-seed-defects.md) | 1 — trust the checker | Part A and the seeded battery shipped (`284bf40`) |
-| 4 | [Measure binding strength before designing for it](04-measure-binding-strength.md) | 2 — make green mean something | Open |
+| 4 | [Measure binding strength before designing for it](04-measure-binding-strength.md) | 2 — make green mean something | **Done** — 72/75 bindings bite (96%); question closed, no typed bindings. See `bench/README.md` |
 | 5 | [Navigability as one check class](05-navigability-check-class.md) | 2 — make green mean something | H1 half shipped (`2925bf4`); the reachability half was dropped — see the item's resolution and the comment in `TestSeededDefectLinksTargetUnreachableFromRoot` |
 | 6 | [The machine surface: `rules --json` + `owns:` → `cinch impact`](06-machine-surface-rules-json-impact.md) | 2 — make green mean something | **Shipped** (`f7f94ac`) |
 | 7 | [Workflow prose value and F1's scope](07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | Cheap half effectively done by the workflow-template trim (`09ef586`); expensive half still open |
@@ -32,6 +32,18 @@ tier three is small in isolation but compounds.
 | 16 | [`cinch init` writes the AGENTS.md pointer](16-init-agents-pointer.md) | 2 — make green mean something | **Shipped** (`5121e4e`) — kept for provenance |
 | 17 | [Cut the workflow pack; render removes stale generated files](17-trim-workflow-pack.md) | 3 — decide before investing | **Shipped** (`09ef586`) — kept for provenance |
 | 18 | [`paths.exclude`, then dogfood — the hand-off plan](18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **Shipped** (`9830825`) — implements item 8 |
+| 19 | [Field log during the DeltaDocs MVP push](19-field-log.md) | 4 — evidence | Installed 2026-10-06 in four repos; collecting |
+| 20 | [Replay history for rule growth](20-rule-growth-replay.md) | 4 — evidence | Open — run at the end of the push |
+| 21 | [A benchmark suite worth publishing](21-benchmark-suite.md) | 4 — evidence | Open — umbrella for 22–25 |
+| 22 | [Catch matrix and cost curve](22-catch-matrix-and-cost-curve.md) | 4 — evidence | **Done** — catch matrix and cost curve in `bench/`; scan fix shipped in 0.10.1 |
+| 23 | [A public fixture](23-public-fixture.md) | 4 — evidence | Decided — Budgetron, made public, is the fixture for 25; DeltaDocs stays private |
+| 24 | [Leak replay](24-leak-replay.md) | 4 — evidence | Open — DeltaDocs only, private data point |
+| 25 | [Upkeep ablation](25-upkeep-ablation.md) | 4 — evidence | Pre-registered 2026-10-28 (`prereg/upkeep`, [design](../../bench/upkeep/DESIGN.md)); pi/Qwen stage 1 done 2026-10-29: not detected at N = 5. Sonnet pending; v2 is [29](29-benchmark-program-v2.md) |
+| 26 | [The index snapshot's two paths give one answer](26-snapshot-parity.md) | 1 — trust the checker | **Shipped** (`a937164`) — kept for provenance |
+| 27 | [Budgetron field report, 2026-10-11](27-budgetron-field-report.md) | 4 — evidence | **Shipped** (`1edf5a2`–`0ade181`) — kept for provenance |
+| 28 | [Absorb the squash-message and version-bump scripts](28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | Part A shipped 2026-11-02 (`commit.squash`, `commit.merge`); Part B deferred, the bump stays a script |
+| 29 | [Benchmark program v2: measure the premise, not the checker](29-benchmark-program-v2.md) | 4 — evidence | In progress — A (drift census) and G (field log) done 2026-11-01, B pre-registered; C–F pending |
+| 30 | [Convention packs: portable conventions, layered and overridable](30-convention-packs.md) | 3 — decide before investing | Draft, not approved — recovered 2026-11-01 from a 2026-10-09 session; builds on 28 Part A |
 
 ## Reading order vs. build order
 
@@ -47,6 +59,11 @@ precondition for the next tier's evidence being trustworthy:
 - **Tier 3** are the items where doing the work before deciding would be premature investment.
   Each one is a measurement or a design decision that changes the shape of a later
   implementation, not a straightforward bug fix.
+- **Tier 4** measures whether tiers 1–3 matter: field data from the DeltaDocs MVP push and a
+  benchmark set to publish in `bench/`. It's evidence, not features. Every decision threshold is
+  written into the item files before any data arrives, and the commit timestamp is the evidence
+  of that. Run order is in [21](21-benchmark-suite.md); 19 is numbered first because it has to
+  be installed before the push starts.
 
 ## Provenance tags
 

@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"cinch/internal/mdscan"
 	"cinch/internal/output"
 )
 
@@ -43,15 +42,16 @@ type rulesInventoryJSON struct {
 // buildRulesInventory includes duplicate rule IDs rather than deduping —
 // duplication is itself the signal the rules check reports on.
 func buildRulesInventory(repoRoot, docsRoot string, options markerScanOptions) (rulesInventoryJSON, error) {
-	items, err := scanRuleDocs(docsRoot)
+	roots := workingTreeRoots(repoRoot)
+	items, err := scanRuleDocs(roots, docsRoot)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
-	markers, _, err := scanRuleMarkers(workingTreeRoots(repoRoot), docsRoot, options)
+	markers, _, err := scanRuleMarkers(roots, docsRoot, options)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
-	docs, err := scanDocFrontmatter(docsRoot)
+	docs, err := scanDocFrontmatter(roots, docsRoot)
 	if err != nil {
 		return rulesInventoryJSON{}, err
 	}
@@ -74,8 +74,8 @@ func buildRulesInventory(repoRoot, docsRoot string, options markerScanOptions) (
 
 // scanDocFrontmatter returns an entry only for docs that declare owns:
 // and/or rule_prefix: — most docs have neither and are silently excluded.
-func scanDocFrontmatter(docsRoot string) ([]docFrontmatterJSON, error) {
-	return mdscan.Collect(docsRoot, func(path string) ([]docFrontmatterJSON, error) {
+func scanDocFrontmatter(roots checkRoots, docsRoot string) ([]docFrontmatterJSON, error) {
+	return collectDocs(roots, docsRoot, func(path string) ([]docFrontmatterJSON, error) {
 		fm, err := parseFrontmatterFile(path)
 		if err != nil {
 			return nil, err
@@ -100,19 +100,19 @@ func warnGlobLikeOwns(docPath string, owns []string) {
 	}
 }
 
-func CmdRules(root string, jsonOut bool) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdRules(repoRoot string, jsonOut bool) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("rules", err)
 	}
 	if !jsonOut {
 		return output.UsageError("rules: requires --json (no bare-text mode; see 'cinch ignores' or 'cinch check')")
 	}
-	m, err := loadManifestOptional(root)
+	m, err := loadManifestOptional(repoRoot)
 	if err != nil {
 		return output.Fail("rules", err)
 	}
-	inv, err := buildRulesInventory(root, docsRoot, markerScanOptionsFor(m))
+	inv, err := buildRulesInventory(repoRoot, docsRoot, markerScanOptionsFor(m))
 	if err != nil {
 		return output.Fail("rules", err)
 	}

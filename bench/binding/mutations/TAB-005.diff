@@ -1,0 +1,13 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..d6f928d 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -161,7 +161,7 @@ func (r *tabRepository) GetTabsByPage(pageID int) ([]Tab, error) {
+ 	rows, err := r.db.Query(
+ 		`SELECT t.id, t.page_id, t.category_id, t.content, t.created_at, t.updated_at,
+ 			t.signed_signature_id,
+-			(t.signed_signature_id IS NOT NULL AND t.content_hash = ts.content_hash) AS signed
++			(t.signed_signature_id IS NOT NULL) AS signed
+ 		FROM tabs t
+ 		JOIN categories c ON c.id = t.category_id
+ 		LEFT JOIN tab_signatures ts ON ts.id = t.signed_signature_id

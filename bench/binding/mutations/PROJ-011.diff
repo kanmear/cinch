@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/project.go w/backend/handlers/project.go
+index fed7247..b199ad1 100644
+--- c/backend/handlers/project.go
++++ w/backend/handlers/project.go
+@@ -145,7 +145,7 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
+ 	}
+ 
+ 	user := middleware.GetUserFromContext(r)
+-	if existing.OwnerID != user.ID {
++	if existing.OwnerID == user.ID {
+ 		RespondForbidden(w)
+ 		return
+ 	}

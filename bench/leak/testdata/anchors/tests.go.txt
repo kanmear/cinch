@@ -1,0 +1,12 @@
+package handlers_test
+
+// cinch:rule THING-001
+// cinch:rule THING-002
+func TestRename_Succeeds(t *testing.T) {
+	require.True(t, true)
+}
+
+// cinch:rule THING-003
+func TestRename_Fails(t *testing.T) {
+	require.True(t, true)
+}

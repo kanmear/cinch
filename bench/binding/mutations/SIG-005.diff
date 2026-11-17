@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..43e7255 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -505,7 +505,7 @@ func (h *TabHandler) RequestSignature(w http.ResponseWriter, r *http.Request) {
+ 			RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 			return
+ 		}
+-		if !CanSign(signerAccess.LevelFor(tab.CategoryID)) {
++		if !CanView(signerAccess.LevelFor(tab.CategoryID)) {
+ 			RespondError(w, apperrors.SignatureSignerNotEligible, http.StatusBadRequest)
+ 			return
+ 		}

@@ -1,0 +1,24 @@
+diff --git c/backend/handlers/category.go w/backend/handlers/category.go
+index 821ae7d..8e20f58 100644
+--- c/backend/handlers/category.go
++++ w/backend/handlers/category.go
+@@ -43,6 +43,8 @@ func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
+ 		return
+ 	}
+ 
++	_ = access
++
+ 	categories, err := h.categories.GetCategoriesByProject(projectID)
+ 	if err != nil {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+@@ -51,9 +53,7 @@ func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
+ 
+ 	filtered := make([]models.Category, 0, len(categories))
+ 	for _, category := range categories {
+-		if CanView(access.LevelFor(category.ID)) {
+-			filtered = append(filtered, category)
+-		}
++		filtered = append(filtered, category)
+ 	}
+ 
+ 	RespondJSON(w, http.StatusOK, filtered)

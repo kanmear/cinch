@@ -1,0 +1,6 @@
+# Adapted DeltaDocs test code and reference solutions, held out of the public
+# history until the owner clears publication (DESIGN.md "Open decisions (owner)").
+# Their sha256 is in bench/private-manifest.txt.
+tasks/*/hidden/
+tasks/*/reference.patch
+tasks/*/reference-naive.patch

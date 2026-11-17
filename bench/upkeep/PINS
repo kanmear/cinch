@@ -1,0 +1,29 @@
+# Upkeep ablation: pin of record (bench/upkeep/DESIGN.md).
+# KEY=VALUE, one per line. The harness refuses to run when FIXTURE_REF in the
+# fixture repo does not resolve to FIXTURE_SHA, or when the grader's cinch
+# reports a version other than CINCH_VERSION. Flag defaults for the engines and
+# the schedule seed come from here. Values are fixed at the prereg/upkeep commit.
+
+FIXTURE_REPO=github.com/kanmear/budgetron
+FIXTURE_REF=cinch-bench/upkeep-v1
+FIXTURE_SHA=2907c92cdf886eb269d7bb91573e6c0841a9022a
+
+CINCH_VERSION=0.13.2
+
+PI_VERSION=1.4.0
+PI_PROVIDER=llama-cpp
+PI_MODEL=Qwen3.8-27B-UD-Q4_K_M
+PI_THINKING=high
+# The lab's llama-server params for PI_MODEL, as recorded (the harness doesn't
+# set them). One slot, so pi runs are serial.
+PI_SERVER=-c 92160 --batch-size 2048 --ubatch-size 2048 -ctv q8_0 -ctk q8_0 --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0 --presence-penalty 0.0 --repeat-penalty 1.0 --spec-type draft-mtp
+
+CLAUDE_VERSION=2.1.312
+CLAUDE_MODEL=claude-sonnet-5-5
+CLAUDE_MAX_TURNS=80
+
+WALL_CLOCK_MINUTES=30
+
+# Each engine shuffles with this seed and its own name, so the two engines get
+# different (but fixed) orders.
+SCHEDULE_SEED=20261028

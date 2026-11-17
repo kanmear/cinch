@@ -1,0 +1,9 @@
+{
+  "task": "C3",
+  "kind": "add",
+  "rules": [
+    {"id": "ENTRY-005", "match": ["atomic"]},
+    {"id": "SMS-004", "match": ["confirm.all"]}
+  ],
+  "newRule": {"match": ["seal|#"]}
+}

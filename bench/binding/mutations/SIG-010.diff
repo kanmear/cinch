@@ -1,0 +1,13 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..6df4a34 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -648,7 +648,7 @@ func (r *tabRepository) RespondToSignature(signatureID, signerID int, accept boo
+ 	// resolves now and their rows are stamped. Unordered: everyone was asked at
+ 	// request creation, so the request stays open and the remaining signers keep
+ 	// their voice — it resolves once no signer row is still pending.
+-	if !accept && sig.ordered {
++	if !accept && !sig.ordered {
+ 		_, err = tx.Exec(
+ 			`UPDATE tab_signatures SET status = 'declined', resolved_at = $1 WHERE id = $2`,
+ 			now, signatureID,

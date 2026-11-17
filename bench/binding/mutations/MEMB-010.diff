@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/member.go w/backend/handlers/member.go
+index 443d7ea..51c1533 100644
+--- c/backend/handlers/member.go
++++ w/backend/handlers/member.go
+@@ -138,7 +138,7 @@ func (h *MemberHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 		return
+ 	}
+-	if currentUserMember.ID == id {
++	if currentUserMember.ID != id {
+ 		RespondError(w, apperrors.MemberCannotUpdateOwnRole, http.StatusForbidden)
+ 		return
+ 	}

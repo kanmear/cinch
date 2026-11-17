@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/tab.go w/backend/handlers/tab.go
+index cd730d0..f7276eb 100644
+--- c/backend/handlers/tab.go
++++ w/backend/handlers/tab.go
+@@ -256,7 +256,7 @@ func (h *TabHandler) Create(w http.ResponseWriter, r *http.Request) {
+ 		RespondError(w, apperrors.ApiInternalError, http.StatusInternalServerError)
+ 		return
+ 	}
+-	if category == nil || category.ProjectID != projectID {
++	if category == nil {
+ 		RespondError(w, apperrors.CategoryNotFound, http.StatusNotFound)
+ 		return
+ 	}

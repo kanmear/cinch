@@ -1,0 +1,13 @@
+diff --git c/backend/models/project.go w/backend/models/project.go
+index 9900439..2a30e93 100644
+--- c/backend/models/project.go
++++ w/backend/models/project.go
+@@ -215,7 +215,7 @@ func (r *projectRepository) TransferProjectOwnership(projectID, newOwnerID, oldO
+ }
+ 
+ func (r *projectRepository) DeleteProject(id int) error {
+-	result, err := r.db.Exec("UPDATE projects SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL", id)
++	result, err := r.db.Exec("DELETE FROM projects WHERE id = $1", id)
+ 	if err != nil {
+ 		return fmt.Errorf("error deleting project: %w", err)
+ 	}

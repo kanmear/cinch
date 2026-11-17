@@ -1,0 +1,13 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..c201dcc 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -756,7 +756,7 @@ func (r *tabRepository) RespondToSignature(signatureID, signerID int, accept boo
+ 	}
+ 
+ 	_, err = tx.Exec(
+-		`UPDATE tab_signatures SET status = 'accepted', resolved_at = $1 WHERE id = $2`,
++		`UPDATE tab_signatures SET status = 'declined', resolved_at = $1 WHERE id = $2`,
+ 		now, signatureID,
+ 	)
+ 	if err != nil {

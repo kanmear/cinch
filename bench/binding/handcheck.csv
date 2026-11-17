@@ -1,0 +1,20 @@
+id,outcome,label,note
+CAT-001,silent,violates,Listing drops the project filter so categories leak across projects; no test lists categories with two projects present.
+SIG-004,silent,violates,headHistoryID pins the oldest history row instead of the newest; the bound test saves once so only one row exists and the order is invisible.
+MEMB-002,silent,partial,Drops NOT NULL from members.role_id; no code path writes a null role so the violation is latent and only a direct insert could expose it.
+FILE-007,other,violates,CanManageFiles accepts view instead of edit; caught by the view-only-everywhere test while the marker sits on the edit-on-one-category (allow) test.
+PERM-003,other,violates,Missing role+category pair resolves to view instead of none; caught by none-forbidden tests while the marker sits on an empty-permissions test.
+PROJ-004,other,violates,Ownership transfer no longer updates owner_id; caught by both transfer tests while the marker sits on TestCreateProject.
+SIG-005,other,violates,Signer eligibility checks view instead of sign; caught by the view-only-signer-rejected test while the marker sits on the sign-signer-allowed test.
+SIG-015,other,violates,Actionable declined feedback sorts NULLS LAST so an older resolved decline outranks the pending request; caught by a model test while the marker sits on a handler test.
+SIG-007,marked,violates,Note-required check flipped to the accept branch; declines pass without a note (and accepts now need one). The bound test ran only on re-grade after a panic cut the suite short.
+RT-001,marked,violates,Category-event audience inverted to members without view; blunt but squarely the rule.
+MEMB-003,marked,violates,Non-member check removed from the access resolver.
+PROJ-001,marked,violates,Empty-name validation removed from project create.
+ROLE-003,marked,violates,Roles API inserts is_owner=TRUE.
+TAB-004,marked,violates,Cross-project category check removed from tab create.
+SIG-010,marked,violates,Ordered/unordered branch of decline resolution inverted.
+CAT-006,marked,violates,Category rename route gated to owner instead of member.
+FILE-003,marked,violates,A new root file reports parent_id 0 instead of null.
+PERM-007,marked,violates,Stranding confirm-gate condition flipped so lowering below sign is never gated.
+SIG-019,marked,violates,Removes the declinedCount guard; independently rediscovers T3's injected bug.

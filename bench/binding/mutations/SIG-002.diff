@@ -1,0 +1,13 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..3f6559b 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS tab_signatures (
+     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     resolved_at TIMESTAMPTZ
+ );
+-CREATE UNIQUE INDEX IF NOT EXISTS idx_tab_signatures_pending_tab
++CREATE INDEX IF NOT EXISTS idx_tab_signatures_pending_tab
+     ON tab_signatures(tab_id)
+     WHERE status = 'pending';
+ CREATE INDEX IF NOT EXISTS idx_tab_signatures_tab_id ON tab_signatures(tab_id);

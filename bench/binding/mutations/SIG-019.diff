@@ -1,0 +1,52 @@
+diff --git c/backend/models/tab.go w/backend/models/tab.go
+index 7715837..82757bc 100644
+--- c/backend/models/tab.go
++++ w/backend/models/tab.go
+@@ -670,14 +670,12 @@ func (r *tabRepository) RespondToSignature(signatureID, signerID int, accept boo
+ 	}
+ 
+ 	// Any response may leave the request open: count what's left to hear from.
+-	var remainingPending, declinedCount int
++	var remainingPending int
+ 	err = tx.QueryRow(
+-		`SELECT
+-			COUNT(*) FILTER (WHERE status = 'pending'),
+-			COUNT(*) FILTER (WHERE status = 'declined')
++		`SELECT COUNT(*) FILTER (WHERE status = 'pending')
+ 		FROM signature_signers WHERE signature_id = $1`,
+ 		signatureID,
+-	).Scan(&remainingPending, &declinedCount)
++	).Scan(&remainingPending)
+ 	if err != nil {
+ 		return nil, nil, fmt.Errorf("error counting signer rows: %w", err)
+ 	}
+@@ -693,28 +691,7 @@ func (r *tabRepository) RespondToSignature(signatureID, signerID int, accept boo
+ 		return result, nil, nil
+ 	}
+ 
+-	// Everyone has responded. A request carrying any decline is never accepted
+-	// (rule 19) — "nothing pending" alone is not sufficient now that an unordered
+-	// request survives a decline.
+-	if declinedCount > 0 {
+-		_, err = tx.Exec(
+-			`UPDATE tab_signatures SET status = 'declined', resolved_at = $1 WHERE id = $2`,
+-			now, signatureID,
+-		)
+-		if err != nil {
+-			return nil, nil, fmt.Errorf("error resolving signature request: %w", err)
+-		}
+-		if err = tx.Commit(); err != nil {
+-			return nil, nil, fmt.Errorf("error committing transaction: %w", err)
+-		}
+-		result, err := fetchSignature(r.db, signatureID)
+-		if err != nil {
+-			return nil, nil, fmt.Errorf("error fetching updated signature: %w", err)
+-		}
+-		return result, nil, nil
+-	}
+-
+-	// All signers accepted — the attested snapshot becomes the tab's signed
++	// Everyone has responded — the attested snapshot becomes the tab's signed
+ 	// baseline. Tab content is unchanged (it was already live): stamp the
+ 	// pinned history row's signature_id rather than inserting a new row.
+ 	_, err = tx.Exec(

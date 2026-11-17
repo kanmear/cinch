@@ -1,0 +1,209 @@
+diff --git a/.docs/domain/categories.md b/.docs/domain/categories.md
+index 4b87cbb..165e210 100644
+--- a/.docs/domain/categories.md
++++ b/.docs/domain/categories.md
+@@ -9,5 +9,5 @@ owns:
+ 
+ # Category rules
+ 
+-1. **CAT-001** Category names are unique. Exact match, case-sensitive; adding or renaming to a taken name throws `DuplicateCategoryName` and leaves the stored rows unchanged.
++1. **CAT-001** Category names are unique ignoring whitespace: `Eating Out`, `EatingOut` and `Eating  Out` are one name. Case still counts (`eatingout` is another); adding or renaming to a taken name throws `DuplicateCategoryName` and leaves the stored rows unchanged.
+ 2. **CAT-002** A category color string and its `Color` round-trip losslessly.
+diff --git a/lib/db/objectbox/object_box_category_repository.dart b/lib/db/objectbox/object_box_category_repository.dart
+index 83d480d..6abd6d6 100644
+--- a/lib/db/objectbox/object_box_category_repository.dart
++++ b/lib/db/objectbox/object_box_category_repository.dart
+@@ -1,5 +1,6 @@
+ import 'package:budgetron/db/category_repository.dart';
+ import 'package:budgetron/models/category/category.dart';
++import 'package:budgetron/models/category/category_name.dart';
+ import 'package:budgetron/models/enums/entry_category_type.dart';
+ import 'package:budgetron/objectbox.g.dart';
+ 
+@@ -51,11 +52,13 @@ class ObjectBoxCategoryRepository implements CategoryRepository {
+   void removeAll() => _box.removeAll();
+ 
+   int _put(EntryCategory category) {
+-    try {
+-      return _box.put(category);
+-    } on UniqueViolationException {
+-      throw DuplicateCategoryName(category.name);
+-    }
++    final key = categoryNameKey(category.name);
++    final taken = _box.getAll().any(
++      (other) => other.id != category.id && categoryNameKey(other.name) == key,
++    );
++    if (taken) throw DuplicateCategoryName(category.name);
++
++    return _box.put(category);
+   }
+ 
+   QueryBuilder<EntryCategory> _query(
+diff --git a/lib/db/transfer/transfer_format.dart b/lib/db/transfer/transfer_format.dart
+index 03302c2..609ad86 100644
+--- a/lib/db/transfer/transfer_format.dart
++++ b/lib/db/transfer/transfer_format.dart
+@@ -1,5 +1,6 @@
+ import 'dart:convert';
+ 
++import 'package:budgetron/models/category/category_name.dart';
+ import 'package:budgetron/models/enums/budget_period.dart';
+ import 'package:budgetron/models/enums/currency.dart';
+ import 'package:budgetron/models/enums/date_period.dart';
+@@ -673,7 +674,11 @@ final class TransferDocument {
+     _uniqueIds('smsTemplates', smsTemplates.map((t) => t.id));
+     _uniqueIds('categoryRules', categoryRules.map((r) => r.id));
+ 
+-    _uniqueNames('categories', categories.map((c) => c.name));
++    _uniqueNames(
++      'categories',
++      categories.map((c) => c.name),
++      key: categoryNameKey,
++    );
+     _uniqueNames('accounts', accounts.map((a) => a.name));
+     _uniqueNames('groups', groups.map((g) => g.name));
+ 
+@@ -762,10 +767,16 @@ final class TransferDocument {
+     return seen;
+   }
+ 
+-  static void _uniqueNames(String list, Iterable<String> names) {
++  static String _same(String name) => name;
++
++  static void _uniqueNames(
++    String list,
++    Iterable<String> names, {
++    String Function(String name) key = _same,
++  }) {
+     final seen = <String>{};
+     for (final name in names) {
+-      if (!seen.add(name)) {
++      if (!seen.add(key(name))) {
+         throw TransferFormatException('$list: name `$name` is used twice');
+       }
+     }
+diff --git a/lib/models/category/category.dart b/lib/models/category/category.dart
+index 2afb405..fe9536d 100644
+--- a/lib/models/category/category.dart
++++ b/lib/models/category/category.dart
+@@ -5,7 +5,8 @@ import 'package:objectbox/objectbox.dart';
+ class EntryCategory implements Selectable {
+   int id = 0;
+ 
+-  @Unique()
++  /// Unique ignoring whitespace (CAT-001), checked by the repository: a
++  /// store index cannot compare names that way.
+   String name;
+ 
+   @override
+diff --git a/lib/models/category/category_name.dart b/lib/models/category/category_name.dart
+new file mode 100644
+index 0000000..f162fbd
+--- /dev/null
++++ b/lib/models/category/category_name.dart
+@@ -0,0 +1,3 @@
++/// What makes two category names the same (CAT-001): the name without any
++/// whitespace. Case still counts.
++String categoryNameKey(String name) => name.replaceAll(RegExp(r'\s'), '');
+diff --git a/lib/objectbox-model.json b/lib/objectbox-model.json
+index b2149ed..3442d7d 100644
+--- a/lib/objectbox-model.json
++++ b/lib/objectbox-model.json
+@@ -72,9 +72,7 @@
+         {
+           "id": "2:442673249071930849",
+           "name": "name",
+-          "indexId": "5:4696415487503646653",
+-          "type": 9,
+-          "flags": 2080
++          "type": 9
+         },
+         {
+           "id": "3:5105921252028396056",
+@@ -749,7 +747,8 @@
+     7088683628330508985
+   ],
+   "retiredIndexUids": [
+-    6338406014766145511
++    6338406014766145511,
++    4696415487503646653
+   ],
+   "retiredPropertyUids": [
+     577077467858424290,
+diff --git a/test/db/category_repository_test.dart b/test/db/category_repository_test.dart
+index 4e4e13c..2b8607a 100644
+--- a/test/db/category_repository_test.dart
++++ b/test/db/category_repository_test.dart
+@@ -46,12 +46,57 @@ void main() {
+       expect(repository.get(fun.id)!.name, 'Fun');
+     });
+ 
+-    test('names differing only by case are distinct (exact match)', () {
++    test('names differing only by case are distinct', () {
+       repository.add(makeCategory(name: 'Food'));
+       repository.add(makeCategory(name: 'food'));
+ 
+       expect(repository.find(), hasLength(2));
+     });
++
++    test('names differing only by whitespace collide on add', () {
++      repository.add(makeCategory(name: 'Eating Out'));
++
++      for (final name in ['EatingOut', 'Eating  Out', ' Eating Out ']) {
++        expect(
++          () => repository.add(makeCategory(name: name)),
++          throwsA(
++            isA<DuplicateCategoryName>().having((e) => e.name, 'name', name),
++          ),
++        );
++      }
++      expect(repository.find().map((c) => c.name), ['Eating Out']);
++    });
++
++    test('renaming to a spelling of a taken name is rejected', () {
++      repository.add(makeCategory(name: 'Eating Out'));
++      final fun = makeCategory(name: 'Fun');
++      repository.add(fun);
++
++      fun.name = 'EatingOut';
++
++      expect(
++        () => repository.update(fun),
++        throwsA(isA<DuplicateCategoryName>()),
++      );
++      expect(repository.get(fun.id)!.name, 'Fun');
++    });
++
++    test('a category can be renamed to another spelling of its own name', () {
++      final category = makeCategory(name: 'Eating Out');
++      repository.add(category);
++
++      category.name = 'EatingOut';
++      repository.update(category);
++
++      expect(repository.get(category.id)!.name, 'EatingOut');
++    });
++
++    test('whitespace does not hide a different case', () {
++      repository.add(makeCategory(name: 'EatingOut'));
++      repository.add(makeCategory(name: 'eating out'));
++
++      expect(repository.find(), hasLength(2));
++    });
+   });
+ 
+   group('find', () {
+diff --git a/test/db/transfer/import_atomic_test.dart b/test/db/transfer/import_atomic_test.dart
+index 8ea798a..ecd0b7d 100644
+--- a/test/db/transfer/import_atomic_test.dart
++++ b/test/db/transfer/import_atomic_test.dart
+@@ -149,6 +149,9 @@ void main() {
+     'a duplicate category name (CAT-001)': _broken(
+       (j) => _list(j, 'categories')[1]['name'] = 'Groceries',
+     ),
++    'a category name that differs only by spaces (CAT-001)': _broken(
++      (j) => _list(j, 'categories')[1]['name'] = ' Gro ceries',
++    ),
+     'a duplicate account name': _broken(
+       (j) => _list(j, 'accounts')[1]['name'] = 'Cash',
+     ),

@@ -1,0 +1,21 @@
+{
+  "comment": "T2 category-rename judge probes (NOTES § Rule-written key). Texts are DeltaDocs rule prose (list number and bold ID are stripped by the judge anyway); CAT-001, CAT-007, TAB-004 are verbatim from c5389db / d0866c9; CAT-007 is also tasks/T2-category-rename/reference.patch's rule.",
+  "probes": [
+    {"id": "cat-007-real", "expected": "STATES",
+     "rule": "Renaming or deleting a category only acts on a category of the URL's project — a category ID belonging to another project is treated as not found."},
+    {"id": "cat-007-paraphrase", "expected": "STATES",
+     "rule": "A category rename request is only applied if the category belongs to the project named in the request path; if the ID refers to a category in some other project, the server answers not found and changes nothing."},
+    {"id": "general-project-scoped-mutations", "expected": "STATES",
+     "rule": "Every mutation that takes an entity ID from the URL (categories, files, members) must act only on an entity of the URL's project; an ID from another project is treated as not found and nothing changes."},
+    {"id": "cat-001-near-miss", "expected": "ABSENT",
+     "rule": "Categories are project-scoped — they cannot be shared across projects."},
+    {"id": "tab-004-near-miss", "expected": "ABSENT",
+     "rule": "A tab's page and its category must belong to the same project — creating a tab with a category from another project is rejected."},
+    {"id": "perm-005-near-miss", "expected": "ABSENT",
+     "rule": "A role_category_permission's role and category must belong to the same project — setting a permission with a role and category from different projects is rejected."},
+    {"id": "any-member-may-rename", "expected": "ABSENT",
+     "rule": "Any project member may rename a category."},
+    {"id": "validate-the-id", "expected": "PARTIAL",
+     "rule": "Category mutations must validate the ID."}
+  ]
+}

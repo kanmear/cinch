@@ -48,9 +48,9 @@ func captureFile(t *testing.T, target **os.File, fn func()) string {
 // initTestGitRepo initializes a git repo with a committer identity set, so
 // callers can immediately `git commit` without hitting user.email/user.name
 // errors.
-func initTestGitRepo(t *testing.T, root string) func(args ...string) {
+func initTestGitRepo(t *testing.T, repoRoot string) func(args ...string) {
 	t.Helper()
-	git := gitTestHelper(t, root)
+	git := gitTestHelper(t, repoRoot)
 	git("init", "-q")
 	git("config", "user.email", "cinch@test")
 	git("config", "user.name", "cinch test")
@@ -60,9 +60,9 @@ func initTestGitRepo(t *testing.T, root string) func(args ...string) {
 // changedTestRepo commits an initial state, then leaves the working tree
 // dirty with unstaged edits made by dirty — mirroring how a developer running
 // `cinch check --changed` would find their tree.
-func changedTestRepo(t *testing.T, root string, seed, dirty func()) {
+func changedTestRepo(t *testing.T, repoRoot string, seed, dirty func()) {
 	t.Helper()
-	git := initTestGitRepo(t, root)
+	git := initTestGitRepo(t, repoRoot)
 	seed()
 	git("add", "-A")
 	git("commit", "-q", "-m", "seed")
@@ -208,10 +208,10 @@ func TestCheckChangedFiltersLinksToChangedFiles(t *testing.T) {
 	}
 }
 
-// TestCheckChangedSuppressesIrrelevantCheckStatus is the "no unstaged files
-// means no related output" behavior: when nothing under docsRoot changed,
-// links/index must not print a status line at all, not even a skip line.
-func TestCheckChangedSuppressesIrrelevantCheckStatus(t *testing.T) {
+// TestCheckChangedSkipsIrrelevantChecksVisibly pins that --changed accounts
+// for every check it leaves out: when nothing under docsRoot changed, links
+// and index print a skip line rather than vanishing from the run.
+func TestCheckChangedSkipsIrrelevantChecksVisibly(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, ".docs")
 	if err := os.MkdirAll(docs, 0o755); err != nil {
@@ -234,22 +234,99 @@ func TestCheckChangedSuppressesIrrelevantCheckStatus(t *testing.T) {
 		}
 	})
 
-	for _, name := range []string{"links:", "index:", "commit:"} {
-		if bytes.Contains([]byte(out), []byte(name)) {
-			t.Fatalf("stderr contains %q, want it fully suppressed; stderr=%q", name, out)
+	for _, name := range []string{"links", "index", "generated"} {
+		want := name + ": skip: nothing relevant changed"
+		if !strings.Contains(out, want) {
+			t.Fatalf("stderr missing %q, want a skip line for the irrelevant check; stderr=%q", want, out)
 		}
 	}
-	// rules is deliberately NOT suppressed here: rule markers can live
+	// commit is not a diff-scoping question, so --changed prints nothing for it.
+	if strings.Contains(out, "commit:") {
+		t.Fatalf("stderr contains %q, want commit left out without a MSGFILE; stderr=%q", "commit:", out)
+	}
+	// rules is deliberately NOT skipped here: rule markers can live
 	// outside docsRoot, so any changed file at all keeps it relevant.
-	if !bytes.Contains([]byte(out), []byte("rules:")) {
-		t.Fatalf("stderr missing %q, want rules to stay relevant when any file changed; stderr=%q", "rules:", out)
+	if strings.Contains(out, "rules: skip: nothing relevant changed") {
+		t.Fatalf("stderr = %q, want rules to stay relevant when any file changed", out)
+	}
+}
+
+// TestCheckChangedGatesPlansOnPlansMarkdown pins that --changed runs the
+// plans check when markdown under plans/ or cinch.yml changed, and prints a
+// skip line otherwise.
+func TestCheckChangedGatesPlansOnPlansMarkdown(t *testing.T) {
+	setup := func(t *testing.T, dirty func(root, docs string)) string {
+		t.Helper()
+		root := t.TempDir()
+		docs := filepath.Join(root, ".docs")
+		if err := os.MkdirAll(filepath.Join(docs, "plans"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		changedTestRepo(t, root,
+			func() {
+				writeTestFile(t, root, "cinch.yml", "paths:\n  docs: .docs\nplans:\n  lifecycle: enforce\n")
+				writeTestFile(t, docs, "a.md", "# A\n")
+				writeTestFile(t, filepath.Join(docs, "plans"), "p.md", "# P\n\n**Status:** planned\n")
+			},
+			func() { dirty(root, docs) },
+		)
+		return captureStderr(t, func() { runChecks(workingTreeRoots(root), "", true) })
+	}
+	skip := "plans: skip: nothing relevant changed"
+
+	t.Run("plan markdown changed", func(t *testing.T) {
+		out := setup(t, func(root, docs string) {
+			writeTestFile(t, filepath.Join(docs, "plans"), "p.md", "# P\n\n**Status:** planned\nedited\n")
+		})
+		if strings.Contains(out, skip) || !strings.Contains(out, "plans:") {
+			t.Fatalf("stderr = %q, want plans to run", out)
+		}
+	})
+	t.Run("cinch.yml changed", func(t *testing.T) {
+		out := setup(t, func(root, docs string) {
+			writeTestFile(t, root, "cinch.yml", "paths:\n  docs: .docs\nplans:\n  lifecycle: enforce\n# edited\n")
+		})
+		if strings.Contains(out, skip) || !strings.Contains(out, "plans:") {
+			t.Fatalf("stderr = %q, want plans to run", out)
+		}
+	})
+	t.Run("only a doc outside plans changed", func(t *testing.T) {
+		out := setup(t, func(root, docs string) {
+			writeTestFile(t, docs, "a.md", "# A\nedited\n")
+		})
+		if !strings.Contains(out, skip) {
+			t.Fatalf("stderr = %q, want %q", out, skip)
+		}
+	})
+}
+
+// TestCheckChangedLeavesOnlyExcludedChecksOut pins that the skip lines are
+// for --changed alone: a check --only leaves out prints nothing.
+func TestCheckChangedLeavesOnlyExcludedChecksOut(t *testing.T) {
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	changedTestRepo(t, root,
+		func() {
+			writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
+			writeTestFile(t, root, "other.txt", "unrelated\n")
+		},
+		func() { writeTestFile(t, root, "other.txt", "unrelated, edited\n") },
+	)
+
+	out := captureStderr(t, func() { runChecks(workingTreeRoots(root), "", true, "links") })
+	if out != "links: skip: nothing relevant changed\n" {
+		t.Fatalf("stderr = %q, want only links' skip line", out)
 	}
 }
 
 // TestCheckCommitSuppressedWithoutMessageFile pins commit's relevance
 // predicate: it goes silent whenever no MSGFILE was given — on plain `cinch
 // check` just as much as under --changed, since nobody hand-invokes `cinch
-// check somefile.txt` in ordinary use — but still runs when one is provided.
+// check somefile.txt` in ordinary use — but still runs when one is provided,
+// and says why it didn't when --only asked for it by name.
 func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, ".docs")
@@ -265,6 +342,13 @@ func TestCheckCommitSuppressedWithoutMessageFile(t *testing.T) {
 		out := captureStderr(t, func() { runChecks(workingTreeRoots(root), "", changed) })
 		if bytes.Contains([]byte(out), []byte("commit:")) {
 			t.Fatalf("changed=%v: stderr contains %q, want commit suppressed with no MSGFILE; stderr=%q", changed, "commit:", out)
+		}
+	}
+
+	for _, changed := range []bool{false, true} {
+		out := captureStderr(t, func() { runChecks(workingTreeRoots(root), "", changed, "commit") })
+		if !strings.Contains(out, "commit: skip: no commit message file given") {
+			t.Fatalf("changed=%v: stderr = %q, want a skip line for an explicit --only commit with no MSGFILE", changed, out)
 		}
 	}
 
@@ -301,16 +385,16 @@ func TestCheckChangedGeneratedCoarseGate(t *testing.T) {
 	out := captureStderr(t, func() {
 		runChecks(workingTreeRoots(root), "", true)
 	})
-	if bytes.Contains([]byte(out), []byte("generated:")) {
-		t.Fatalf("stderr contains %q, want generated suppressed (cinch.yml untouched); stderr=%q", "generated:", out)
+	if !strings.Contains(out, "generated: skip: nothing relevant changed") {
+		t.Fatalf("stderr = %q, want generated skipped (cinch.yml untouched)", out)
 	}
 
 	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '>=1.0.0'\n")
 	out = captureStderr(t, func() {
 		runChecks(workingTreeRoots(root), "", true)
 	})
-	if !bytes.Contains([]byte(out), []byte("generated:")) {
-		t.Fatalf("stderr missing %q, want generated relevant (cinch.yml changed); stderr=%q", "generated:", out)
+	if !bytes.Contains([]byte(out), []byte("generated:")) || strings.Contains(out, "generated: skip: nothing relevant changed") {
+		t.Fatalf("stderr = %q, want generated to run (cinch.yml changed)", out)
 	}
 }
 
@@ -354,7 +438,7 @@ func TestRunChecksStatusLinesInFixedOrder(t *testing.T) {
 	writeTestFile(t, docs, "a.md", "# A\n\ntext\n")
 	msg := writeTestFile(t, root, "msg.txt", "docs: edit a.md\n")
 
-	want := []string{"links", "rules", "index", "generated", "commit", "core", "hooks"}
+	want := []string{"links", "rules", "index", "plans", "generated", "commit", "core", "hooks"}
 	if !reflect.DeepEqual(checkLaunchOrder, want) {
 		t.Fatalf("checkLaunchOrder = %v, want %v", checkLaunchOrder, want)
 	}
@@ -370,5 +454,29 @@ func TestRunChecksStatusLinesInFixedOrder(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("run %d: status line order = %v, want %v; stderr=%q", run, got, want, out)
 		}
+	}
+}
+
+// TestRunChecksOrdersFindingsLikeStatusLines pins that the finding details
+// follow checkLaunchOrder, the order of the status lines above them, rather
+// than the check names' alphabetical order (which would put core first).
+func TestRunChecksOrdersFindingsLikeStatusLines(t *testing.T) {
+	withVersion(t, "1.0.0")
+	root := t.TempDir()
+	docs := filepath.Join(root, ".docs")
+	if err := os.MkdirAll(docs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, docs, "a.md", "[broken](missing.md)\n")
+	writeTestFile(t, root, "cinch.yml", "require:\n  cinch: '2.0.0'\n")
+
+	var got int
+	out := captureStdout(t, func() { got = runChecks(workingTreeRoots(root), "", false) })
+	if got != 1 {
+		t.Fatalf("runChecks = %d, want 1\n%s", got, out)
+	}
+	links, core := strings.Index(out, "links error"), strings.Index(out, "core error")
+	if links < 0 || core < 0 || links > core {
+		t.Fatalf("findings = %q, want the links finding before the core finding", out)
 	}
 }

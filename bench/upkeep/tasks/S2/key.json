@@ -1,0 +1,7 @@
+{
+  "task": "S2",
+  "kind": "change",
+  "rules": [
+    {"id": "CAT-001", "match": ["space|whitespace"]}
+  ]
+}

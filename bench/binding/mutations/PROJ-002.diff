@@ -1,0 +1,13 @@
+diff --git c/backend/models/project.go w/backend/models/project.go
+index 9900439..7bd5b65 100644
+--- c/backend/models/project.go
++++ w/backend/models/project.go
+@@ -49,7 +49,7 @@ func (r *projectRepository) CreateProject(name string, ownerID int) (*Project, e
+ 	var roleID int
+ 	err = tx.QueryRow(
+ 		`INSERT INTO roles (project_id, name, is_owner)
+-		VALUES ($1, 'Owner', TRUE)
++		VALUES ($1, 'Owner', FALSE)
+ 		RETURNING id`,
+ 		project.ID,
+ 	).Scan(&roleID)

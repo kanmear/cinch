@@ -1,0 +1,13 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..415d61f 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS role_category_permissions (
+     id SERIAL PRIMARY KEY,
+     role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+     category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+-    permission_level VARCHAR(10) NOT NULL CHECK (permission_level IN ('none', 'view', 'sign', 'edit')),
++    permission_level VARCHAR(10) NOT NULL,
+     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+     UNIQUE(role_id, category_id)
+ );

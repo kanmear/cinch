@@ -77,21 +77,45 @@ func TestCmdInitIdempotentWhenAlreadyMatching(t *testing.T) {
 
 // cinch:rule CINCH-003
 func TestCmdInitRefusesToClobberExistingHooksPath(t *testing.T) {
-	root := t.TempDir()
-	git := gitTestHelper(t, root)
-	git("init", "-q")
-	git("config", "user.email", "cinch@test")
-	git("config", "user.name", "cinch test")
-	writeTestFile(t, root, "cinch.yml", "paths:\n  hooks: .githooks\n")
-	git("config", "core.hooksPath", "other-hooks")
+	for _, tc := range []struct {
+		name     string
+		manifest string
+	}{
+		{name: "existing manifest", manifest: "paths:\n  hooks: .githooks\n"},
+		{name: "no manifest"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			git := gitTestHelper(t, root)
+			git("init", "-q")
+			git("config", "user.email", "cinch@test")
+			git("config", "user.name", "cinch test")
+			if tc.manifest != "" {
+				writeTestFile(t, root, "cinch.yml", tc.manifest)
+			}
+			git("config", "core.hooksPath", "other-hooks")
 
-	if code := CmdInit(root); code == 0 {
-		t.Fatalf("CmdInit = %d, want non-zero when core.hooksPath already points elsewhere", code)
-	}
+			if code := CmdInit(root); code == 0 {
+				t.Fatalf("CmdInit = %d, want non-zero when core.hooksPath already points elsewhere", code)
+			}
 
-	got := gitConfigGet(t, root, "core.hooksPath")
-	if got != "other-hooks" {
-		t.Fatalf("core.hooksPath = %q, want left unchanged at %q", got, "other-hooks")
+			got := gitConfigGet(t, root, "core.hooksPath")
+			if got != "other-hooks" {
+				t.Fatalf("core.hooksPath = %q, want left unchanged at %q", got, "other-hooks")
+			}
+
+			// The refusal comes before any write: no manifest of init's own, no
+			// rendered workflows, no hook shims, no agents pointer.
+			entries, err := os.ReadDir(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if name := entry.Name(); name != ".git" && !(name == "cinch.yml" && tc.manifest != "") {
+					t.Fatalf("%s exists after a refused init, want no file written", name)
+				}
+			}
+		})
 	}
 }
 
@@ -131,18 +155,18 @@ func initAgentsRepo(t *testing.T, manifestBody string) string {
 	return root
 }
 
-func readAgentsFile(t *testing.T, root string) []byte {
+func readAgentsFile(t *testing.T, repoRoot string) []byte {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	data, err := os.ReadFile(filepath.Join(repoRoot, "AGENTS.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return data
 }
 
-func mustCmdInit(t *testing.T, root string) {
+func mustCmdInit(t *testing.T, repoRoot string) {
 	t.Helper()
-	if code := CmdInit(root); code != 0 {
+	if code := CmdInit(repoRoot); code != 0 {
 		t.Fatalf("CmdInit = %d, want 0", code)
 	}
 }

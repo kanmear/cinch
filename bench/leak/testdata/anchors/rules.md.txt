@@ -1,0 +1,7 @@
+# Rules
+
+1. **THING-001** First rule.
+2. **THING-002** Second rule, long
+   and continued on an indented line.
+   <!-- cinch:ignore: asserts an absence -->
+3. **THING-003** Third rule.

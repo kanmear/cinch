@@ -1,0 +1,35 @@
+{
+  "comment": "T1 judge probes (DESIGN § Calibration; NOTES § Rule-written key). Real texts read with git show from adc4abb (RT-001) and 4c8af82 (SIG-008); the list number and bold ID are stripped by the judge.",
+  "probes": [
+    {
+      "id": "rt001-real",
+      "rule": "Category-scoped events (`tab.created`/`tab.updated`/`tab.deleted`, `category.created`/`category.renamed`/`category.deleted`) target only project members whose resolved permission on the event's category is `view` or higher — the same population that can read the category's tabs via REST.",
+      "expected": "STATES"
+    },
+    {
+      "id": "paraphrase-tab-updated-only",
+      "rule": "When a tab is updated or restored, the tab.updated realtime event is sent only to project members who can view the tab's category; members with no access to that category never receive its content.",
+      "expected": "STATES"
+    },
+    {
+      "id": "reference-rule",
+      "rule": "Category-scoped events (`tab.created`/`tab.updated`/`tab.deleted`, `category.created`/`category.renamed`/`category.deleted`) target only project members whose resolved permission on the event's category is `view` or higher — the same population that can read the category's tabs via REST.",
+      "expected": "STATES"
+    },
+    {
+      "id": "tab-events-to-project-members",
+      "rule": "Tab events are sent to the members of the project.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "sig008-decline-note",
+      "rule": "A decline note is stored on the signature record and is visible only to the original editor. It is delivered to the editor by a private fetch — never carried on broadcast/realtime events, and never included when the signature is read by any other path (notably a still-pending request that already carries a decline, rule 10) — and is never returned to other members.",
+      "expected": "ABSENT"
+    },
+    {
+      "id": "realtime-respects-permissions",
+      "rule": "Realtime events must respect permissions.",
+      "expected": "PARTIAL"
+    }
+  ]
+}

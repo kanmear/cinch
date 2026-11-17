@@ -81,10 +81,23 @@ func ForEachFencedLineBytes(data []byte, fn func(lineNumber int, line string)) e
 	return ForEachFencedLine(bytes.NewReader(data), fn)
 }
 
-func WalkMarkdownFiles(root string, fn func(path string) error) error {
-	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+func WalkMarkdownFiles(docsRoot string, fn func(path string) error) error {
+	return WalkMarkdownFilesIf(docsRoot, nil, fn)
+}
+
+// WalkMarkdownFilesIf walks like WalkMarkdownFiles but visits only paths that
+// include accepts, and doesn't descend into a directory it rejects. A nil
+// include accepts everything.
+func WalkMarkdownFilesIf(docsRoot string, include func(path string) bool, fn func(path string) error) error {
+	return filepath.WalkDir(docsRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if include != nil && !include(path) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".md") {
 			return nil
@@ -93,9 +106,9 @@ func WalkMarkdownFiles(root string, fn func(path string) error) error {
 	})
 }
 
-func Collect[T any](root string, fn func(path string) ([]T, error)) ([]T, error) {
+func Collect[T any](docsRoot string, fn func(path string) ([]T, error)) ([]T, error) {
 	var out []T
-	err := WalkMarkdownFiles(root, func(path string) error {
+	err := WalkMarkdownFiles(docsRoot, func(path string) error {
 		more, err := fn(path)
 		out = append(out, more...)
 		return err

@@ -1,0 +1,13 @@
+diff --git c/backend/handlers/routes.go w/backend/handlers/routes.go
+index 894f161..a15c6d6 100644
+--- c/backend/handlers/routes.go
++++ w/backend/handlers/routes.go
+@@ -119,7 +119,7 @@ func RegisterRoutes(mux RouteMux, deps RouteDeps) {
+ 	categoryHandler := NewCategoryHandler(deps.Categories, accessResolver, deps.Members, deps.Publisher)
+ 	mux.HandleFunc("GET /api/projects/{projectID}/categories", auth(member("projectID", categoryHandler.List)))
+ 	mux.HandleFunc("POST /api/projects/{projectID}/categories", auth(owner("projectID", categoryHandler.Create)))
+-	mux.HandleFunc("PATCH /api/projects/{projectID}/categories/{id}", auth(member("projectID", categoryHandler.Update)))
++	mux.HandleFunc("PATCH /api/projects/{projectID}/categories/{id}", auth(owner("projectID", categoryHandler.Update)))
+ 	mux.HandleFunc("DELETE /api/projects/{projectID}/categories/{id}", auth(owner("projectID", categoryHandler.Delete)))
+ 	mux.HandleFunc("GET /api/projects/{projectID}/categories/{categoryID}/eligible-signers", auth(member("projectID", categoryHandler.EligibleSigners)))
+ 

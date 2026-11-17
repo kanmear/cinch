@@ -1,0 +1,5 @@
+# Untracked by default: files here belong to a withheld task (DESIGN.md § Publication).
+# bench/private-manifest.txt records a sha256 of each one. Delete this file once the owner
+# clears publication.
+*
+!.gitignore

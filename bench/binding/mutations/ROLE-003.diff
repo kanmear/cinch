@@ -1,0 +1,13 @@
+diff --git c/backend/models/role.go w/backend/models/role.go
+index 64b86d0..4836f57 100644
+--- c/backend/models/role.go
++++ w/backend/models/role.go
+@@ -30,7 +30,7 @@ func (r *roleRepository) CreateRole(projectID int, name string) (*Role, error) {
+ 	var role Role
+ 	err := r.db.QueryRow(
+ 		`INSERT INTO roles (project_id, name, is_owner)
+-		VALUES ($1, $2, FALSE)
++		VALUES ($1, $2, TRUE)
+ 		RETURNING id, project_id, name, is_owner, created_at`,
+ 		projectID, name,
+ 	).Scan(&role.ID, &role.ProjectID, &role.Name, &role.IsOwner, &role.CreatedAt)

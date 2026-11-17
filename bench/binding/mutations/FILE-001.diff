@@ -1,0 +1,13 @@
+diff --git c/backend/database/migrations/00001_baseline.sql w/backend/database/migrations/00001_baseline.sql
+index 2243e02..a8eb5dc 100644
+--- c/backend/database/migrations/00001_baseline.sql
++++ w/backend/database/migrations/00001_baseline.sql
+@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS files (
+     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+     parent_id INTEGER REFERENCES files(id) ON DELETE CASCADE,
+     name VARCHAR(255) NOT NULL,
+-    type VARCHAR(10) NOT NULL CHECK (type IN ('folder', 'page')),
++    type VARCHAR(10) NOT NULL,
+     position INTEGER NOT NULL DEFAULT 0,
+     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

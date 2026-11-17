@@ -57,9 +57,9 @@ type indexReport struct {
 	docs     int
 }
 
-func checkIndex(docsRoot string) indexReport {
+func checkIndex(roots checkRoots, docsRoot string) indexReport {
 	var report indexReport
-	err := mdscan.WalkMarkdownFiles(docsRoot, func(path string) error {
+	err := roots.walkDocs(docsRoot, func(path string) error {
 		rel := filepath.ToSlash(mdscan.RelTo(docsRoot, path))
 		if strings.HasPrefix(rel, "plans/") {
 			return nil
@@ -94,8 +94,8 @@ func indexCheckResult(report indexReport) checkResult {
 	}
 }
 
-func CmdIndex(root string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdIndex(repoRoot string) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("index", err)
 	}
@@ -210,7 +210,11 @@ func linksList(docsRoot, target string, inbound bool) (string, error) {
 		fmt.Fprintf(&b, "%s links to no docs\n", rel)
 		return b.String(), nil
 	case inbound:
-		fmt.Fprintf(&b, "%d %s link to %s:\n\n", len(linked), output.Plural(len(linked), "doc"), rel)
+		verb := "link"
+		if len(linked) == 1 {
+			verb = "links"
+		}
+		fmt.Fprintf(&b, "%d %s %s to %s:\n\n", len(linked), output.Plural(len(linked), "doc"), verb, rel)
 	default:
 		fmt.Fprintf(&b, "%s links to %d %s:\n\n", rel, len(linked), output.Plural(len(linked), "doc"))
 	}
@@ -282,8 +286,8 @@ func workflowsTable(docsRoot string) (string, error) {
 	return b.String(), nil
 }
 
-func CmdWorkflows(root string) int {
-	docsRoot, err := ResolveDocsRoot(root)
+func CmdWorkflows(repoRoot string) int {
+	docsRoot, err := ResolveDocsRoot(repoRoot)
 	if err != nil {
 		return output.Fail("workflows", err)
 	}

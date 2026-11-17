@@ -112,9 +112,10 @@ code review and the `docs-audit-coverage` workflow.
 | `links` | a relative markdown link under the docs root doesn't resolve |
 | `rules` | a rule has no marker or ignore; a marker names an unknown rule; a rule ID appears twice. Also scans `rules.roots` if set |
 | `index` | a doc outside `plans/` has no `# ` title |
+| `plans` | (opt-in) with `plans.lifecycle: enforce`, a plan's `**Status:**` line (first 15 lines) is missing or its word doesn't match its folder: `planned`/`in-progress` in `plans/` and `plans/fix/`, `complete`/`cut` in `plans/archive/` |
 | `generated` | a rendered workflow or hook shim differs from what `cinch render` would write now |
 | `hooks` | `core.hooksPath` isn't set to `paths.hooks` |
-| `commit` | (opt-in) the commit subject doesn't match `commit.pattern` |
+| `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt`, `reject` or a pattern); a plain commit on a `commit.protect` branch |
 | `core` | the installed cinch doesn't satisfy `require.cinch` (`init` writes a `>=` floor; `any` disables) |
 
 The pre-commit hook and `cinch check --staged` check the content being
@@ -145,6 +146,9 @@ cinch index --links-from PATH
 cinch ignores           list every cinch:ignore and its reason
 cinch rules --json      rule inventory as JSON (rules, markers, ignores, owns)
 cinch impact [FILES]    rule IDs a change may affect (default: staged files)
+cinch mv SRC DST        move a .md file under the docs root, rewriting links to and in it
+cinch plan archive FILE...
+                        move complete or cut plans into plans/archive/
 cinch version
 cinch help
 ```
@@ -154,16 +158,36 @@ A few notes:
 - **`hook`**: for `pre-commit` and `commit-msg`, it runs the checks and then
   every script registered under `hooks.<event>` in `cinch.yml` whose `when`
   prefixes match the changed files. cinch only runs these scripts; whether
-  they're correct is up to you. The checks read the staged content; these
-  scripts, and the `impact` list, see your working tree.
+  they're correct is up to you. The checks and the hook's `impact` list read
+  the staged content; these scripts see your working tree. When the tree
+  differs from the commit, `pre-commit` warns once, with the file counts.
+  Scripts get `CINCH_HOOK=<event>` in their environment, and inside
+  `pre-commit` a plain `cinch check` then checks the staged content, as
+  `--staged` does (`--changed` still reads the working tree). A failing script
+  doesn't stop the ones after it; the hook ends with one line per step,
+  `checks` first, so a failure can't be buried under a later script's output.
 - **`impact`**: lists rules from docs whose `owns` covers a changed file, plus
-  rules whose marker is in a changed file. The pre-commit hook prints the same
-  list as a reminder. It never fails the commit.
+  rules whose marker is in a changed file. Run directly, it lists every changed
+  file and every rule ID. The pre-commit hook prints the same list as a
+  reminder, capped at three per line with a `+N more`, since it prints on every
+  commit. It never fails the commit.
 - **`index --links-to` / `--links-from`**: reuses the link check's path
   resolution, so it knows which of several `architecture.md` files a given
   `../architecture.md` refers to, which grep can't. A bare basename matches
   every doc with that name; a path with a directory matches exactly. Unlike
   plain `index`, the link graph includes `plans/`.
+- **`mv` / `plan archive`**: take paths relative to the repo root. `mv` moves
+  a `.md` file to a path that doesn't exist yet, both inside the docs root,
+  and rewrites every link to it from the other docs and every relative link
+  inside it that resolved, so they still resolve from the new place. It parses
+  links as the `links` check does: link syntax in inline code or a fenced block
+  is left alone, and a `#fragment` or title is kept. `plan archive` moves plans
+  whose `**Status:**` word is `complete` or `cut`, from directly in `plans/`
+  to `plans/archive/`, the same way. Both check everything first and refuse
+  without changing a file. They don't use `git mv` and don't stage anything.
+  Links from outside the docs root (`README.md`, `AGENTS.md`, code comments)
+  aren't rewritten; each command ends with a line naming the old path to grep
+  for.
 
 ## Workflows
 
@@ -210,7 +234,7 @@ paths:
 # message file as $1.
 #
 # pre-commit-checks / commit-msg-checks change which checks the hooks run.
-# Defaults: pre-commit [links, rules, index, generated, core],
+# Defaults: pre-commit [links, rules, index, plans, generated, core],
 # commit-msg [commit]. An empty list (`[]`) turns that hook's built-in checks
 # off; leaving the key out keeps the defaults.
 hooks:
@@ -224,9 +248,22 @@ hooks:
     notify:
       run: scripts/notify.sh
 
-# Optional: commit subjects must match this regexp.
+# Optional: commit subjects must match this regexp. While git is mid
+# squash-merge ($GIT_DIR/SQUASH_MSG) the entry for the current branch under
+# squash: applies instead, and a branch with no entry falls back to pattern.
+# While git is mid merge ($GIT_DIR/MERGE_HEAD), merge: exempt passes the
+# subject unchecked, merge: reject fails every merge commit (land branches as a
+# squash with make merge) and merge: '<regexp>' replaces pattern; leave it out
+# and a merge commit is checked like any other.
 #commit:
 #  pattern: '^\[[a-z-]+\] .+'
+#  squash:
+#    dev: '^merge: (feature|fix)/.+'
+#  merge: exempt   # or reject, or a regexp
+
+# Optional: `enforce` makes the plans check require every plan's `**Status:**` line to match its folder.
+#plans:
+#  lifecycle: enforce
 
 # Optional: set to false to stop `cinch init` from writing the AGENTS.md pointer.
 #agents:

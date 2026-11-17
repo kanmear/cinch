@@ -1,0 +1,3 @@
+# engine claude, seed 20261028; columns are documented in bench/upkeep/main.go
+run_id,engine,task,arm,index,attempt,position,seed,base_sha,head_sha,status,invalid_reason,timed_out,exit_code,wall_s,engine_error,turns,input_tokens,output_tokens,cache_read,cost_usd,committed,commits,dirty,behavior,hidden_passed,hidden_failed,corpus,corpus_reasons,upkeep,bypass,bypass_kinds,hook_runs,hook_blocks,rules_changed,rules_changed_ids,suite,suite_failed,notes
+S3-arm1-r0,claude,S3,1,0,1,7,20261028,90899bcdb60ed412632d01cff7b2037dafd99bbf,90899bcdb60ed412632d01cff7b2037dafd99bbf,graded,,false,0,9,,11,4,1073,36993,0.0307,false,0,false,fail,0,1,n/a,,n/a,false,,0,0,0,,pass,0,"touches another benchmark path: {""command"":""ls ~/.cache/cinch-upkeep 2\u003e\u00261""}"

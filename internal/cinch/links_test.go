@@ -59,6 +59,7 @@ func TestStripInlineCode(t *testing.T) {
 }
 
 // cinch:rule CINCH-005
+// catch-matrix: links | not a defect | link syntax inside inline code (CINCH-005)
 func TestCheckLinksInlineCodeAndTitles(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -79,7 +80,7 @@ func TestCheckLinksInlineCodeAndTitles(t *testing.T) {
 			writeTestFile(t, docsRoot, "real.md", "# Real\n")
 			writeTestFile(t, docsRoot, "a.md", tc.content)
 
-			report := checkLinks(docsRoot)
+			report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
 			if len(report.findings) != 0 {
 				t.Fatalf("findings = %+v, want none", report.findings)
@@ -95,7 +96,7 @@ func TestCheckLinksUnclosedBacktickStillFlagsBrokenLink(t *testing.T) {
 	docsRoot := t.TempDir()
 	writeTestFile(t, docsRoot, "a.md", "`oops [a](missing.md)\n")
 
-	report := checkLinks(docsRoot)
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 1 || !strings.Contains(report.findings[0].message, "missing.md") {
 		t.Fatalf("findings = %+v, want one 'does not resolve' finding for missing.md", report.findings)
@@ -104,6 +105,7 @@ func TestCheckLinksUnclosedBacktickStillFlagsBrokenLink(t *testing.T) {
 
 // --- Seeded defect battery: links.go ---
 
+// catch-matrix: links | caught | relative link to a moved or deleted doc
 func TestSeededDefectLinksTargetMoved(t *testing.T) {
 	docsRoot := t.TempDir()
 	if err := os.WriteFile(filepath.Join(docsRoot, "a.md"), []byte("[see](b.md)\n"), 0o644); err != nil {
@@ -112,7 +114,7 @@ func TestSeededDefectLinksTargetMoved(t *testing.T) {
 	// b.md intentionally does not exist — simulates a rename/move that left
 	// the link behind.
 
-	report := checkLinks(docsRoot)
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
 	ok := false
 	for _, f := range report.findings {
@@ -125,6 +127,7 @@ func TestSeededDefectLinksTargetMoved(t *testing.T) {
 	}
 }
 
+// catch-matrix: links | control | relative link to an existing doc
 func TestSeededDefectLinksTargetResolves(t *testing.T) {
 	docsRoot := t.TempDir()
 	if err := os.WriteFile(filepath.Join(docsRoot, "a.md"), []byte("[see](b.md)\n"), 0o644); err != nil {
@@ -134,7 +137,7 @@ func TestSeededDefectLinksTargetResolves(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkLinks(docsRoot)
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none (link target exists)", report.findings)
@@ -144,6 +147,7 @@ func TestSeededDefectLinksTargetResolves(t *testing.T) {
 	}
 }
 
+// catch-matrix: links | not a defect | titled doc with no inbound links (listed by cinch index)
 func TestSeededDefectLinksTargetUnreachableFromRoot(t *testing.T) {
 	docsRoot := t.TempDir()
 	if err := os.WriteFile(filepath.Join(docsRoot, "a.md"), []byte("# Root\n[see also](sub/b.md)\n"), 0o644); err != nil {
@@ -165,7 +169,7 @@ func TestSeededDefectLinksTargetUnreachableFromRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	report := checkLinks(docsRoot)
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
 	// Resolved (not a gap): .docs/plans/05-navigability-check-class.md
 	// originally proposed a link-graph reachability pass rooted at a
@@ -234,12 +238,49 @@ func TestBuildDocLinks(t *testing.T) {
 // The links check and the graph read the same resolution, so a corpus that is
 // green must not also be producing phantom edges — and vice versa.
 func TestBuildDocLinksLeavesCheckIntact(t *testing.T) {
-	report := checkLinks(docLinksFixture(t))
+	docsRoot := docLinksFixture(t)
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
 
 	if len(report.findings) != 0 {
 		t.Fatalf("findings = %+v, want none (every link in the fixture resolves)", report.findings)
 	}
 	if report.links != 8 {
 		t.Fatalf("links = %d, want 8 (edge filtering must not change the link count)", report.links)
+	}
+}
+
+// catch-matrix: links | gap | #anchor to a renamed or missing heading
+func TestSeededDefectLinksBrokenAnchor(t *testing.T) {
+	docsRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(docsRoot, "a.md"), []byte("[see](b.md#gone)\n[here](#also-gone)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "b.md"), []byte("# B\n\n## Present\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
+
+	// GAP: linkTargetIsExempt skips same-doc anchors and checkLinks strips
+	// the fragment before resolving the path, so a heading rename that
+	// breaks every #anchor pointing at it goes unnoticed.
+	if len(report.findings) != 0 {
+		t.Fatalf("findings = %+v, want none (anchors are not checked)", report.findings)
+	}
+}
+
+// catch-matrix: links | gap | dead external URL (by design: no network, CINCH-007)
+func TestSeededDefectLinksExternalURL(t *testing.T) {
+	docsRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(docsRoot, "a.md"), []byte("[spec](https://example.invalid/gone)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkLinks(workingTreeRoots(docsRoot), docsRoot)
+
+	// GAP, by design: checking a URL means a network call, and cinch sends
+	// nothing over the network (CINCH-007). A dead external link passes.
+	if len(report.findings) != 0 || report.links != 0 {
+		t.Fatalf("findings = %+v, links = %d, want none (external URLs are not checked)", report.findings, report.links)
 	}
 }

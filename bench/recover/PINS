@@ -1,0 +1,42 @@
+# Recoverability census (plan 29 B): pin of record.
+# KEY=VALUE, one per line; "<REPO>_" keys are per fixture, the repo name from
+# the questions file upper-cased. The harness refuses to run when <REPO>_REF in
+# the fixture repo does not resolve to <REPO>_SHA, or when the questions file's
+# commit is a different one. TODO values must be filled by the owner before the
+# first real run, and then never change.
+
+BUDGETRON_REF=cinch-bench/upkeep-v1
+BUDGETRON_SHA=2907c92cdf886eb269d7bb91573e6c0841a9022a
+# Generation step run once in the base checkout (gitignored sources).
+BUDGETRON_GEN=make gen
+# Where the docs live; the arms remove or keep this directory.
+BUDGETRON_DOCS=.docs
+# Directory holding libobjectbox.so and VERSION, copied into .objectbox/lib.
+BUDGETRON_OBJECTBOX=~/code/budgetron/.objectbox/lib
+
+DELTADOCS_REF=cinch-bench/recover-v1
+DELTADOCS_SHA=db65536270f56882504a30e053a0dcbc18a72e3b
+# A Go backend plus a frontend: nothing to generate.
+DELTADOCS_GEN=
+DELTADOCS_OBJECTBOX=
+DELTADOCS_DOCS=.agent
+# Agent tool config removed in both arms (DESIGN § Arms).
+DELTADOCS_STRIP=.claude,.cursor,.pi,.pi-lens.json
+# AGENTS.md is replaced, not derived: code.md and docs.md here, relative to PINS.
+DELTADOCS_AGENTS_DIR=private/arms/deltadocs
+
+# The answering agent: same pi stack as bench/upkeep.
+PI_VERSION=1.4.0
+PI_PROVIDER=llama-cpp
+PI_MODEL=Qwen3.8-27B-UD-Q4_K_M
+PI_THINKING=high
+
+# The judge: a different model family from the answerer.
+JUDGE_MODEL=claude-sonnet-5-5
+
+REPS=3
+WALL_CLOCK_MINUTES=10
+
+# Shuffled with this seed, the engine name and nothing else. Fixed at the
+# pre-registration commit.
+SCHEDULE_SEED=20261101

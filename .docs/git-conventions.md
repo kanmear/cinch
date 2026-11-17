@@ -1,11 +1,12 @@
 # Git conventions
 
-Branch model, commit-message shapes, and the auto-versioning scheme enforced by
-`scripts/check-squash-merge-msg.sh` and `scripts/post-commit-version-bump.sh`. Ported
+Branch model, commit-message shapes, and the auto-versioning scheme. The message
+shapes are enforced by cinch's own `commit` check from the `commit:` block in `cinch.yml`
+(CINCH-015, CINCH-016); the version bump by `scripts/post-commit-version-bump.sh`. Ported
 from `project_deltadocs`'s version-bump hooks and adapted for a single-binary Go repo.
 Cinch runs on itself: `.githooks/*` are shims rendered by `cinch init`, and they call
-`cinch hook <event>`. That runs cinch's own checks, then dispatches to the two scripts
-registered under `hooks.commit-msg` and `hooks.post-commit` in `cinch.yml`.
+`cinch hook <event>`. That runs cinch's own checks, then dispatches to the bump script
+registered under `hooks.post-commit` in `cinch.yml`.
 
 ## Setup
 
@@ -23,13 +24,32 @@ templates, run `make install` again so the hooks use the new build.
 ## Commit message shapes
 
 - **Squash-merge onto `dev`:** `merge: <branch-name>`, where `<branch-name>` must
-  start with `feature/`, `refactor/`, `fix/`, `chore/`, or `docs/`. Enforced by
-  `scripts/check-squash-merge-msg.sh` only while `$GIT_DIR/SQUASH_MSG` exists (i.e. mid
-  `git merge --squash`).
-- **Every other commit:** `<type> [<scope>]: <description>` — types: `feat`, `fix`,
-  `ui`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`; scope optional.
-- Real merge commits (`git merge --no-ff` — the release cut) are exempt: git's own
-  default merge message stands.
+  start with `feature/`, `refactor/`, `fix/`, `chore/`, `docs/`, `perf/` or `ui/`.
+  Enforced by `commit.squash.dev` in `cinch.yml`, which the commit-msg hook applies only
+  while `$GIT_DIR/SQUASH_MSG` exists (i.e. mid `git merge --squash`).
+- **Squash-merge onto `main`:** `merge: hotfix/<name>` (`commit.squash.main`).
+- **Every other commit:** `<type>[!] [<scope>]: <description>` — types: `feat`, `fix`,
+  `ui`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`; `!` marks a breaking
+  change; scope optional, lowercase letters, `+` and `-` only (`commit.pattern`).
+- Real merge commits (`git merge --no-ff` — the release cut) are exempt
+  (`commit.merge: exempt`): git's own default merge message stands.
+
+## Trunk-flow guards
+
+Two `cinch.yml` keys enforce the trunk flow of
+[plan 33](plans/33-harness-alignment.md) (`main` only, topic branches land as squash
+commits through `make merge`). Both run in the commit-msg hook. This repo turns them on
+when it switches to that flow (plan 33 T12); until then it keeps `commit.merge: exempt`
+for the release cut and protects no branch.
+
+- **`commit.merge: reject`** (CINCH-020): any commit made while `$GIT_DIR/MERGE_HEAD`
+  exists fails, whatever its subject, and the finding points at `make merge`. A
+  `--no-ff` merge can't land, so no bump is lost to a 2-parent commit.
+- **`commit.protect: [main]`** (CINCH-021): a commit on a listed branch passes only
+  mid squash merge (`SQUASH_MSG` exists), or mid merge when `commit.merge` isn't
+  `reject`. A plain commit on `main` fails. The first commit on an unborn
+  branch and a commit on a detached HEAD pass. The version bump's
+  `--no-verify` amend runs no hooks, so it isn't checked.
 
 ## Version bump table
 
@@ -59,7 +79,7 @@ change into the triggering commit via `git commit --amend --no-edit --no-verify`
 |---|---|
 | major | manual only — `make version-major` |
 | minor | auto: `merge: feature/…` squash-merged onto `dev` |
-| patch | auto: `merge: fix/…` or `merge: refactor/…` squash-merged onto `dev` |
+| patch | auto: `merge: fix/…`, `merge: refactor/…`, `merge: perf/…` or `merge: ui/…` squash-merged onto `dev` |
 | hotfix (letter) | auto: a direct `fix: …` or `refactor: …` commit landing on `dev` (not a squash-merge) |
 
 `merge: chore/…` and `merge: docs/…` squash-merges never bump anything. A bump only
