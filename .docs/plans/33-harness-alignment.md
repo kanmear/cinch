@@ -447,7 +447,7 @@ paths read `.docs` once step 2 has run). The session prepares the branch and pro
 commit; the owner lands it with § 5.2.
 
 #### T12: cinch (stack `go-cli`; dogfood first)
-**Status:** [x] — prepared on `chore/harness-v2`; the owner lands it with § 5.2
+**Status:** [x] — landed 2026-11-17 (`1789be3 merge: chore/harness-v2`), released as v0.18.0
 **Depends on:** T4, T11
 **Files:** per § 5.1.
 - `VERSION` replaces `internal/version/*` (ldflags already in the Makefile).
@@ -680,21 +680,27 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T12: cinch is on harness v2, uncommitted on `chore/harness-v2` (cut from `dev`
-at `086133c`). The proposed commit (one commit, the plan 32 triage included):
+**Last completed:** T12: cinch is on harness v2 and on the trunk flow. The session landed it at the
+owner's request:
+- § 5.2 ran: `main` moved to `dev`, then `1789be3 merge: chore/harness-v2`. Every hook passed,
+  including the merge test.
+- `make release` tagged v0.18.0 and pushed `main` and the tag.
+- `make install-bin` installed 0.18.0, and `cinch check` is green with it.
+- The next session start shows branch `main` and only the live plans.
 
-```
-chore [harness]: harness v2 — trunk flow, one version, make contract
+**Owner still to do** (the session's permission check refused branch deletion):
+- `git push origin --delete dev && git branch -D dev`. `dev` and `origin/dev` hold nothing `main`
+  lacks.
+- `scripts/prune.sh --confirm`. It lists `chore/harness-v2`, `dev`, `feature/cli-visual-pass` and
+  `fix/bench-private-arms-skip`.
+- About 30 older local topic branches remain that `prune` doesn't recognise as landed. They come
+  from the old dev flow, and none is in progress. Delete them by hand when convenient; no rebase
+  is needed.
 
-Port harness-template v2 (go-cli): trunk on main (commit.squash.main,
-commit.merge: reject, commit.protect: [main]); a root VERSION replaces
-internal/version and update-version.sh; the Makefile follows D3 with the
-bench targets and install-bin kept; managed scripts and .claude hooks;
-AGENTS.md tiers, CLAUDE.md; architecture, testing and stack docs;
-git-conventions rewritten for the trunk flow; CI follows go.mod and make
-check. Plan 32 T5: plans.lifecycle: enforce, 23 plans archived complete
-and 3 cut, 00-overview moved to .docs/roadmap.md with a Deferred table.
-```
+**Landing fix:** the first squash commit failed the merge test. `bench/field`'s
+`TestWalkOnARealRepo` inherited the hook's relative `GIT_INDEX_FILE`, and its `git worktree add`
+broke. The test now drops the repo-local git variables (commit `test [bench]` on the branch). Other
+repos whose tests run git under the merge-test hook can hit the same thing.
 
 - **Before the branch, on `dev` (local, not pushed):**
   - `e9a692b merge: docs/plan-33-t8-make-contract` holds the T6–T11 handoff commits. The branches
@@ -732,16 +738,12 @@ steps; `make version` and `bin/cinch version` print 0.18.0. A second `make sync`
 `main` is an ancestor of `dev`, so § 5.2's `git branch -f main dev` holds.
 
 **Not verified:**
-- The installed cinch (0.17.0) reports one `generated` finding on `docs-philosophy.md`. Its
-  embedded templates lag the visual pass; `make install-bin` after landing fixes it. `generated`
-  isn't in the local hook list, so it doesn't block the commit.
-- The § 5.2 landing itself, and the next session start on `main`.
 - `make dev`/`make down` inside tmux: go-cli's `dev` is one foreground process, so there is no
   session to check.
-- Carried: goreleaser and actionlint runs (the first `make ship` runs goreleaser for real).
+- Carried: actionlint. goreleaser ran for real on v0.18.0: the `release` and `test` workflows
+  passed, and the release has darwin/linux/windows archives and checksums.
 
-**Resume at:** the owner lands cinch with § 5.2, then runs `make install-bin`. `make release` tags
-v0.18.0. Then T13 (limen).
+**Resume at:** T13 (limen).
 
 **Notes:**
 - `make diff` drift left on purpose: the goreleaser filters and owner, the Makefile extras,
