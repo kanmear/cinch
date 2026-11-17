@@ -74,7 +74,6 @@ repository, so an unbound rule or a stray marker fails CI.
 20. **CINCH-020** With `commit.merge: reject`, every commit made while
     `$GIT_DIR/MERGE_HEAD` exists fails the `commit` check, whatever its
     subject, and the finding names `make merge` as the way to land a branch.
-    <!-- cinch:ignore: test lands in plan 33 T2 -->
 21. **CINCH-021** With `commit.protect: [<branch>…]` in `cinch.yml`, a commit
     on a listed branch passes the `commit` check's branch guard only while
     `$GIT_DIR/SQUASH_MSG` exists, or while `$GIT_DIR/MERGE_HEAD` exists and

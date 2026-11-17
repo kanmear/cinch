@@ -552,3 +552,58 @@ func TestCheckCommitMerge(t *testing.T) {
 		}
 	})
 }
+
+// cinch:rule CINCH-020
+// catch-matrix: commit | caught | any commit made mid merge, with commit.merge: reject (CINCH-020)
+func TestCheckCommitMergeReject(t *testing.T) {
+	const rejectManifest = "commit:\n  pattern: '^(feat|fix): .+'\n  merge: reject\n"
+	cases := []struct {
+		name, subject string
+	}{
+		{"a subject that matches commit.pattern is still rejected", "feat: x\n"},
+		{"git's default merge subject is rejected", "Merge branch 'dev'\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			mergeTestRepo(t, repoRoot)
+			writeTestFile(t, repoRoot, "cinch.yml", rejectManifest)
+			msg := writeTestFile(t, repoRoot, "msg.txt", tc.subject)
+			r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+			if len(r.findings) != 1 || r.noOp != "" {
+				t.Fatalf("result = %+v, want one finding", r)
+			}
+			f := r.findings[0]
+			if f.level != "error" || f.check != "commit" || !strings.Contains(f.message, "make merge") {
+				t.Fatalf("finding = %+v, want an error naming make merge", f)
+			}
+		})
+	}
+
+	t.Run("reject is ignored outside a merge", func(t *testing.T) {
+		for subject, wantFinding := range map[string]bool{"feat: x\n": false, "Merge branch 'dev'\n": true} {
+			repoRoot := t.TempDir()
+			initTestGitRepo(t, repoRoot)
+			writeTestFile(t, repoRoot, "cinch.yml", rejectManifest)
+			msg := writeTestFile(t, repoRoot, "msg.txt", subject)
+			r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+			if (len(r.findings) == 1) != wantFinding || r.noOp != "" {
+				t.Fatalf("subject %q: result = %+v, want finding=%v", subject, r, wantFinding)
+			}
+			if wantFinding && !strings.Contains(r.findings[0].message, "commit.pattern") {
+				t.Fatalf("subject %q: message = %q, want a commit.pattern finding", subject, r.findings[0].message)
+			}
+		}
+	})
+
+	t.Run("a squash is unaffected", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		squashTestRepo(t, repoRoot, "dev")
+		writeTestFile(t, repoRoot, "cinch.yml", rejectManifest)
+		msg := writeTestFile(t, repoRoot, "msg.txt", "feat: x\n")
+		r := checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+		if len(r.findings) != 0 || r.noOp != "" {
+			t.Fatalf("result = %+v, want a pass", r)
+		}
+	})
+}

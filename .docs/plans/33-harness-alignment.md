@@ -297,7 +297,7 @@ pairing flips.
 **Verify:** `cinch check` green
 
 #### T2: `commit.merge: reject`
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T1
 **Files:** `internal/cinch/checks_misc.go` (`commitPatternFor`, `checkCommit`), its test
 **Rules:** CINCH-020
@@ -679,10 +679,11 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T1 — CINCH-020 and CINCH-021 written into `rules.md` (each with a
-`cinch:ignore` naming T2/T3), CINCH-016 points at CINCH-020 for `reject`, and
-`git-conventions.md` § Trunk-flow guards describes both keys.
-**Verified:** `cinch check` green (21 rules, 3 ignores); `go test ./internal/...` green.
-**Resume at:** T2, on a branch off `docs/trunk-guard-rules` (T1 isn't merged; the owner merges).
-**Notes:** One branch per task, owner merges. T3 also edits `checks_misc.go`; stack it on T2's
-branch to avoid a conflict.
+**Last completed:** T2 — `commit.merge: reject` in `checkCommit`/`commitPatternFor`
+(`checks_misc.go`); `TestCheckCommitMergeReject` carries the CINCH-020 marker and the T1
+`cinch:ignore` is gone.
+**Verified:** `go test ./internal/...` green; `go vet . ./internal/...` and `gofmt -l internal` clean;
+`cinch check` green (21 rules, 2 ignores).
+**Resume at:** T3, on a branch off `feature/commit-merge-reject` (T2 isn't merged; the owner merges).
+**Notes:** One branch per task, owner merges. T3 also edits `checks_misc.go` (`readCommitState`);
+stack it on T2's branch to avoid a conflict.
