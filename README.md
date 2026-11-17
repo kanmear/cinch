@@ -115,7 +115,7 @@ code review and the `docs-audit-coverage` workflow.
 | `plans` | (opt-in) with `plans.lifecycle: enforce`, a plan's `**Status:**` line (first 15 lines) is missing or its word doesn't match its folder: `planned`/`in-progress` in `plans/` and `plans/fix/`, `complete`/`cut` in `plans/archive/` |
 | `generated` | a rendered workflow or hook shim differs from what `cinch render` would write now |
 | `hooks` | `core.hooksPath` isn't set to `paths.hooks` |
-| `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt`, `reject` or a pattern) |
+| `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt`, `reject` or a pattern); a plain commit on a `commit.protect` branch |
 | `core` | the installed cinch doesn't satisfy `require.cinch` (`init` writes a `>=` floor; `any` disables) |
 
 The pre-commit hook and `cinch check --staged` check the content being

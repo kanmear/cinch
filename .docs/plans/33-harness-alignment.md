@@ -268,14 +268,14 @@ pairing flips.
 
 ## 4. Test plan (Part A)
 
-- [ ] CINCH-020: with `commit.merge: reject` and `MERGE_HEAD` present, the commit-msg check
+- [x] CINCH-020: with `commit.merge: reject` and `MERGE_HEAD` present, the commit-msg check
   fails and its message names `make merge`. With `exempt`, it passes as before.
   — `internal/cinch/checks_misc_test.go`
-- [ ] CINCH-021: on `main` with `commit.protect: [main]`, a plain commit fails, a squash commit
+- [x] CINCH-021: on `main` with `commit.protect: [main]`, a plain commit fails, a squash commit
   passes, and a commit on an unlisted branch passes. — `internal/cinch/checks_misc_test.go`
-- [ ] CINCH-021 edge cases: an unborn `main` passes; a detached HEAD passes; the key absent
+- [x] CINCH-021 edge cases: an unborn `main` passes; a detached HEAD passes; the key absent
   changes nothing. — same file
-- [ ] The rendered docs and `git-conventions.md` describe both keys. — `cinch check` (links,
+- [x] The rendered docs and `git-conventions.md` describe both keys. — `cinch check` (links,
   rules)
 
 ## 5. Tasks
@@ -298,7 +298,7 @@ pairing flips.
 **Verify:** `go test ./internal/...`; the T1 ignore is replaced by the marker
 
 #### T3: `commit.protect`
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T1
 **Files:** `internal/cinch/checks_misc.go` (`readCommitState` reads the branch on every commit,
 not only when squashing; unborn and detached cases), its test
@@ -656,11 +656,8 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Doc-versus-code drift in convention docs** (plan 31 § 2, plan 10). Untouched.
 
 ## Handoff
-**Last completed:** T2 — `commit.merge: reject` in `checkCommit`/`commitPatternFor`
-(`checks_misc.go`); `TestCheckCommitMergeReject` carries the CINCH-020 marker and the T1
-`cinch:ignore` is gone.
-**Verified:** `go test ./internal/...` green; `go vet . ./internal/...` and `gofmt -l internal` clean;
-`cinch check` green (21 rules, 2 ignores).
-**Resume at:** T3, on a branch off `feature/commit-merge-reject` (T2 isn't merged; the owner merges).
-**Notes:** One branch per task, owner merges. T3 also edits `checks_misc.go` (`readCommitState`);
-stack it on T2's branch to avoid a conflict.
+**Last completed:** T3 — `commit.protect` guard (`commitProtectFinding` in `checks_misc.go`;
+`commitState` now reads `branch` on every commit and `unborn`); `TestCheckCommitProtect` carries the
+CINCH-021 marker, the `cinch:ignore` under rules.md item 21 is gone, README's `commit` row mentions
+the key. **Resume at:** T4 (release cinch). The owner merges T2 and T3 (`feature/commit-merge-reject`,
+`feature/commit-protect`, stacked) first. **Notes:** One branch per task, owner merges.

@@ -59,13 +59,14 @@ func sameHooksDirectory(repoRoot, got, want string) bool {
 }
 
 // commitState is what git is in the middle of when the commit-msg hook runs:
-// a squash merge (SQUASH_MSG in the git dir) or a real merge (MERGE_HEAD).
-// Outside a git repository both are false and the subject is judged as an
-// ordinary commit.
+// a squash merge (SQUASH_MSG in the git dir) or a real merge (MERGE_HEAD),
+// and where HEAD points. Outside a git repository everything is false or
+// empty and the subject is judged as an ordinary commit.
 type commitState struct {
 	squash bool
 	merge  bool
-	branch string // checked out branch while squashing; "" when detached
+	branch string // checked out branch; "" when detached
+	unborn bool   // HEAD doesn't resolve yet: the first commit on a new branch
 }
 
 func readCommitState(repoRoot string) commitState {
@@ -85,11 +86,11 @@ func readCommitState(repoRoot string) commitState {
 		return err == nil
 	}
 	state := commitState{squash: exists("SQUASH_MSG"), merge: exists("MERGE_HEAD")}
-	if state.squash {
-		if branch, err := gitutil.Output(repoRoot, "symbolic-ref", "--short", "HEAD"); err == nil {
-			state.branch = strings.TrimSpace(string(branch))
-		}
+	if branch, err := gitutil.Output(repoRoot, "symbolic-ref", "--short", "HEAD"); err == nil {
+		state.branch = strings.TrimSpace(string(branch))
 	}
+	_, err = gitutil.Output(repoRoot, "rev-parse", "--verify", "-q", "HEAD")
+	state.unborn = err != nil
 	return state
 }
 
@@ -125,11 +126,31 @@ func commitPatternFor(m *manifest, state commitState) (pattern, source, where, m
 	return p, "commit.pattern", "", ""
 }
 
+// commitProtectFinding applies commit.protect (CINCH-021): a commit on a
+// listed branch passes only mid squash merge, or mid merge when commit.merge
+// isn't reject (reject has already returned by the time this runs). The first
+// commit on an unborn branch and a commit on a detached HEAD pass.
+func commitProtectFinding(m *manifest, state commitState, messageFile string) []finding {
+	if state.branch == "" || state.unborn || state.squash || state.merge {
+		return nil
+	}
+	for _, protected := range m.list("commit.protect") {
+		if protected == state.branch {
+			return []finding{{
+				check: "commit", level: "error", file: messageFile, line: 1,
+				message: "commit on protected branch " + state.branch + ": commit.protect allows only squash merges here — land the change from a topic branch with make merge (git merge --squash)",
+			}}
+		}
+	}
+	return nil
+}
+
 func checkCommit(repoRoot, messageFile string, m *manifest) checkResult {
 	if messageFile == "" {
 		return checkResult{noOp: "no commit message file given"}
 	}
-	pattern, source, where, mode := commitPatternFor(m, readCommitState(repoRoot))
+	state := readCommitState(repoRoot)
+	pattern, source, where, mode := commitPatternFor(m, state)
 	switch mode {
 	case commitMergeExempt:
 		return checkResult{noOp: "merge commit: commit.merge is exempt"}
@@ -138,6 +159,9 @@ func checkCommit(repoRoot, messageFile string, m *manifest) checkResult {
 			check: "commit", level: "error", file: messageFile, line: 1,
 			message: "merge commit: commit.merge is reject — land the branch as a squash commit with make merge (git merge --squash), not a merge commit",
 		}}}
+	}
+	if findings := commitProtectFinding(m, state, messageFile); findings != nil {
+		return checkResult{findings: findings}
 	}
 	if pattern == "" {
 		return checkResult{noOp: "commit.pattern is not set in cinch.yml — opt-in, not configured"}

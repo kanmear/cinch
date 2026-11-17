@@ -607,3 +607,121 @@ func TestCheckCommitMergeReject(t *testing.T) {
 		}
 	})
 }
+
+// protectTestRepo is a repository on branch with one seed commit, so HEAD
+// resolves; the caller adds SQUASH_MSG or MERGE_HEAD as needed.
+func protectTestRepo(t *testing.T, repoRoot, branch string) func(args ...string) {
+	t.Helper()
+	git := initTestGitRepo(t, repoRoot)
+	git("symbolic-ref", "HEAD", "refs/heads/"+branch)
+	writeTestFile(t, repoRoot, "a.txt", "a\n")
+	git("add", "a.txt")
+	git("commit", "-q", "-m", "feat: seed")
+	return git
+}
+
+// cinch:rule CINCH-021
+// catch-matrix: commit | caught | plain commit on a branch listed in commit.protect (CINCH-021)
+func TestCheckCommitProtect(t *testing.T) {
+	const protectManifest = "commit:\n  protect: [main]\n"
+	const patternManifest = "commit:\n  pattern: '^(feat|fix): .+'\n  protect: [main]\n"
+	check := func(t *testing.T, repoRoot, manifest, subject string) checkResult {
+		t.Helper()
+		writeTestFile(t, repoRoot, "cinch.yml", manifest)
+		msg := writeTestFile(t, repoRoot, "msg.txt", subject)
+		return checkCommit(repoRoot, msg, loadTestManifest(t, repoRoot))
+	}
+	wantPass := func(t *testing.T, r checkResult) {
+		t.Helper()
+		if len(r.findings) != 0 {
+			t.Fatalf("result = %+v, want no findings", r)
+		}
+	}
+
+	t.Run("a plain commit on a protected branch fails and names make merge", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		protectTestRepo(t, repoRoot, "main")
+		r := check(t, repoRoot, patternManifest, "feat: x\n")
+		if len(r.findings) != 1 || r.noOp != "" {
+			t.Fatalf("result = %+v, want one finding", r)
+		}
+		f := r.findings[0]
+		if f.level != "error" || f.check != "commit" || f.line != 1 {
+			t.Fatalf("finding = %+v, want an error on line 1 of the commit check", f)
+		}
+		for _, want := range []string{"protected branch main", "commit.protect", "make merge"} {
+			if !strings.Contains(f.message, want) {
+				t.Fatalf("message = %q, want it to contain %q", f.message, want)
+			}
+		}
+	})
+
+	t.Run("the guard applies without commit.pattern", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		protectTestRepo(t, repoRoot, "main")
+		r := check(t, repoRoot, protectManifest, "anything\n")
+		if len(r.findings) != 1 || !strings.Contains(r.findings[0].message, "make merge") {
+			t.Fatalf("result = %+v, want the protect finding", r)
+		}
+	})
+
+	t.Run("a squash commit on a protected branch passes", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		protectTestRepo(t, repoRoot, "main")
+		writeTestFile(t, filepath.Join(repoRoot, ".git"), "SQUASH_MSG", "Squashed commit of the following:\n")
+		wantPass(t, check(t, repoRoot, patternManifest, "feat: x\n"))
+	})
+
+	for _, tc := range []struct{ name, manifest string }{
+		{"commit.merge unset", protectManifest},
+		{"commit.merge exempt", "commit:\n  protect: [main]\n  merge: exempt\n"},
+		{"commit.merge a pattern", "commit:\n  protect: [main]\n  merge: '^merge: .+'\n"},
+	} {
+		t.Run("a merge commit on a protected branch passes with "+tc.name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			protectTestRepo(t, repoRoot, "main")
+			writeTestFile(t, filepath.Join(repoRoot, ".git"), "MERGE_HEAD", "0000000000000000000000000000000000000000\n")
+			wantPass(t, check(t, repoRoot, tc.manifest, "merge: dev\n"))
+		})
+	}
+
+	t.Run("commit.merge reject still fails a merge on a protected branch", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		protectTestRepo(t, repoRoot, "main")
+		writeTestFile(t, filepath.Join(repoRoot, ".git"), "MERGE_HEAD", "0000000000000000000000000000000000000000\n")
+		r := check(t, repoRoot, "commit:\n  protect: [main]\n  merge: reject\n", "merge: dev\n")
+		if len(r.findings) != 1 || !strings.Contains(r.findings[0].message, "commit.merge is reject") {
+			t.Fatalf("result = %+v, want the CINCH-020 finding", r)
+		}
+	})
+
+	t.Run("a commit on an unlisted branch passes", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		protectTestRepo(t, repoRoot, "topic")
+		wantPass(t, check(t, repoRoot, patternManifest, "feat: x\n"))
+	})
+
+	t.Run("the first commit on an unborn protected branch passes", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		git := initTestGitRepo(t, repoRoot)
+		git("symbolic-ref", "HEAD", "refs/heads/main")
+		wantPass(t, check(t, repoRoot, patternManifest, "feat: x\n"))
+	})
+
+	t.Run("a commit on a detached HEAD passes", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		git := protectTestRepo(t, repoRoot, "main")
+		git("checkout", "-q", "--detach")
+		wantPass(t, check(t, repoRoot, patternManifest, "feat: x\n"))
+	})
+
+	t.Run("without the key nothing changes", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		protectTestRepo(t, repoRoot, "main")
+		wantPass(t, check(t, repoRoot, "commit:\n  pattern: '^(feat|fix): .+'\n", "feat: x\n"))
+		r := check(t, repoRoot, "commit:\n  pattern: '^(feat|fix): .+'\n", "oops\n")
+		if len(r.findings) != 1 || !strings.Contains(r.findings[0].message, "commit.pattern") {
+			t.Fatalf("result = %+v, want the commit.pattern finding", r)
+		}
+	})
+}
