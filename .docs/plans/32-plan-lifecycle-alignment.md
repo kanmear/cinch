@@ -53,7 +53,7 @@ Checklist (tick when merged):
 | Repo | Docs root | Step 2: upgrade | Step 3: triage |
 |---|---|---|---|
 | cinch | `.docs` | [x] (T5: nothing to render) | [ ] |
-| harness-template | `common/.docs` | n/a | [ ] (T6) |
+| harness-template | `common/.docs` | n/a | [x] (T6, `eea6f58`) |
 | budgetron | `.docs` | [x] | [ ] |
 | forum | `.docs` | [x] | [ ] |
 | verus | `.docs` | [x] | [ ] |

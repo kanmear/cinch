@@ -388,7 +388,7 @@ sessions below can come in any order.
 ortho, red today on their stale renders.
 
 ### T6: harness-template carries the lifecycle
-**Status:** [ ]
+**Status:** [x] (harness-template `eea6f58`, after the Q4 import `1132099`)
 **Depends on:** T5, and the template's first commit (Q4: commit the current tree as it is
 first, so T6 shows up as its own diff).
 **Files:** in `~/code/harness-template/common`:
