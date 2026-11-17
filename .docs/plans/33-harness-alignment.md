@@ -330,7 +330,7 @@ deferred by the owner (2026-11-17)
 **Verify:** `git log` shows the T6 commit on `origin/main`
 
 #### T6: Managed/seeded split in `apply.sh`
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T5
 **Files:**
 - `apply.sh`: `--sync` overwrites only managed paths and refuses a target without `.harness`;
@@ -343,7 +343,7 @@ deferred by the owner (2026-11-17)
 file edited in the temp repo is restored by sync, and diff on a fresh apply prints nothing.
 
 #### T7: Managed scripts and hooks
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T6
 **Files:**
 - `common/scripts/version.sh`: `show|major|minor|patch` on `VERSION`, POSIX sh. Flutter and
@@ -363,7 +363,7 @@ file edited in the temp repo is restored by sync, and diff on a fresh apply prin
 merge → bump → release with a fake remote.
 
 #### T8: Make contract in every stack
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** `stacks/*/Makefile`:
 - the D3 verbs;
@@ -385,7 +385,7 @@ Absorbed:
 session and `make down` kills it, inside and outside tmux, checked by hand once.
 
 #### T9: Stacks
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T8
 **Files:**
 - **New `stacks/go-cli`**, from limen and cinch:
@@ -405,7 +405,7 @@ session and `make down` kills it, inside and outside tmux, checked by hand once.
 **Verify:** `make check` applies every stack, including `go-cli`.
 
 #### T10: Docs, AGENTS.md, registry, README
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T8
 **Files:**
 - `common/.docs/git-conventions.md`: rewritten for D1/D2, the only git doc.
@@ -430,7 +430,7 @@ session and `make down` kills it, inside and outside tmux, checked by hand once.
 **Verify:** `make check` green (links, rules, index in each applied stack)
 
 #### T11: Template `make check` guards the contract
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T9, T10
 **Files:** `Makefile`. Three checks:
 - every stack Makefile defines every D3 verb (`make -n` per verb);
@@ -680,16 +680,67 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T4. T1–T3 squashed onto `dev` (`179e64e`, `a9ca803`, `a956d87`), cut to
-`main` as `3ce09a9 merge: dev`, tagged `v0.17.0`, pushed. goreleaser published
-<https://github.com/kanmear/cinch/releases/tag/v0.17.0> (now Latest).
-**Verified:** `install.sh` into an empty `$HOME` installs `cinch 0.17.0` (≥ 0.16.0). The floor
-for Part C landings and T10's `require.cinch` is `>=0.17.0`.
-**Resume at:** T6 (managed/seeded split in `apply.sh`). Plan 32 T6 is done in the template
-(`eea6f58`); T5's history is in place and its GitHub remote is deferred by the owner, so T6–T11
-run against the local template.
-**Notes:** One branch per task, owner merges. CI's `test` workflow failed on `main` and `dev`
-for this push: `bench/recover` `TestArmSpecFromPins` reads `bench/recover/private/arms/deltadocs`,
-which is gitignored (DeltaDocs stays private), so it passes locally and fails in CI. It has
-been failing since `9b15a0f` (2026-11-02) but CI hadn't run since 2026-10-11. The release
-workflow is separate and passed.
+**Last completed:** T11: template `make check` guards the contract, `VERSION` → 2. Template commit
+`72967c9` is on `feature/contract-guards`, stacked on `feature/docs-v2` (T10).
+- **Make contract:** `CONTRACT_VERBS` in the template Makefile holds D3's 15 verbs. For each applied
+  stack, `make -n <verb>` must succeed, and its output must not say `Nothing to be done` or
+  `No rule to make target`, because a verb left in `.PHONY` with no rule exits 0 under `-n` alone.
+  `make help` must list every verb but `help`.
+- **`tests/managed.sh`:** a common managed path is byte-identical in every stack that doesn't list
+  it in its own `managed.txt`. A stack that ships a common managed path without listing it fails
+  as a silent override. android's and flutter's `scripts/version.sh` are the declared overrides.
+- **`tests/ports.sh`:** checks the `## Blocks` rows:
+  - each block is a multiple of 10, and no two are fewer than 10 apart;
+  - "Next free block" is a multiple of 10 and unclaimed;
+  - lab host ports are unique and not 8080/8081.
+- **`VERSION` is 2.** The four literal `harness-template v1` source stamps are dropped, and an
+  applied tree now gets `harness-template v2` in the same position.
+- README's `make check` section and Layout are updated.
+
+**Verified:**
+- Template `make check` is green: `managed: ok`, `ports: ok (8 blocks)`,
+  `tests/scripts.sh: ok (113 checks)`.
+- Each guard turns it red with a message naming the stack, verb, path or block:
+  - a removed target, a removed help line, and a `$(error)` in a recipe;
+  - an unlisted stack copy of `scripts/step.sh`, and a managed file rendered differently per stack;
+  - an off-grid block, overlapping and duplicate blocks, a duplicate or 8081 host port, and a
+    claimed or off-grid next-free block.
+- Re-checked independently in scratch copies: android without `down:` fails, and limen given
+  verus's host port fails.
+
+**Not verified:**
+- Carried from T9: goreleaser and actionlint runs, android `WITH_DEVICE` on a device, and the T8
+  hand check of `make dev`/`make down` in a real TTY.
+- Not added (out of T11's scope): a `go build` of go-cli's stub to guard the ldflags stamp.
+
+**Resume at:** T12 (cinch, stack `go-cli`; dogfood first). Part B is done apart from T5's remote.
+- Apply from the template's `feature/contract-guards` checkout. It holds T6–T11, and none of it
+  is on the template's `main` yet.
+- § 5.1 step 0 wants a clean tree on `dev`. This repo is on `docs/plan-33-t8-make-contract`, with
+  the plan-33 handoff commits since T7 on it and earlier `docs/plan-33-*` branches beside it. Land
+  or fold those docs branches into `dev` first.
+
+**Notes:**
+- **cinch 0.17.0 is installed** (2026-11-17, `go install` from the `v0.17.0` tag with the version
+  stamped). Every active repo passes `cinch check --only generated,core` with it. The three red ones
+  were red before: `limen-bench` (retired), `budgetron-recurring-payments` (a stale worktree), and
+  `fsed-odin-mono` (pins `0.5.0+b`).
+- **Owner decisions (2026-11-17):**
+  - The live `make check` and merge-test pre-commit entries stay live. In a brand-new repo the
+    first commit fails until the targets work, and README "After applying" says to comment the
+    entry out until then.
+  - `ports.md` keeps "next free block" (update it with each claim) and "+6 to +9 free for the repo".
+- Template branches stack: `feature/contract-guards` → `feature/docs-v2` → `feature/stacks` → `feature/make-contract` →
+  `feature/managed-scripts` → `feature/managed-sync` → `chore/plan-lifecycle`. None of them is on
+  the template's `main` yet. T5's GitHub remote is still deferred.
+- **Design choices in T8:**
+  - Every tmux path needs `[ -t 0 ]`, even inside tmux, so an agent's `make dev` falls back to
+    `-j2` instead of switching the owner's tmux client.
+  - `dev` calls make through `SELF`, so `make -n dev` starts nothing.
+  - go-svelte's `build` also builds `bin/$(NAME)` for the ldflags stamp.
+- **For T14/T16:** the vite proxy reads `APP_PORT`, not `GO_PORT`, so forum's and lthy's vite
+  configs need the rename.
+- **Cinch follow-up, noted in the template README Gaps:** the plan Layers field goes into
+  `cinch workflow dev-plan-feature`'s output, now that `TEMPLATE-plan.md` is gone.
+- `prune.sh` also lists a branch that sits level with main (no commits of its own). Deleting it
+  loses nothing.
