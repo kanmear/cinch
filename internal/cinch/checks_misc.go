@@ -93,39 +93,51 @@ func readCommitState(repoRoot string) commitState {
 	return state
 }
 
-const commitMergeExempt = "exempt"
+// The two commit.merge values that are not a pattern.
+const (
+	commitMergeExempt = "exempt"
+	commitMergeReject = "reject"
+)
 
 // commitPatternFor picks the setting a subject is judged by. A squash onto a
 // branch with a commit.squash entry uses that entry; a real merge uses
-// commit.merge (exempt, or a pattern); everything else, including a squash
-// onto an unlisted branch and a manifest without the new keys, uses
-// commit.pattern exactly as before those keys existed.
-func commitPatternFor(m *manifest, state commitState) (pattern, source, where string, exempt bool) {
+// commit.merge (exempt, reject, or a pattern); everything else, including a
+// squash onto an unlisted branch and a manifest without the new keys, uses
+// commit.pattern exactly as before those keys existed. mode is
+// commitMergeExempt or commitMergeReject when commit.merge has that value
+// mid merge, and "" otherwise; pattern is unset then.
+func commitPatternFor(m *manifest, state commitState) (pattern, source, where, mode string) {
 	if state.squash && state.branch != "" {
 		key := "commit.squash." + state.branch
 		if p, ok := manifestSetting(m, key); ok {
-			return p, key, "squash-merge onto " + state.branch + ": ", false
+			return p, key, "squash-merge onto " + state.branch + ": ", ""
 		}
 	}
 	if state.merge {
 		if mode, ok := manifestSetting(m, "commit.merge"); ok {
-			if mode == commitMergeExempt {
-				return "", "commit.merge", "", true
+			if mode == commitMergeExempt || mode == commitMergeReject {
+				return "", "commit.merge", "", mode
 			}
-			return mode, "commit.merge", "merge commit: ", false
+			return mode, "commit.merge", "merge commit: ", ""
 		}
 	}
 	p, _ := manifestSetting(m, "commit.pattern")
-	return p, "commit.pattern", "", false
+	return p, "commit.pattern", "", ""
 }
 
 func checkCommit(repoRoot, messageFile string, m *manifest) checkResult {
 	if messageFile == "" {
 		return checkResult{noOp: "no commit message file given"}
 	}
-	pattern, source, where, exempt := commitPatternFor(m, readCommitState(repoRoot))
-	if exempt {
+	pattern, source, where, mode := commitPatternFor(m, readCommitState(repoRoot))
+	switch mode {
+	case commitMergeExempt:
 		return checkResult{noOp: "merge commit: commit.merge is exempt"}
+	case commitMergeReject:
+		return checkResult{findings: []finding{{
+			check: "commit", level: "error", file: messageFile, line: 1,
+			message: "merge commit: commit.merge is reject — land the branch as a squash commit with make merge (git merge --squash), not a merge commit",
+		}}}
 	}
 	if pattern == "" {
 		return checkResult{noOp: "commit.pattern is not set in cinch.yml — opt-in, not configured"}

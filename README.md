@@ -115,7 +115,7 @@ code review and the `docs-audit-coverage` workflow.
 | `plans` | (opt-in) with `plans.lifecycle: enforce`, a plan's `**Status:**` line (first 15 lines) is missing or its word doesn't match its folder: `planned`/`in-progress` in `plans/` and `plans/fix/`, `complete`/`cut` in `plans/archive/` |
 | `generated` | a rendered workflow or hook shim differs from what `cinch render` would write now |
 | `hooks` | `core.hooksPath` isn't set to `paths.hooks` |
-| `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt` or a pattern) |
+| `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt`, `reject` or a pattern) |
 | `core` | the installed cinch doesn't satisfy `require.cinch` (`init` writes a `>=` floor; `any` disables) |
 
 The pre-commit hook and `cinch check --staged` check the content being
@@ -252,13 +252,14 @@ hooks:
 # squash-merge ($GIT_DIR/SQUASH_MSG) the entry for the current branch under
 # squash: applies instead, and a branch with no entry falls back to pattern.
 # While git is mid merge ($GIT_DIR/MERGE_HEAD), merge: exempt passes the
-# subject unchecked and merge: '<regexp>' replaces pattern; leave it out and a
-# merge commit is checked like any other.
+# subject unchecked, merge: reject fails every merge commit (land branches as a
+# squash with make merge) and merge: '<regexp>' replaces pattern; leave it out
+# and a merge commit is checked like any other.
 #commit:
 #  pattern: '^\[[a-z-]+\] .+'
 #  squash:
 #    dev: '^merge: (feature|fix)/.+'
-#  merge: exempt
+#  merge: exempt   # or reject, or a regexp
 
 # Optional: `enforce` makes the plans check require every plan's `**Status:**` line to match its folder.
 #plans:
