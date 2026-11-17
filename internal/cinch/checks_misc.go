@@ -13,8 +13,8 @@ import (
 	"cinch/internal/semver"
 )
 
-func checkHooks(root string, m *manifest, mErr error) checkResult {
-	if !gitutil.IsRepo(root) {
+func checkHooks(repoRoot string, m *manifest, mErr error) checkResult {
+	if !gitutil.IsRepo(repoRoot) {
 		return checkResult{noOp: "not a git repository"}
 	}
 
@@ -24,12 +24,12 @@ func checkHooks(root string, m *manifest, mErr error) checkResult {
 
 	want := hooksPathValue(m)
 
-	out, err := gitutil.Output(root, "config", "--get", "core.hooksPath")
+	out, err := gitutil.Output(repoRoot, "config", "--get", "core.hooksPath")
 	got := strings.TrimSpace(string(out))
 	if err != nil || got == "" {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is not set — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", want)}
 	}
-	if !sameHooksDirectory(root, got, want) {
+	if !sameHooksDirectory(repoRoot, got, want) {
 		return checkResult{noOp: fmt.Sprintf("git core.hooksPath is %q, expected %q (paths.hooks) — hooks are not active; run 'cinch init' or 'git config core.hooksPath %s'", got, want, want)}
 	}
 	return checkResult{}
@@ -58,19 +58,119 @@ func sameHooksDirectory(repoRoot, got, want string) bool {
 	return gotErr == nil && wantErr == nil && gotReal == wantReal
 }
 
-func checkCommit(messageFile string, m *manifest) checkResult {
+// commitState is what git is in the middle of when the commit-msg hook runs:
+// a squash merge (SQUASH_MSG in the git dir) or a real merge (MERGE_HEAD),
+// and where HEAD points. Outside a git repository everything is false or
+// empty and the subject is judged as an ordinary commit.
+type commitState struct {
+	squash bool
+	merge  bool
+	branch string // checked out branch; "" when detached
+	unborn bool   // HEAD doesn't resolve yet: the first commit on a new branch
+}
+
+func readCommitState(repoRoot string) commitState {
+	if !gitutil.IsRepo(repoRoot) {
+		return commitState{}
+	}
+	out, err := gitutil.Output(repoRoot, "rev-parse", "--git-dir")
+	if err != nil {
+		return commitState{}
+	}
+	gitDir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(repoRoot, gitDir)
+	}
+	exists := func(name string) bool {
+		_, err := os.Stat(filepath.Join(gitDir, name))
+		return err == nil
+	}
+	state := commitState{squash: exists("SQUASH_MSG"), merge: exists("MERGE_HEAD")}
+	if branch, err := gitutil.Output(repoRoot, "symbolic-ref", "--short", "HEAD"); err == nil {
+		state.branch = strings.TrimSpace(string(branch))
+	}
+	_, err = gitutil.Output(repoRoot, "rev-parse", "--verify", "-q", "HEAD")
+	state.unborn = err != nil
+	return state
+}
+
+// The two commit.merge values that are not a pattern.
+const (
+	commitMergeExempt = "exempt"
+	commitMergeReject = "reject"
+)
+
+// commitPatternFor picks the setting a subject is judged by. A squash onto a
+// branch with a commit.squash entry uses that entry; a real merge uses
+// commit.merge (exempt, reject, or a pattern); everything else, including a
+// squash onto an unlisted branch and a manifest without the new keys, uses
+// commit.pattern exactly as before those keys existed. mode is
+// commitMergeExempt or commitMergeReject when commit.merge has that value
+// mid merge, and "" otherwise; pattern is unset then.
+func commitPatternFor(m *manifest, state commitState) (pattern, source, where, mode string) {
+	if state.squash && state.branch != "" {
+		key := "commit.squash." + state.branch
+		if p, ok := manifestSetting(m, key); ok {
+			return p, key, "squash-merge onto " + state.branch + ": ", ""
+		}
+	}
+	if state.merge {
+		if mode, ok := manifestSetting(m, "commit.merge"); ok {
+			if mode == commitMergeExempt || mode == commitMergeReject {
+				return "", "commit.merge", "", mode
+			}
+			return mode, "commit.merge", "merge commit: ", ""
+		}
+	}
+	p, _ := manifestSetting(m, "commit.pattern")
+	return p, "commit.pattern", "", ""
+}
+
+// commitProtectFinding applies commit.protect (CINCH-021): a commit on a
+// listed branch passes only mid squash merge, or mid merge when commit.merge
+// isn't reject (reject has already returned by the time this runs). The first
+// commit on an unborn branch and a commit on a detached HEAD pass.
+func commitProtectFinding(m *manifest, state commitState, messageFile string) []finding {
+	if state.branch == "" || state.unborn || state.squash || state.merge {
+		return nil
+	}
+	for _, protected := range m.list("commit.protect") {
+		if protected == state.branch {
+			return []finding{{
+				check: "commit", level: "error", file: messageFile, line: 1,
+				message: "commit on protected branch " + state.branch + ": commit.protect allows only squash merges here — land the change from a topic branch with make merge (git merge --squash)",
+			}}
+		}
+	}
+	return nil
+}
+
+func checkCommit(repoRoot, messageFile string, m *manifest) checkResult {
 	if messageFile == "" {
 		return checkResult{noOp: "no commit message file given"}
 	}
-	pattern, ok := manifestSetting(m, "commit.pattern")
-	if !ok {
+	state := readCommitState(repoRoot)
+	pattern, source, where, mode := commitPatternFor(m, state)
+	switch mode {
+	case commitMergeExempt:
+		return checkResult{noOp: "merge commit: commit.merge is exempt"}
+	case commitMergeReject:
+		return checkResult{findings: []finding{{
+			check: "commit", level: "error", file: messageFile, line: 1,
+			message: "merge commit: commit.merge is reject — land the branch as a squash commit with make merge (git merge --squash), not a merge commit",
+		}}}
+	}
+	if findings := commitProtectFinding(m, state, messageFile); findings != nil {
+		return checkResult{findings: findings}
+	}
+	if pattern == "" {
 		return checkResult{noOp: "commit.pattern is not set in cinch.yml — opt-in, not configured"}
 	}
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return checkResult{findings: []finding{{
 			check: "commit", level: "error", file: messageFile, line: 1,
-			message: "commit.pattern is not a valid regexp: " + err.Error(),
+			message: source + " is not a valid regexp: " + err.Error(),
 		}}}
 	}
 	data, err := os.ReadFile(messageFile)
@@ -81,9 +181,15 @@ func checkCommit(messageFile string, m *manifest) checkResult {
 	if re.MatchString(subject) {
 		return checkResult{}
 	}
+	message := where + "commit message does not match " + source + " (" + pattern + "): " + subject
+	// git's default merge subjects ("Merge branch …", "Merge tag …") are easy to
+	// produce by accident; say where the subject came from and how to override it.
+	if source == "commit.pattern" && strings.HasPrefix(subject, "Merge ") {
+		message += " — this is git's default merge message; commit the merge with -m '<a subject matching commit.pattern>' (or set commit.merge: exempt)"
+	}
 	return checkResult{findings: []finding{{
 		check: "commit", level: "error", file: messageFile, line: 1,
-		message: "commit message does not match commit.pattern (" + pattern + "): " + subject,
+		message: message,
 	}}}
 }
 
@@ -131,8 +237,9 @@ func checkPin(version string, m *manifest) checkResult {
 	}}}
 }
 
-// checkGenerated reads rendered output under roots.fsRoot but asks git for
-// HEAD's cinch.yml in roots.repoRoot: the snapshot directory isn't a
+// checkGenerated reads rendered output under roots.fsRoot, and only what the
+// commit contains: a destination that isn't indexed counts as absent. It asks
+// git for HEAD's cinch.yml in roots.repoRoot: the snapshot directory isn't a
 // repository.
 func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 	if mErr != nil || m == nil {
@@ -149,7 +256,8 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 
 	rendered := false
 	for _, f := range files {
-		if _, err := os.Stat(filepath.Join(roots.fsRoot, f.destination)); err == nil {
+		destination := filepath.Join(roots.fsRoot, f.destination)
+		if _, err := os.Stat(destination); err == nil && roots.inCommit(destination) {
 			rendered = true
 			break
 		}
@@ -162,7 +270,7 @@ func checkGenerated(roots checkRoots, m *manifest, mErr error) checkResult {
 	for _, f := range files {
 		destination := filepath.Join(roots.fsRoot, f.destination)
 		want := header(f.source, f.body, f.style) + f.body
-		got, err := os.ReadFile(destination)
+		got, err := roots.readFile(destination)
 		switch {
 		case err != nil:
 			findings = append(findings, finding{
@@ -221,7 +329,7 @@ func orphanedGeneratedFiles(roots checkRoots, files []renderFile) []string {
 				continue
 			}
 			path := filepath.Join(directory, e.Name())
-			if expected[path] {
+			if expected[path] || !roots.inCommit(path) {
 				continue
 			}
 			data, err := os.ReadFile(path)

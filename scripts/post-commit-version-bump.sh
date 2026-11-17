@@ -21,7 +21,7 @@ msg=$(git log -1 --pretty=%s)
 
 bump=""
 case "$msg" in
-"merge: fix/"* | "merge: refactor/"*)
+"merge: fix/"* | "merge: refactor/"* | "merge: perf/"* | "merge: ui/"*)
 	bump="patch"
 	;;
 "merge: feature/"*)

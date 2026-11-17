@@ -118,6 +118,77 @@ func TestParseRuleItemsPlainNumberedItemFlushes(t *testing.T) {
 	}
 }
 
+func TestParseRuleItemsEndsAtHeadingOrParagraph(t *testing.T) {
+	t.Run("ignore under a later heading binds nothing", func(t *testing.T) {
+		body := "# Auth\n\n1. **AUTH-001** Sessions expire.\n2. **AUTH-002** Tokens rotate.\n\n" +
+			"## Notes\n\nExample of the syntax:\n<!-- cinch:ignore: just an example in prose -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2", len(got))
+		}
+		for _, it := range got {
+			if it.hasIgnore {
+				t.Fatalf("%s hasIgnore = true, want false", it.id)
+			}
+		}
+	})
+
+	t.Run("text stops at a heading", func(t *testing.T) {
+		got := parseRuleItemsStr(t, "1. **AUTH-001** Tokens rotate.\n## Notes\nExample <!-- cinch:ignore -->\n")
+		if len(got) != 1 || got[0].text != "1. **AUTH-001** Tokens rotate." || got[0].hasIgnore {
+			t.Fatalf("item = %+v, want text cut at the heading and no ignore", got[0])
+		}
+	})
+
+	t.Run("text stops at a heading after a blank line", func(t *testing.T) {
+		got := parseRuleItemsStr(t, "1. **AUTH-001** Tokens rotate.\n\n## Notes\n")
+		if len(got) != 1 || got[0].text != "1. **AUTH-001** Tokens rotate." {
+			t.Fatalf("item = %+v, want text cut at the heading", got[0])
+		}
+	})
+
+	t.Run("indented ignore after a blank line still binds", func(t *testing.T) {
+		for name, indent := range map[string]string{"three spaces": "   ", "two spaces": "  ", "tab": "\t"} {
+			body := "1. **AUTH-001** Tokens rotate.\n\n" + indent + "<!-- cinch:ignore: reviewed by hand -->\n\n## Notes\n"
+			got := parseRuleItemsStr(t, body)
+			if len(got) != 1 || !got[0].hasIgnore || got[0].ignoreReason != "reviewed by hand" || got[0].ignoreLine != 3 {
+				t.Fatalf("%s: item = %+v, want ignore at line 3", name, got[0])
+			}
+		}
+	})
+
+	t.Run("lazy continuation still binds", func(t *testing.T) {
+		body := "1. **AUTH-001** Tokens rotate\nand expire.\n<!-- cinch:ignore: lazy -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 1 || !got[0].hasIgnore || got[0].ignoreLine != 3 {
+			t.Fatalf("item = %+v, want ignore at line 3", got[0])
+		}
+		if want := "1. **AUTH-001** Tokens rotate and expire. <!-- cinch:ignore: lazy -->"; got[0].text != want {
+			t.Fatalf("text = %q, want %q", got[0].text, want)
+		}
+	})
+
+	t.Run("unindented paragraph ends the item", func(t *testing.T) {
+		body := "1. **AUTH-001** Sessions expire.\n2. **AUTH-002** Tokens rotate.\n\n" +
+			"Plain paragraph after the list.\n<!-- cinch:ignore: not about AUTH-002 -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2", len(got))
+		}
+		if got[1].hasIgnore || got[1].text != "2. **AUTH-002** Tokens rotate." {
+			t.Fatalf("AUTH-002 = %+v, want no ignore and text cut at the paragraph", got[1])
+		}
+	})
+
+	t.Run("unindented paragraph ends the item after an indented one", func(t *testing.T) {
+		body := "1. **AUTH-001** Sessions expire.\n\n   More detail.\n\nPlain paragraph.\n<!-- cinch:ignore -->\n"
+		got := parseRuleItemsStr(t, body)
+		if len(got) != 1 || got[0].hasIgnore || got[0].text != "1. **AUTH-001** Sessions expire. More detail." {
+			t.Fatalf("item = %+v, want detail kept and no ignore", got[0])
+		}
+	})
+}
+
 func TestParseRuleItemsNoRules(t *testing.T) {
 	if got := parseRuleItemsStr(t, "just text\nno rules here\n"); len(got) != 0 {
 		t.Fatalf("parseRuleItems = %v, want none", got)
@@ -132,7 +203,7 @@ func TestParseRuleDocReadError(t *testing.T) {
 
 func TestScanRuleDocsPropagatesWalkError(t *testing.T) {
 	root := unreadableTree(t)
-	if _, err := scanRuleDocs(root); err == nil {
+	if _, err := scanRuleDocs(workingTreeRoots(root), root); err == nil {
 		t.Fatal("scanRuleDocs = nil error, want error for unreadable subdirectory")
 	}
 }
@@ -220,6 +291,7 @@ func TestScanRuleMarkersLargeFile(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | not a defect | marker shown inside a markdown code fence
 func TestScanMarkersFenceOnlyForMarkdown(t *testing.T) {
 	root := t.TempDir()
 	write := func(name, body string) {
@@ -464,6 +536,7 @@ func TestCheckRulesFromTripleDuplicate(t *testing.T) {
 // checker's own regression suite — see
 // .docs/plans/03-rule-grammar-holes-and-seed-defects.md.
 
+// catch-matrix: rules | caught | rule with no marker and no cinch:ignore
 func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -481,6 +554,7 @@ func TestSeededDefectRulesMarkerDeleted(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | gap | marked test whose body no longer exercises the rule
 func TestSeededDefectRulesHollowedTest(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -506,6 +580,55 @@ func TestSeededDefectRulesHollowedTest(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | marker naming a rule that doesn't exist
+func TestSeededDefectRulesStrayMarker(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-001** some rule\n<!-- cinch:ignore: fixture -->\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The rule this marker named was renamed or deleted; nothing is near it.
+	if err := os.WriteFile(filepath.Join(root, "a_test.go"), []byte("// cinch:rule PAY-700\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(workingTreeRoots(root), docsRoot, markerScanOptions{})
+
+	if len(report.findings) != 1 || !strings.Contains(report.findings[0].message, "PAY-700") ||
+		!strings.Contains(report.findings[0].message, "does not resolve to any rule ID") {
+		t.Fatalf("findings = %+v, want a single 'does not resolve' finding for PAY-700", report.findings)
+	}
+}
+
+// catch-matrix: rules | gap | rule marked only on production code, with no test
+func TestSeededDefectRulesMarkerOnNonTestCode(t *testing.T) {
+	root := t.TempDir()
+	docsRoot := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "rules.md"), []byte("1. **SIG-001** some rule\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The only marker sits on production code; no test anywhere names SIG-001.
+	if err := os.WriteFile(filepath.Join(root, "server.go"), []byte("// cinch:rule SIG-001\nfunc handle() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := checkRules(workingTreeRoots(root), docsRoot, markerScanOptions{})
+
+	// GAP: a marker binds wherever it sits. cinch can't tell a test from
+	// production code across languages, so a rule "bound" only to the code
+	// it describes passes with no test enforcing it.
+	if len(report.findings) != 0 {
+		t.Fatalf("findings = %+v, want none (marker placement is not checked)", report.findings)
+	}
+}
+
+// catch-matrix: rules | gap | two rules whose texts contradict each other
 func TestSeededDefectRulesContradictingNeighbor(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -530,6 +653,7 @@ func TestSeededDefectRulesContradictingNeighbor(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | same rule ID declared in two docs
 func TestSeededDefectRulesDuplicateID(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -560,6 +684,7 @@ func TestSeededDefectRulesDuplicateID(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | marker one typo from a real rule ID (with a did-you-mean)
 func TestSeededDefectRulesNearMissID(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -586,6 +711,7 @@ func TestSeededDefectRulesNearMissID(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | cinch:ignore with no reason
 func TestSeededDefectRulesIgnoreNoReason(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -610,6 +736,7 @@ func TestSeededDefectRulesIgnoreNoReason(t *testing.T) {
 	}
 }
 
+// catch-matrix: rules | caught | rule both ignored and marked
 func TestSeededDefectRulesIgnoreWithMarker(t *testing.T) {
 	root := t.TempDir()
 	docsRoot := filepath.Join(root, "docs")
@@ -868,7 +995,7 @@ func TestMarkerScanSkipsSubmoduleGitlink(t *testing.T) {
 
 func TestCheckLinksReportsScanError(t *testing.T) {
 	root := unreadableTree(t)
-	report := checkLinks(root)
+	report := checkLinks(workingTreeRoots(root), root)
 	if len(report.findings) == 0 {
 		t.Fatal("checkLinks = no findings, want error finding for unreadable subdirectory")
 	}
@@ -880,5 +1007,28 @@ func TestCheckLinksReportsScanError(t *testing.T) {
 	}
 	if !ok {
 		t.Fatalf("checkLinks findings %v do not include a scan error", report.findings)
+	}
+}
+
+func TestCmdIgnoresPluralizesDeclarations(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"none", "1. **SIG-001** some rule\n", "0 cinch:ignore declarations found\n"},
+		{"one", "1. **SIG-001** some rule\n<!-- cinch:ignore: fixture -->\n", "1 cinch:ignore declaration:\n"},
+		{"two", "1. **SIG-001** some rule\n<!-- cinch:ignore: fixture -->\n2. **SIG-002** other rule\n<!-- cinch:ignore: fixture -->\n", "2 cinch:ignore declarations:\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			docsRoot := t.TempDir()
+			writeTestFile(t, docsRoot, "rules.md", tc.body)
+
+			var code int
+			out := captureStdout(t, func() { code = CmdIgnores(docsRoot) })
+			if code != 0 || !strings.HasPrefix(out, tc.want) {
+				t.Fatalf("CmdIgnores = %d, output %q, want it to start with %q", code, out, tc.want)
+			}
+		})
 	}
 }

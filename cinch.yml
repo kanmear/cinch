@@ -8,15 +8,20 @@ paths:
     - internal/cinch/impact_test.go
     - internal/cinch/rules_json_test.go
 
+# .docs/git-conventions.md § Commit message shapes. The squash entries apply
+# only while $GIT_DIR/SQUASH_MSG exists; the release cut (git merge --no-ff)
+# keeps git's own merge subject.
+commit:
+  pattern: '^(feat|fix|ui|docs|style|refactor|test|chore|perf)(!)?( \[[a-z+-]+\])?: .+'
+  squash:
+    dev: '^merge: (feature|refactor|fix|chore|docs|perf|ui)/.+'
+    main: '^merge: hotfix/.+'
+  merge: exempt
+
 hooks:
   # generated is left out locally: the shims exec the installed cinch, whose
   # embedded templates can lag the source being edited. CI runs the full set from source.
   pre-commit-checks: [links, rules, index, core]
-  # commit.pattern is unset: scripts/check-squash-merge-msg.sh checks messages instead.
-  commit-msg-checks: []
-  commit-msg:
-    conventions:
-      run: scripts/check-squash-merge-msg.sh
   post-commit:
     version-bump:
       run: scripts/post-commit-version-bump.sh

@@ -2,7 +2,9 @@
 
 package cinch
 
-import "syscall"
+import (
+	"syscall"
+)
 
 // reexec replaces the current process image with path, preserving args and
 // env. On success it never returns.

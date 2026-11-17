@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -191,6 +192,36 @@ func TestPathListingsReturnVerbatimNames(t *testing.T) {
 			}
 			if !hookWhenMatches(got, []string{"internal/"}) {
 				t.Fatalf("hookWhenMatches(%q, [internal/]) = false, want true", got)
+			}
+		})
+	}
+}
+
+// TestHooksReportMalformedManifestOnce pins that a malformed cinch.yml is one
+// error per hook run: the checks would trip over it too, and must not repeat
+// what the hook has already said.
+func TestHooksReportMalformedManifestOnce(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		run  func(root, messageFile string) int
+	}{
+		{"pre-commit", func(root, _ string) int { return cmdHookPreCommit(root) }},
+		{"commit-msg", func(root, messageFile string) int { return cmdHookCommitMsg(root, []string{messageFile}) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			git := initTestGitRepo(t, root)
+			writeTestFile(t, root, "cinch.yml", "paths: [unclosed\n")
+			git("add", "cinch.yml")
+			messageFile := writeTestFile(t, root, "msg.txt", "docs: anything\n")
+
+			var got int
+			out := captureStderr(t, func() { got = tc.run(root, messageFile) })
+			if got != 1 {
+				t.Fatalf("hook = %d, want 1 (the manifest is malformed)", got)
+			}
+			if count := strings.Count(out, "cinch.yml"); count != 1 {
+				t.Fatalf("stderr names cinch.yml %d times, want the error reported once:\n%s", count, out)
 			}
 		})
 	}

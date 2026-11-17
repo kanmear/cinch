@@ -1,8 +1,10 @@
 package cinch
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -213,5 +215,36 @@ func TestCmdRenderRemovesOrphans(t *testing.T) {
 	}
 	if got := readTestFile(t, directory, "hand-written.md"); got != "# Ours\n" {
 		t.Fatalf("hand-written.md = %q, want it untouched", got)
+	}
+}
+
+// TestCmdRenderNamesOnlyChangedFiles pins that render tells a no-op from a
+// write: a first run names every file it wrote, a repeat names none and
+// counts them, and a single edited file is named alone.
+func TestCmdRenderNamesOnlyChangedFiles(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, "cinch.yml", "")
+
+	var code int
+	first := captureStdout(t, func() { code = CmdRender(root) })
+	if code != 0 {
+		t.Fatalf("CmdRender = %d, want 0", code)
+	}
+	written := strings.Count(first, "rendered ")
+	if written == 0 || strings.Contains(first, "up to date") {
+		t.Fatalf("first render output = %q, want a rendered line per file and no up-to-date line", first)
+	}
+
+	second := captureStdout(t, func() { code = CmdRender(root) })
+	if want := fmt.Sprintf("%d files up to date\n", written); code != 0 || second != want {
+		t.Fatalf("repeat render = %d, output %q, want only %q", code, second, want)
+	}
+
+	hook := filepath.Join(root, defaultHooksPath)
+	writeTestFile(t, hook, "pre-commit", "stale\n")
+	third := captureStdout(t, func() { code = CmdRender(root) })
+	want := fmt.Sprintf("rendered %s/pre-commit\n%d files up to date\n", defaultHooksPath, written-1)
+	if code != 0 || third != want {
+		t.Fatalf("partial render = %d, output %q, want %q", code, third, want)
 	}
 }

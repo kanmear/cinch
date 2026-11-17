@@ -43,5 +43,9 @@ When every task is `[x]`:
 
 - The project's full test suite passes and `cinch check` is green.
 - If behavior or interfaces changed, run `{{paths.docs}}/workflows/docs-sync.md`.
-- A feature plan stays, with `**Status:** complete`. A fix plan is deleted; git history is the
-  archive.
+- Each check a Verify line leaves to a person becomes one line in
+  `{{paths.docs}}/manual-checks.md` that links the plan (a fix plan is deleted, so name the fix
+  instead). A passing check deletes its line; a failing one goes through `dev-fix-bug.md`.
+- A feature plan gets `**Status:** complete` and moves with `cinch plan archive <file>`; one
+  dropped before it's done gets `**Status:** cut — <reason>` and moves the same way. A fix plan
+  is deleted; git history is the archive.

@@ -39,11 +39,11 @@ type docLinks struct {
 	outbound map[string][]string
 }
 
-func checkLinks(docsRoot string) linksReport {
+func checkLinks(roots checkRoots, docsRoot string) linksReport {
 	var report linksReport
-	err := mdscan.WalkMarkdownFiles(docsRoot, func(path string) error {
+	err := roots.walkDocs(docsRoot, func(path string) error {
 		report.docs++
-		fileReport, ferr := checkLinksInFile(docsRoot, path)
+		fileReport, ferr := checkLinksInFile(roots, docsRoot, path)
 		report.findings = append(report.findings, fileReport.findings...)
 		report.edges = append(report.edges, fileReport.edges...)
 		report.links += fileReport.links
@@ -67,9 +67,30 @@ func linksCheckResult(report linksReport) checkResult {
 	}
 }
 
+// linkTargetExists stats a link target resolved under fsRoot. In staged mode
+// a target inside the repository must also be in the commit, so a file that
+// is only on disk doesn't satisfy the link. In an index snapshot fsRoot is a
+// temporary directory, so a target that climbs out of it would land in /tmp;
+// the index says nothing about files outside the repository, so such a target
+// is stat'ed at the same relative position from repoRoot, where the working
+// tree and the snapshot agree.
+func (roots checkRoots) linkTargetExists(resolved string) bool {
+	if !roots.inCommit(resolved) {
+		return false
+	}
+	if roots.fsRoot != roots.repoRoot {
+		rel := filepath.ToSlash(mdscan.RelTo(roots.fsRoot, resolved))
+		if rel == ".." || strings.HasPrefix(rel, "../") {
+			resolved = filepath.Join(roots.repoRoot, filepath.FromSlash(rel))
+		}
+	}
+	_, err := os.Stat(resolved)
+	return err == nil
+}
+
 // checkLinksInFile returns a partial linksReport: docs stays zero, since a
 // single file is always exactly one doc and only the caller is counting.
-func checkLinksInFile(docsRoot, path string) (linksReport, error) {
+func checkLinksInFile(roots checkRoots, docsRoot, path string) (linksReport, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return linksReport{}, err
@@ -92,7 +113,7 @@ func checkLinksInFile(docsRoot, path string) (linksReport, error) {
 			}
 			report.links++
 			resolved := filepath.Join(filepath.Dir(path), target)
-			if _, err := os.Stat(resolved); err != nil {
+			if !roots.linkTargetExists(resolved) {
 				report.findings = append(report.findings, finding{
 					check:   "links",
 					level:   "error",
@@ -206,13 +227,14 @@ func docEdgeFor(docsRoot, from, resolvedTo string) (docEdge, bool) {
 // buildDocLinks goes through checkLinks rather than re-parsing, so the graph
 // and the links check can never disagree about what resolves to what. The
 // findings that come back with the edges are the check's business, not this
-// caller's.
+// caller's. It reads the working tree, where fsRoot == repoRoot, so the
+// repoRoot it hands checkLinks is never consulted and docsRoot stands in.
 func buildDocLinks(docsRoot string) docLinks {
 	graph := docLinks{
 		inbound:  make(map[string][]string),
 		outbound: make(map[string][]string),
 	}
-	for _, e := range checkLinks(docsRoot).edges {
+	for _, e := range checkLinks(workingTreeRoots(docsRoot), docsRoot).edges {
 		graph.outbound[e.from] = append(graph.outbound[e.from], e.to)
 		graph.inbound[e.to] = append(graph.inbound[e.to], e.from)
 	}
