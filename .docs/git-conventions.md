@@ -34,6 +34,23 @@ templates, run `make install` again so the hooks use the new build.
 - Real merge commits (`git merge --no-ff` — the release cut) are exempt
   (`commit.merge: exempt`): git's own default merge message stands.
 
+## Trunk-flow guards
+
+Two `cinch.yml` keys enforce the trunk flow of
+[plan 33](plans/33-harness-alignment.md) (`main` only, topic branches land as squash
+commits through `make merge`). Both run in the commit-msg hook. This repo turns them on
+when it switches to that flow (plan 33 T12); until then it keeps `commit.merge: exempt`
+for the release cut and protects no branch.
+
+- **`commit.merge: reject`** (CINCH-020): any commit made while `$GIT_DIR/MERGE_HEAD`
+  exists fails, whatever its subject, and the finding points at `make merge`. A
+  `--no-ff` merge can't land, so no bump is lost to a 2-parent commit.
+- **`commit.protect: [main]`** (CINCH-021): a commit on a listed branch passes only
+  mid squash merge (`SQUASH_MSG` exists), or mid merge when `commit.merge` isn't
+  `reject`. A plain commit on `main` fails. The first commit on an unborn
+  branch and a commit on a detached HEAD pass. The version bump's
+  `--no-verify` amend runs no hooks, so it isn't checked.
+
 ## Version bump table
 
 `internal/version/{major,minor,patch,hotfix}` each hold one plain integer — the

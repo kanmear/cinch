@@ -1,6 +1,6 @@
 # 33. Harness alignment: trunk flow, one version, one make contract, template v2
 
-**Status:** planned
+**Status:** in-progress
 
 Written 2026-11-17 from a read-only sweep of every repo in `~/code`, `~/work/fsed-odin-docs`
 and `~/.local/share/gladius` (five parallel passes, load-bearing claims re-checked by hand).
@@ -283,7 +283,7 @@ pairing flips.
 ### Part A — cinch: guards for the trunk flow
 
 #### T1: Write CINCH-020 and CINCH-021
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** plan 32 merged to `dev` (§ 0 step 1 of 32a)
 **Files:** `.docs/rules.md` (two items, each with a `cinch:ignore` naming its task),
 `.docs/git-conventions.md` (the two keys)
@@ -656,8 +656,10 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Doc-versus-code drift in convention docs** (plan 31 § 2, plan 10). Untouched.
 
 ## Handoff
-
-**Last completed:** nothing yet. The plan was written 2026-11-17 on `feature/plan-lifecycle`;
-[32-plan-lifecycle-alignment.md](32-plan-lifecycle-alignment.md) was edited to point here.
-
-**Resume at:** plan 32 § 0, then T1.
+**Last completed:** T1 — CINCH-020 and CINCH-021 written into `rules.md` (each with a
+`cinch:ignore` naming T2/T3), CINCH-016 points at CINCH-020 for `reject`, and
+`git-conventions.md` § Trunk-flow guards describes both keys.
+**Verified:** `cinch check` green (21 rules, 3 ignores); `go test ./internal/...` green.
+**Resume at:** T2, on a branch off `docs/trunk-guard-rules` (T1 isn't merged; the owner merges).
+**Notes:** One branch per task, owner merges. T3 also edits `checks_misc.go`; stack it on T2's
+branch to avoid a conflict.
