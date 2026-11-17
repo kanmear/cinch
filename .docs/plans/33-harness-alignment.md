@@ -316,10 +316,11 @@ a binary that satisfies `>=0.16.0`.
 ### Part B — harness-template v2 (`~/code/harness-template`, rules in its `README.md`)
 
 #### T5: History and remote
-**Status:** [ ]
+**Status:** [ ] — history done (`1132099` import, `eea6f58` plan 32 T6); the remote is
+deferred by the owner (2026-11-17)
 **Depends on:** plan 32 T6 (which makes the first commit)
 **Files:** none. The owner creates the private GitHub repo; the template is then pushed as
-`origin` (D8).
+`origin` (D8). Until then the template is local only, and T6–T11 proceed without it.
 **Verify:** `git log` shows the T6 commit on `origin/main`
 
 #### T6: Managed/seeded split in `apply.sh`
@@ -660,7 +661,8 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 as `3ce09a9 merge: dev`, tagged `v0.17.0`, pushed. goreleaser published
 <https://github.com/kanmear/cinch/releases/tag/v0.17.0> (now Latest). **Verified:** `install.sh`
 into an empty `$HOME` installs `cinch 0.17.0` (≥ 0.16.0). The floor for Part C landings and T10's
-`require.cinch` is `>=0.17.0`. **Resume at:** T5 (template history and remote). It depends on plan
-32 T6 and on the owner creating the private GitHub repo. **Notes:** One branch per task, owner
-merges. It has been failing since `9b15a0f` (2026-11-02) but CI hadn't run since 2026-10-11. The
-release workflow is separate and passed.
+`require.cinch` is `>=0.17.0`. **Resume at:** T6 (managed/seeded split in `apply.sh`). Plan 32 T6 is
+done in the template (`eea6f58`); T5's history is in place and its GitHub remote is deferred by the
+owner, so T6–T11 run against the local template. **Notes:** One branch per task, owner merges. It
+has been failing since `9b15a0f` (2026-11-02) but CI hadn't run since 2026-10-11. The release
+workflow is separate and passed.
