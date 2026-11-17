@@ -441,7 +441,7 @@ paths read `.docs` once step 2 has run). The session prepares the branch and pro
 commit; the owner lands it with § 5.2.
 
 #### T12: cinch (stack `go-cli`; dogfood first)
-**Status:** [x] — prepared on `chore/harness-v2`; the owner lands it with § 5.2
+**Status:** [x] — landed 2026-11-17 (`1789be3 merge: chore/harness-v2`), released as v0.18.0
 **Depends on:** T4, T11
 **Files:** per § 5.1.
 - `VERSION` replaces `internal/version/*` (ldflags already in the Makefile).
@@ -657,8 +657,24 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Doc-versus-code drift in convention docs** (plan 31 § 2, plan 10). Untouched.
 
 ## Handoff
-**Last completed:** T12: cinch is on harness v2, uncommitted on `chore/harness-v2` (cut from `dev`
-at `086133c`). The proposed commit (one commit, the plan 32 triage included):
+**Last completed:** T12: cinch is on harness v2 and on the trunk flow. The session landed it at the
+owner's request:
+- § 5.2 ran: `main` moved to `dev`, then `1789be3 merge: chore/harness-v2`. Every hook passed,
+  including the merge test.
+- `make release` tagged v0.18.0 and pushed `main` and the tag.
+- `make install-bin` installed 0.18.0, and `cinch check` is green with it.
+- The next session start shows branch `main` and only the live plans.
+
+**Owner still to do** (the session's permission check refused branch deletion):
+- `git push origin --delete dev && git branch -D dev`. `dev` and `origin/dev` hold nothing `main`
+  lacks.
+- `scripts/prune.sh --confirm`.
+- About 30 older local topic branches remain that `prune` doesn't recognise as landed. They come
+  from the old dev flow, and none is in progress. Delete them by hand when convenient; no rebase
+  is needed.
+
+**Landing fix:** the first squash commit failed the merge test. Other repos whose tests run git
+under the merge-test hook can hit the same thing.
 
 - **Before the branch, on `dev` (local, not pushed):**
   - `e9a692b merge: docs/plan-33-t8-make-contract` holds the T6–T11 handoff commits. The branches
@@ -686,16 +702,10 @@ steps; `make version` and `bin/cinch version` print 0.18.0. A second `make sync`
 `main` is an ancestor of `dev`, so § 5.2's `git branch -f main dev` holds.
 
 **Not verified:**
-- The installed cinch (0.17.0) reports one `generated` finding on `docs-philosophy.md`. Its
-  embedded templates lag the visual pass; `make install-bin` after landing fixes it. `generated`
-  isn't in the local hook list, so it doesn't block the commit.
-- The § 5.2 landing itself, and the next session start on `main`.
 - `make dev`/`make down` inside tmux: go-cli's `dev` is one foreground process, so there is no
   session to check.
-- Carried: goreleaser and actionlint runs (the first `make ship` runs goreleaser for real).
-
-**Resume at:** the owner lands cinch with § 5.2, then runs `make install-bin`. `make release` tags
-v0.18.0.
+- Carried: actionlint. goreleaser ran for real on v0.18.0: the `release` and `test` workflows
+  passed, and the release has darwin/linux/windows archives and checksums.
 
 **Notes:**
 - `make diff` drift left on purpose: the goreleaser filters and owner, the Makefile extras,
