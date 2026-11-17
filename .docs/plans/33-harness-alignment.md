@@ -306,7 +306,7 @@ not only when squashing; unborn and detached cases), its test
 **Verify:** `go test ./internal/...`; marker in place
 
 #### T4: Release cinch and publish it on GitHub
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T2, T3
 **Files:** none (git). On the old flow, one last time: squash onto `dev`, cut the release to
 `main`, `make push-release`. The `v*` tag runs goreleaser.
@@ -656,8 +656,11 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Doc-versus-code drift in convention docs** (plan 31 § 2, plan 10). Untouched.
 
 ## Handoff
-**Last completed:** T3 — `commit.protect` guard (`commitProtectFinding` in `checks_misc.go`;
-`commitState` now reads `branch` on every commit and `unborn`); `TestCheckCommitProtect` carries the
-CINCH-021 marker, the `cinch:ignore` under rules.md item 21 is gone, README's `commit` row mentions
-the key. **Resume at:** T4 (release cinch). The owner merges T2 and T3 (`feature/commit-merge-reject`,
-`feature/commit-protect`, stacked) first. **Notes:** One branch per task, owner merges.
+**Last completed:** T4. T1–T3 squashed onto `dev` (`179e64e`, `a9ca803`, `a956d87`), cut to `main`
+as `3ce09a9 merge: dev`, tagged `v0.17.0`, pushed. goreleaser published
+<https://github.com/kanmear/cinch/releases/tag/v0.17.0> (now Latest). **Verified:** `install.sh`
+into an empty `$HOME` installs `cinch 0.17.0` (≥ 0.16.0). The floor for Part C landings and T10's
+`require.cinch` is `>=0.17.0`. **Resume at:** T5 (template history and remote). It depends on plan
+32 T6 and on the owner creating the private GitHub repo. **Notes:** One branch per task, owner
+merges. It has been failing since `9b15a0f` (2026-11-02) but CI hadn't run since 2026-10-11. The
+release workflow is separate and passed.
