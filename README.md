@@ -279,14 +279,17 @@ hooks:
 ## Development
 
 ```
-make build     # build to bin/cinch and run go vet
-make test      # go test ./...
+make build        # build to bin/cinch (version-stamped)
+make check        # go vet and gofmt, read-only
+make test         # go test ./...
+make install-bin  # go install the stamped binary onto PATH
+make help         # every target
 ```
 
 Cinch checks itself: this repo has its own `cinch.yml`, and CI runs `go run . check`.
 
 Plans for upcoming work, and notes on features that were removed and why, are
-in [`.docs/plans/`](.docs/plans/00-overview.md).
+in [`.docs/roadmap.md`](.docs/roadmap.md) and [`.docs/plans/`](.docs/plans/).
 
 ## License
 

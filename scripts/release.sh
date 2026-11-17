@@ -1,52 +1,63 @@
 #!/bin/sh
-
+# harness-template v2
+# scripts/release.sh [remote]: tag v<version> on main and push main and the tag. Managed by the
+# harness template, never edited in a repo. The remote defaults to origin.
+#
+# The version is `scripts/version.sh show`. The tag is annotated. Refuses (exit 1) when not on
+# main, when tracked files have staged or unstaged changes, or when a merge or squash is in
+# progress. Rerunnable:
+#   tag already on HEAD       says so and still pushes main and the tag
+#   tag on another commit     no version-relevant change has landed since that release: nothing
+#                             is tagged, main is still pushed
+# See .docs/git-conventions.md (§ Release). Delivery (deploy, install) is not this script's job.
 set -eu
 
-cd "$(git rev-parse --show-toplevel)"
+PATH="$HOME/.local/share/mise/shims:$HOME/.bun/bin:$HOME/.local/bin:$HOME/go/bin:/usr/local/go/bin:$PATH"
+export PATH
 
-# preconditions
-branch=$(git symbolic-ref --short HEAD)
+if [ "$#" -gt 1 ]; then
+	echo "usage: scripts/release.sh [remote]" >&2
+	exit 2
+fi
+remote=${1:-origin}
+
+cd "$(git rev-parse --show-toplevel)"
+git_dir=$(git rev-parse --absolute-git-dir)
+
+branch=$(git symbolic-ref --short -q HEAD || true)
 if [ "$branch" != "main" ]; then
-	echo "release: must be on 'main' (currently on '$branch')." >&2
-	echo "         Run 'git checkout main && git merge --no-ff dev -m \"merge: dev\"' first." >&2
+	echo "release: must be on 'main' (currently on '${branch:-a detached HEAD}')." >&2
 	exit 1
 fi
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
-	echo "release: working tree not clean — commit or stash first." >&2
+	echo "release: working tree not clean: commit or stash first." >&2
 	exit 1
 fi
 
-if ! git rev-parse -q --verify dev >/dev/null; then
-	echo "release: no 'dev' branch found." >&2
+if [ -f "$git_dir/MERGE_HEAD" ] || [ -f "$git_dir/SQUASH_MSG" ]; then
+	echo "release: a merge is in progress: commit it or abort it first." >&2
 	exit 1
 fi
 
-if ! git merge-base --is-ancestor dev main; then
-	echo "release: 'dev' is not contained in 'main' — nothing to release, or the branches" >&2
-	echo "         diverged. Run 'git merge --no-ff dev -m \"merge: dev\"' on main first," >&2
-	echo "         or reconcile the divergence before releasing." >&2
-	exit 1
-fi
+version=$(scripts/version.sh show)
+tag="v$version"
+head=$(git rev-parse HEAD)
 
-if [ "$(git rev-list --parents -1 HEAD | wc -w)" -lt 3 ]; then
-	echo "release: HEAD is not a merge commit — expected the 'merge: dev' release cut." >&2
-	exit 1
-fi
-
-# tag the release
-ver=$(scripts/update-version.sh show)
-tag="v${ver}"
-if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-	echo "release: ${tag} already exists — VERSION unchanged since the last release, nothing to tag."
+push_tag=""
+if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+	tagged=$(git rev-parse "refs/tags/$tag^{commit}")
+	if [ "$tagged" = "$head" ]; then
+		echo "release: $tag already exists on HEAD ($(git rev-parse --short HEAD))."
+		push_tag="refs/tags/$tag"
+	else
+		echo "release: $tag already exists on $(git rev-parse --short "$tagged"): no version-relevant change landed since that release, so nothing is tagged."
+	fi
 else
-	git tag -a "${tag}" -m "${ver}"
-	echo "Tagged ${tag} at $(git rev-parse --short HEAD)"
+	git tag -a "$tag" -m "$tag"
+	echo "release: tagged $tag on $(git rev-parse --short HEAD)."
+	push_tag="refs/tags/$tag"
 fi
 
-# fast-forward dev up to main
-git branch -f dev main
-echo "dev fast-forwarded to main ($(git rev-parse --short main))"
-
-echo
-echo "Push with: make push-release"
+# shellcheck disable=SC2086
+git push "$remote" main $push_tag

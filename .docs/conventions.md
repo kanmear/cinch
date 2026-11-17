@@ -1,10 +1,56 @@
-# Go conventions
+# Conventions
 
-Style rules for the Go code under `internal/` and `main.go`. Written down once
-the codebase had accumulated enough same-concept-different-style drift
-(`Finding` vs `checkResult`, `UsageErr` vs `ColorizeError`, a `Report` struct
-declared in a different spot in each file, ...) that a new file could no
-longer tell which shape to copy.
+Repo-level conventions for cinch: git, commands, dependencies, and the Go style rules for the code
+under `internal/` and `main.go`. How the Go tooling is laid out and released is in
+[Stack conventions](stack-conventions.md); run `cinch index` for what exists.
+
+- A comment states a why, an invariant, or a rule pointer; it never restates the code.
+
+## Git
+
+**Commits:** Conventional commits with scopes.
+
+```
+<type>[!] [<scope>]: <description>
+```
+
+Types: `feat`, `fix`, `ui`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`. `!` marks a
+breaking change. Scope is optional, lowercase letters, `+` and `-` only; this repo uses few
+(for example `plans`, `harness`). The hook accepts any `[scope]` of that shape, so the list is a convention, not
+an enforced set.
+
+1. **GIT-001** No commit lands on `main` except the squash that `make merge` makes: work on a
+   topic branch off `main` and land it with `make merge`. `commit.protect: [main]` in `cinch.yml`
+   enforces it. Cloud and remote sessions assigned `main` as their working branch create a topic
+   branch instead and tell the user.
+   <!-- cinch:ignore: enforced by cinch's commit-msg check (CINCH-021, `commit.protect`), which is tested in this repo under that rule; GIT-001 itself has no test of its own -->
+
+Branches, merging, the version bump and releases: [Git Conventions](git-conventions.md).
+
+## Commands
+
+1. **TOOL-001** Always use `make <target>` from the project root for checking, testing, formatting, building and running the dev server; never invoke the underlying tool (`go`) directly. `cinch` and `git` are called directly.
+   <!-- cinch:ignore: process convention, enforced in review, not by a scriptable property -->
+
+Run `make check` after changes (static and read-only: no tests, no file rewrites) and `make test`
+for the suites; `make format` writes. `make help` lists the targets, contract verbs first, and
+[Testing](testing.md) says what each suite covers.
+
+`make merge` prints one line per step and a closing summary instead of the raw git, hook and build
+output; `ship` prints a `==>` line per stage. A failed step shows the tail of its log. `V=1`
+(e.g. `V=1 make merge`) shows the full output, and the logs are kept in `.git/make-logs/`
+(newest 50).
+
+## Dependency Rule
+
+No new runtime or dev dependency, package or module, without explicit user approval. The current
+set is `go.mod`: `golang.org/x/term`, `gopkg.in/yaml.v3` and `golang.org/x/sys` (indirect).
+
+## Style rules
+
+Written down once the codebase had accumulated enough same-concept-different-style drift
+(`Finding` vs `checkResult`, `UsageErr` vs `ColorizeError`, a `Report` struct declared in a
+different spot in each file, ...) that a new file could no longer tell which shape to copy.
 
 ## Exported vs. unexported
 
@@ -155,3 +201,10 @@ changes. `main.go`'s own touch points into `cinch` (see "Exported vs.
 unexported" above) don't change either: `cinch.IsGitRepo` stays defined in
 `cinch` as a thin delegator to `gitutil.IsRepo`, so main.go keeps importing
 only `cinch`.
+
+## Related Documentation
+
+- [Architecture](architecture.md): the packages, the commands, how checks, hooks and render fit
+- [Git Conventions](git-conventions.md): branch model, hooks, versioning, releases
+- [Testing](testing.md): test suites, rule markers, manual verification
+- [Rules](rules.md): what cinch guarantees about itself
