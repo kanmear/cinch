@@ -52,16 +52,16 @@ Checklist (tick when merged):
 
 | Repo | Docs root | Step 2: upgrade | Step 3: triage |
 |---|---|---|---|
-| cinch | `.docs` | [ ] (T5) | [ ] |
+| cinch | `.docs` | [x] (T5: nothing to render) | [ ] |
 | harness-template | `common/.docs` | n/a | [ ] (T6) |
-| budgetron | `.docs` | [ ] | [ ] |
-| forum | `.docs` | [ ] | [ ] |
-| verus | `.docs` | [ ] | [ ] |
-| pugio | `.docs` | [ ] | [ ] |
-| lthy (`lucky_to_have_you`) | `.agent` | [ ] | [ ] |
-| ortho (`ortho-store`) | `.agent` | [ ] | [ ] |
-| dd (`project_deltadocs`) | `.agent` | [ ] | [ ] |
-| fsed-odin-docs (`~/work`) | `.agent` | [ ] | [ ] |
+| budgetron | `.docs` | [x] | [ ] |
+| forum | `.docs` | [x] | [ ] |
+| verus | `.docs` | [x] | [ ] |
+| pugio | `.docs` | [x] | [ ] |
+| lthy (`lucky_to_have_you`) | `.agent` | [x] | [ ] |
+| ortho (`ortho-store`) | `.agent` | [x] | [ ] |
+| dd (`project_deltadocs`) | `.agent` | [x] | [ ] |
+| fsed-odin-docs (`~/work`) | `.agent` | [x] | [ ] |
 
 Some repos are left out:
 - fsed-odin-mono stays as it is (Q3).
@@ -278,6 +278,9 @@ Some repos are left out:
 
 ## Handoff
 
-**Last completed:** nothing yet. This file was written 2026-11-17, after plan 32's T1–T4
-were committed on `feature/plan-lifecycle` (`5df2a33`).
-**Resume at:** § 0, step 1.
+**Last completed:** § 0 steps 1 and 2 (2026-11-17). cinch 0.15.0 is installed. Every repo in
+the checklist ran `cinch upgrade` on `chore/cinch-upgrade-0.15` and merged it (fsed onto `main`).
+cinch needed no commit because its renders were already current. Branches cut before the upgrade
+(pugio's `ui/lock-cover-look`, fsed's `docs/client-feedback-page` worktree, cinch's
+`cli-visual-pass` worktree) still carry the old renders.
+**Resume at:** T6 (harness-template), then step 3 per repo inside plan 33's § 5.1 pass.
