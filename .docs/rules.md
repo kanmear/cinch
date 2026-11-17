@@ -8,6 +8,9 @@ owns:
   - internal/cinch/staged.go
   - internal/cinch/hook.go
   - internal/cinch/rules.go
+  - internal/cinch/plans.go
+  - internal/cinch/move.go
+  - internal/cinch/archive.go
 ---
 
 # Cinch rules
@@ -51,3 +54,19 @@ repository, so an unbound rule or a stray marker fails CI.
     passes the subject unchecked and `commit.merge: <pattern>` replaces
     `commit.pattern`; without the key a merge commit is checked like any
     other, and the key is ignored outside a merge.
+17. **CINCH-017** With `plans.lifecycle: enforce` in `cinch.yml`, every `.md`
+    file directly in `<docs>/plans/` or `<docs>/plans/fix/` has a
+    `**Status:**` line in its first 15 lines whose status word is `planned`
+    or `in-progress`, and every `.md` file in `<docs>/plans/archive/` has one
+    whose status word is `complete` or `cut`. The status word is the text
+    after `**Status:** ` up to the first whitespace or the end of the line.
+    Each violation is one `plans` finding; files in other subfolders of
+    `plans/` are not checked. Without the key the check enforces nothing.
+18. **CINCH-018** `cinch mv` moves a `.md` file under the docs root to a
+    target under the docs root that doesn't exist yet. Afterwards every
+    relative link in the docs that resolved to the file, and every relative
+    link inside it, still resolves. A refusal changes no file.
+19. **CINCH-019** `cinch plan archive` moves only a plan whose status word is
+    `complete` or `cut`, and only from directly in `<docs>/plans/`, into
+    `<docs>/plans/archive/`, with CINCH-018's guarantees. A refusal changes
+    no file.

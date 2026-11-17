@@ -20,7 +20,7 @@ usage:
   cinch check [MSGFILE]   run all checks (MSGFILE = in-progress commit message)
   cinch check --changed [--only NAMES] [MSGFILE]
                           scope checks to unstaged files; --only restricts which checks run
-                          (NAMES: links,rules,index,generated,commit,core,hooks)
+                          (NAMES: links,rules,index,plans,generated,commit,core,hooks)
   cinch check --staged [--only NAMES] [MSGFILE]
                           check the staged content, as the pre-commit hook does
   cinch ignores           list every cinch:ignore declaration
@@ -36,6 +36,9 @@ usage:
                           list the docs PATH links to
   cinch rules --json      print the machine-readable rule inventory
   cinch impact [FILES...] advisory: rule IDs a diff plausibly affects (default: staged)
+  cinch mv SRC DST        move a .md file under the docs root and rewrite the links to and in it
+  cinch plan archive FILE...
+                          move complete or cut plans from plans/ to plans/archive/
 
 exit codes: 0 clean, 1 findings, 2 usage error.
 `
@@ -45,7 +48,7 @@ const bareSynopsis = `cinch — check the operational docs that govern a reposit
 run 'cinch help' for the full command list.
 `
 
-var commands = []string{"help", "version", "init", "check", "ignores", "render", "upgrade", "hook", "workflows", "workflow", "index", "rules", "impact"}
+var commands = []string{"help", "version", "init", "check", "ignores", "render", "upgrade", "hook", "workflows", "workflow", "index", "rules", "impact", "mv", "plan"}
 
 func main() {
 	impl.Version = Version
@@ -111,6 +114,13 @@ func main() {
 		os.Exit(rulesCommand(os.Args[2:]))
 	case "impact":
 		os.Exit(impl.CmdImpact(".", os.Args[2:]))
+	case "mv":
+		if len(os.Args) != 4 {
+			os.Exit(output.UsageError("mv: requires exactly SRC and DST arguments"))
+		}
+		os.Exit(impl.CmdMv(".", os.Args[2], os.Args[3]))
+	case "plan":
+		os.Exit(planCommand(os.Args[2:]))
 	default:
 		os.Exit(unknownCommand(os.Args[1]))
 	}
@@ -119,7 +129,7 @@ func main() {
 // checkNames is the set of check names runChecks knows how to run, used to
 // validate --only so a typo fails loudly instead of silently running nothing.
 var checkNames = map[string]bool{
-	"links": true, "rules": true, "index": true,
+	"links": true, "rules": true, "index": true, "plans": true,
 	"generated": true, "commit": true, "core": true, "hooks": true,
 }
 
@@ -207,6 +217,16 @@ func rulesCommand(args []string) int {
 		return output.UsageError("rules: requires --json (no other flags or arguments)")
 	}
 	return impl.CmdRules(".", true)
+}
+
+func planCommand(args []string) int {
+	if len(args) == 0 || args[0] != "archive" {
+		return output.UsageError("plan: requires a subcommand (archive FILE...)")
+	}
+	if len(args) == 1 {
+		return output.UsageError("plan archive: requires at least one FILE argument")
+	}
+	return impl.CmdPlanArchive(".", args[1:])
 }
 
 func unknownCommand(name string) int {

@@ -112,6 +112,7 @@ code review and the `docs-audit-coverage` workflow.
 | `links` | a relative markdown link under the docs root doesn't resolve |
 | `rules` | a rule has no marker or ignore; a marker names an unknown rule; a rule ID appears twice. Also scans `rules.roots` if set |
 | `index` | a doc outside `plans/` has no `# ` title |
+| `plans` | (opt-in) with `plans.lifecycle: enforce`, a plan's `**Status:**` line (first 15 lines) is missing or its word doesn't match its folder: `planned`/`in-progress` in `plans/` and `plans/fix/`, `complete`/`cut` in `plans/archive/` |
 | `generated` | a rendered workflow or hook shim differs from what `cinch render` would write now |
 | `hooks` | `core.hooksPath` isn't set to `paths.hooks` |
 | `commit` | (opt-in) the commit subject doesn't match `commit.pattern`; mid squash-merge, `commit.squash.<branch>` for the current branch; mid merge, `commit.merge` (`exempt` or a pattern) |
@@ -145,6 +146,9 @@ cinch index --links-from PATH
 cinch ignores           list every cinch:ignore and its reason
 cinch rules --json      rule inventory as JSON (rules, markers, ignores, owns)
 cinch impact [FILES]    rule IDs a change may affect (default: staged files)
+cinch mv SRC DST        move a .md file under the docs root, rewriting links to and in it
+cinch plan archive FILE...
+                        move complete or cut plans into plans/archive/
 cinch version
 cinch help
 ```
@@ -172,6 +176,18 @@ A few notes:
   `../architecture.md` refers to, which grep can't. A bare basename matches
   every doc with that name; a path with a directory matches exactly. Unlike
   plain `index`, the link graph includes `plans/`.
+- **`mv` / `plan archive`**: take paths relative to the repo root. `mv` moves
+  a `.md` file to a path that doesn't exist yet, both inside the docs root,
+  and rewrites every link to it from the other docs and every relative link
+  inside it that resolved, so they still resolve from the new place. It parses
+  links as the `links` check does: link syntax in inline code or a fenced block
+  is left alone, and a `#fragment` or title is kept. `plan archive` moves plans
+  whose `**Status:**` word is `complete` or `cut`, from directly in `plans/`
+  to `plans/archive/`, the same way. Both check everything first and refuse
+  without changing a file. They don't use `git mv` and don't stage anything.
+  Links from outside the docs root (`README.md`, `AGENTS.md`, code comments)
+  aren't rewritten; each command ends with a line naming the old path to grep
+  for.
 
 ## Workflows
 
@@ -218,7 +234,7 @@ paths:
 # message file as $1.
 #
 # pre-commit-checks / commit-msg-checks change which checks the hooks run.
-# Defaults: pre-commit [links, rules, index, generated, core],
+# Defaults: pre-commit [links, rules, index, plans, generated, core],
 # commit-msg [commit]. An empty list (`[]`) turns that hook's built-in checks
 # off; leaving the key out keeps the defaults.
 hooks:
@@ -243,6 +259,10 @@ hooks:
 #  squash:
 #    dev: '^merge: (feature|fix)/.+'
 #  merge: exempt
+
+# Optional: `enforce` makes the plans check require every plan's `**Status:**` line to match its folder.
+#plans:
+#  lifecycle: enforce
 
 # Optional: set to false to stop `cinch init` from writing the AGENTS.md pointer.
 #agents:
