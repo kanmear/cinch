@@ -51,7 +51,8 @@ repository, so an unbound rule or a stray marker fails CI.
     branch with no entry, a manifest without `commit.squash`, or no
     `SQUASH_MSG` falls back to `commit.pattern` as for any commit.
 16. **CINCH-016** While `$GIT_DIR/MERGE_HEAD` exists, `commit.merge: exempt`
-    passes the subject unchecked and `commit.merge: <pattern>` replaces
+    passes the subject unchecked, `commit.merge: reject` fails it
+    (CINCH-020), and any other value is a pattern that replaces
     `commit.pattern`; without the key a merge commit is checked like any
     other, and the key is ignored outside a merge.
 17. **CINCH-017** With `plans.lifecycle: enforce` in `cinch.yml`, every `.md`
@@ -70,3 +71,15 @@ repository, so an unbound rule or a stray marker fails CI.
     `complete` or `cut`, and only from directly in `<docs>/plans/`, into
     `<docs>/plans/archive/`, with CINCH-018's guarantees. A refusal changes
     no file.
+20. **CINCH-020** With `commit.merge: reject`, every commit made while
+    `$GIT_DIR/MERGE_HEAD` exists fails the `commit` check, whatever its
+    subject, and the finding names `make merge` as the way to land a branch.
+    <!-- cinch:ignore: test lands in plan 33 T2 -->
+21. **CINCH-021** With `commit.protect: [<branch>…]` in `cinch.yml`, a commit
+    on a listed branch passes the `commit` check's branch guard only while
+    `$GIT_DIR/SQUASH_MSG` exists, or while `$GIT_DIR/MERGE_HEAD` exists and
+    `commit.merge` isn't `reject`. The first commit on an unborn branch and
+    a commit on a detached HEAD pass the guard. A `--no-verify` commit (the
+    version bump's amend) isn't checked, by git's design. Without the key
+    the guard does nothing.
+    <!-- cinch:ignore: test lands in plan 33 T3 -->
