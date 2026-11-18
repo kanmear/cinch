@@ -322,8 +322,8 @@ a binary that satisfies `>=0.16.0`.
 ### Part B — harness-template v2 (`~/code/harness-template`, rules in its `README.md`)
 
 #### T5: History and remote
-**Status:** [ ] — history done (`1132099` import, `eea6f58` plan 32 T6); the remote is
-deferred by the owner (2026-11-17)
+**Status:** [x] — 2026-11-18: the owner created `kanmear/harness_template` (private); `main`
+fast-forwarded through the stacked T6–T11 branches to `72967c9` and pushed as `origin/main`
 **Depends on:** plan 32 T6 (which makes the first commit)
 **Files:** none. The owner creates the private GitHub repo; the template is then pushed as
 `origin` (D8). Until then the template is local only, and T6–T11 proceed without it.
@@ -581,7 +581,7 @@ commit; the owner lands it with § 5.2.
 **Verify:** `make check`; `cinch check`
 
 #### T22: Light repos
-**Status:** [ ]
+**Status:** [x] — done 2026-11-18, uncommitted in both repos; the owner commits them
 **Depends on:** T10
 **Files:**
 - talk-workbench: AGENTS.md (from its CLAUDE.md), `CLAUDE.md` = `@AGENTS.md`, `down`,
@@ -680,139 +680,69 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T21 (fsed-odin-docs, `~/work/fsed-odin-docs`, partial per D9). A Sonnet
-builder did the work, and this session verified it on 2026-11-18. It is uncommitted on
-`chore/harness-v2` off `main`. The owner chose option A on all three open points: the registers
-move rather than fold into a roadmap, the meeting index goes to `business/`, and the cinch
-wrapper targets stay.
+**Last completed:** T5's remote and the landing steps, done in this session on 2026-11-18 at the
+owner's request. That request covers the releases and pushes that AGENTS.md normally leaves to
+the owner. Every task is `[x]`. The template gaps are now [plan 34](34-harness-template-gaps.md).
 
 **What changed:**
-- **Render.** `docs-philosophy.md` was re-rendered. `generated` was red under cinch 0.18.0.
-- **Triage (plan 32a § fsed).**
-  - `plans.lifecycle: enforce` is in `cinch.yml`.
-  - 31 plans are archived as complete and 4 as cut (17, 18, release-tooling, square-colors),
-    exactly as § fsed listed them.
-  - Seven plans stay `in-progress` and mobile-office-tasks stays `planned`, in the bold form.
-  - 19, 20 and rule-coverage-audit said `Status: done`; they now say `complete`.
-  - `cinch mv` moved `deferred-scope.md` and `assigned-field-scope.md` to `.agent/`,
-    `meeting-2026-10-29.md` to `.agent/business/` and `tech_spec.md` to `.agent/`.
-  - `manual-checks.md` § 14 holds the four owed checks: the `mobile` pointer bump, the
-    multi-task modal, the rewind modal and the EN/ru smoke.
-  - Backticked prose paths to archived plans were rewritten by hand in 17 docs, because
-    `cinch mv` only rewrites links.
-- **`cinch.yml`:** `commit.merge` is the `commit.pattern` type/scope alternation followed by
-  `: merge .+`, set deliberately. All 30 existing merge subjects match. No `squash`, `protect`
-  or `reject`, and the `cinch-log.sh` hooks stay (plan 19 is open).
-- **Makefile.**
-  - `.DEFAULT_GOAL := help`, and help lists the contract verbs first.
-  - `install` checks for cinch, runs `submodule-init` only when a submodule has no `.git`, then
-    runs `cinch init`. That condition is a deviation: `submodule-init` checks out `main` in each
-    submodule, so running it every time would move mid-work submodules.
-  - `dev` keeps the session `odin-upsr-dev` and uses the D3 shape: join an existing session,
-    otherwise create it detached and `switch-client` or attach; with no TTY or no tmux it runs
-    `-j2` in the foreground. It re-enters make through `SELF :=`, so `make -n dev` starts
-    nothing.
-  - `down` sends C-c to each pane, kills the session, then runs `stop-db`. That target is
-    `docker-compose down`, so it stops Centrifugo too. `down` exits 0 when nothing runs.
-  - `setup-hooks`, `render`, `check-harness` and `ignores` stay.
-- **Doc drift:**
-  - `AGENTS.md`: the root Makefile is described as the cross-service layer, `make install` is
-    the clone step, and the `onboard.md` line is accurate.
-  - `git-conventions.md`: `make install` is the clone and hook step, and the tag ranges are
-    current (backend and frontend up to 1.4.0, mobile up to 1.3.0).
-  - `README.md`: it leads with `make install` and has the `>=0.15.0` floor.
-  - `conventions.md`, `manual-checks.md` and `local-databases.md` mention `install` and `down`.
+- **harness-template:** `make check` is green. `main` was fast-forwarded to `72967c9` and pushed
+  to `origin` (now the default branch). The seven stacked task branches are deleted.
+- **talk-workbench:** committed as `c091a4e` on `main` (it has no remote).
+  `examples/demo/rehearsals.json` stays dirty, as intended. `make install` was re-run.
+- **deltadocs_landing:** the README fix is committed as `43e9cd0` and `main` is pushed.
+  `chore/align-conventions` is deleted.
+- **fsed:**
+  - `ddab6d9` is committed (39 renames, `mobile` not staged), and the `chat-photos` status text
+    is fixed.
+  - It is merged onto `main` as `538d010 chore: merge chore/harness-v2` with `--no-ff`, the
+    team's way. The branch is deleted. `main` is **not pushed** (17 ahead of the team remote).
+- **Released (tag pushed with `main`), `dev` deleted locally and on `origin`, `prune --confirm`:**
+  - budgetron: v0.15.0, 3 branches pruned.
+  - dd: v0.18.0, 3 pruned.
+  - ortho: v0.13.0, the first push; 2 pruned.
+  - lthy: v0.63.0, 8 pruned.
+  - Every default branch is `main`.
+- **verus:** the owner had already released v0.15.0 and deleted `dev`. 4 branches pruned.
+  `~/code/verus-wt` is removed.
+- **forum:** 6 branches pruned. `~/code/forum-wt` is removed.
+- **limen:** 1 branch pruned.
+- **pugio:** the local `dev` is deleted and 2 branches pruned. Not released: see below.
+- **cinch:** the roadmap's Forum F0/F1 item is gone, and plan 34 is on the roadmap.
 
-**Verified here:** `cinch check` is green (links, 186 rules, index, 43 plans, generated, core and
-hooks). Every commit-pattern match was checked against `git log --merges`. `backend/Makefile`
-confirms `stop-db` = `docker-compose down`, and the binary is installed. The submodule tag
-ranges were checked against `git tag`.
-
-**The builder also checked:**
-- `make check` passes (frontend, backend and cinch).
-- `make` with no arguments prints help.
-- `make install` on the initialised tree is a no-op apart from `cinch init`.
-- `make down` with nothing running exits 0.
-- Against stub processes in a scratch copy, `dev` from outside tmux made a 2-pane session with
-  the top pane active (with `pane-base-index 1`), `down` killed it, and `dev` from inside tmux
-  didn't split the current window.
-
-**Not verified:** a real `make dev` (Air, bun and Docker), C-c stopping Air, `switch-client` with
-a live client, and `make down` against running containers.
+**Found:** ortho's first CI run failed at "Install cinch". `install.sh` runs `mkdir -p` only on
+its default path, so an explicit `CINCH_INSTALL_DIR` that doesn't exist yet (ortho's `ci.yml` uses
+`$HOME/.local/bin`) fails at `cp`. The cinch fix is a one-line `mkdir -p` and needs a `fix/`
+session and a release. Until then ortho's `ci.yml` can create the directory itself. No other
+repo sets `CINCH_INSTALL_DIR`.
 
 **Owner still to do:**
-- **fsed (T21):** review and commit on `chore/harness-v2` (proposed:
-  `chore [harness]: plan lifecycle, make install/down, doc drift (harness v2 partial)`).
-  `git add -A .agent` so the moves stage as renames. Don't stage the dirty `mobile` pointer.
-  Then merge onto `main` the team's way (`chore: merge chore/harness-v2`) and push when ready.
-  - Live plan `chat-photos` still says "merge pending", though `feat: merge feature/chat-photos`
-    landed. Its device and browser checks are open, so it stays `in-progress`; fix the text.
-  - The merged `docs/client-feedback-page` worktree (`~/work/fsed-odin-docs-feedback-wt`) can go.
-  - Try `make dev` and `make down` once on the real stack.
-- **pugio (T20):** finish § 5.2 on `main`.
-  - `make release` tags v0.14.0 and pushes `main` to GitHub, the first push of pugio.
-  - `git branch -D dev`. § 1.2 records pugio as never pushed, so no remote `dev` should exist; lab
-    was unreachable from this session, so check with `git ls-remote lab`.
-  - Put `keystore.properties` on the host before `make ship`.
-  - `make prune`. About 30 old topic branches have their squash on `main`.
-- **budgetron (T19):** finish § 5.2 on `main`.
-  - `make release` tags v0.15.0 and pushes `main`.
-  - `gh repo edit --default-branch main` if needed. GitHub's HEAD is already `main`, but
-    `origin/dev` exists, so delete `dev` locally and on `origin`.
-  - `make prune`. `feat/sms-import` has 9 commits `dev` lacks (plan 12); check that its squash landed
-    under another name before deleting it. `backup/pre-coauthor-strip`, `claude/*` and the
-    remote `native_api_w_pigeon` are by hand.
-0. **dd (T18):** finish § 5.2 on `main`. Start `make dev-db` before any `make merge` (the
-   merge-test runs `make test`).
-   - `make release` tags v0.18.0 and pushes `main`, then `gh repo edit --default-branch main` if
-     GitHub defaults to `dev`, then delete `dev` locally and on `origin`.
-   - `make prune`, which includes the three archived plans' branches.
-   - The two failing e2e specs want a `fix/` branch.
-   - Decide the backlog's stale "Live editing mode" item (that plan is complete).
-   - Decide the Go pin: the seeded `mise.toml` says 1.26, `go.mod` and the Dockerfile say 1.25.
-1. **ortho (T17):** finish § 5.2 on `main`.
-   - `make release` is the first push to the empty GitHub repo, with tag v0.13.0. CI runs then;
-     check it.
-   - `git branch -D dev`. The 11 topic branches and `chore/harness-v2` all have their squash and
-     can go through `make prune`.
-   - Start `make dev-db` before any `make merge`, because the squash's merge-test runs
-     `make test`.
-2. **lthy (T16):** finish § 5.2 on `main`.
-   - `make release`, which tags v0.63.0 and pushes `main` and the tag.
-   - `gh repo edit --default-branch main`, if GitHub's default is `dev`.
-   - `git push origin --delete dev && git branch -D dev`. `lab` also has a `dev` branch.
-   - `make deploy` once lab is up. The PWA origin changes in dev only.
-   - Then `make prune`.
-   - Optional: the untracked `.claude/settings.local.json` still allows `make merge-dev`,
-     `release-cut` and `push`.
-3. **Verus:** on `main`, `make release`, which tags v0.15.0 and pushes `main` and the tag. Then
-   `git push origin --delete dev && git branch -D dev`: `dev` holds nothing `main` lacks. Once lab
-   is online, `make deploy`, the first deploy from `main` and with the new Dockerfile. Then
-   `rmdir ~/code/verus-wt`, an empty directory with no repo, and `make prune`. The ~24 old dev-flow
-   branches, `chore/harness-v2` included, all have their squash on `main` and can be deleted.
-4. **Forum (T14):** `make deploy` once lab is back. Then prune: `scripts/prune.sh --confirm`,
-   plus about 55 older dev-flow branches by hand. Then `rmdir ~/code/forum-wt`.
-5. **cinch:** roadmap § "Open from plan 31" still says the Forum CLI waits on Forum F0/F1. Both are
-   done, and the CLI remainder is in forum's § Deferred, so that item can go.
-6. **Limen (T13):** `scripts/prune.sh --confirm`; check the nine old branches without a `merge:`
-   commit before deleting them.
+- **pugio:** `kanmear/pugio` does not exist on GitHub. Create it, then run `make release`
+  (v0.14.0). `lab` was unreachable, so check `git ls-remote lab` for a `dev` branch. Put
+  `keystore.properties` on the host before `make ship`.
+- **fsed:** push `main` to the team remote when ready. Remove the merged worktree
+  `~/work/fsed-odin-docs-feedback-wt` with `git worktree remove --force` (`--force` only because
+  its submodules aren't checked out; the branch has no commits off `main`). Try `make dev` and
+  `make down` once on the real stack.
+- **deltadocs_landing:** `git push origin --delete claude/nifty-sagan-p5vl9w`. It has no commits
+  that `main` lacks; auto mode blocked the delete.
+- **Deploys, once `lab` is back:** lthy (and delete `lab`'s `dev`), verus, forum.
+- **Branches by hand.** `prune.sh` doesn't count a branch whose squash landed if `main` later
+  edited its files (plan 34 item 7). Left over:
+  - ortho: 10.
+  - verus: about 26.
+  - forum: about 59.
+  - limen: 36.
+  - pugio: 28.
+  - budgetron: 16, including `feat/sms-import` (check its squash), `backup/pre-coauthor-strip`,
+    `claude/*`, and the remote `native_api_w_pigeon` and `claude/practical-cannon-e5p7hj`.
+- **dd:**
+  - The two failing e2e specs need a `fix/` branch.
+  - Decide the stale backlog item "Live editing mode".
+  - Decide the Go pin: 1.26 in `mise.toml`, 1.25 in `go.mod` and the Dockerfile.
+  - `origin` still has about 40 old branches.
+- **lthy (optional):** the untracked `.claude/settings.local.json` still allows the old
+  `merge-dev`, `release-cut` and `push` targets.
 
-**Resume at:** T22 (light repos: talk-workbench and deltadocs_landing); it only needs Part B.
-
-**Notes:**
-- **Template gap, from T19:** the flutter stack always seeds `stack-conventions.md`, which
-  duplicates a repo that keeps its code style in `conventions.md`.
-- **Template defect, from T15:** the go stack's `Makefile` build and its `conventions.md` stamp
-  `-X main.version`, but verus and forum both use a `version` package. Fix it upstream, or give
-  the stack a variable for the package path.
-- **Template gap, from T16:** the go-svelte stack has no `DEPLOY_NAME` for a deploy name that
-  differs from `NAME`. Its seeded `bunfig.toml`, eslint config and `tests/support` assume eslint
-  and the svelte preload.
-- The template stack branches are still unmerged (`feature/contract-guards` → … →
-  `chore/plan-lifecycle`), and T5's remote is still deferred.
-- Template gap from T13: a repo-local layer for managed `.claude/settings.json`.
-- **Template gaps, from T17:**
-  - The go-svelte stack needs a variant for a Node frontend with Postgres: no `DB_PATH`,
-    `create-owner`, deploy block or `ENV_FILE`.
-  - `down` should send TERM to the panes before `kill-session`, or an Air or `go run` backend
-    survives.
+**Resume at:** nothing in this plan. It can be archived (`cinch plan archive 33`) once pugio's
+first push and the deploys are done, or now if the owner counts those as routine. Next work:
+the cinch `install.sh` fix above, then plan 34's planning pass.
