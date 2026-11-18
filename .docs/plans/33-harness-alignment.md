@@ -706,18 +706,18 @@ the owner. Every task is `[x]`. The template gaps are now [plan 34](34-harness-t
   `~/code/verus-wt` is removed.
 - **forum:** 6 branches pruned. `~/code/forum-wt` is removed.
 - **limen:** 1 branch pruned.
-- **pugio:** the local `dev` is deleted and 2 branches pruned. Not released: see below.
+- **pugio:** the local `dev` is deleted and 2 branches pruned. Released as v0.14.0, the first
+  push to `kanmear/pugio` (created by the owner), and `main` is the default branch.
 - **cinch:** the roadmap's Forum F0/F1 item is gone, and plan 34 is on the roadmap.
 
 **Found:** ortho's first CI run failed at "Install cinch". `install.sh` runs `mkdir -p` only on
 its default path, so an explicit `CINCH_INSTALL_DIR` that doesn't exist yet (ortho's `ci.yml` uses
-`$HOME/.local/bin`) fails at `cp`. The cinch fix is a one-line `mkdir -p` and needs a `fix/`
-session and a release. Until then ortho's `ci.yml` can create the directory itself. No other
-repo sets `CINCH_INSTALL_DIR`.
+`$HOME/.local/bin`) fails at `cp`. The fix plan is
+`.docs/plans/fix/install-missing-dir.md`, on the `fix/install-missing-dir` branch. Until a tagged release has the fix,
+ortho's `ci.yml` has to create the directory itself.
 
 **Owner still to do:**
-- **pugio:** `kanmear/pugio` does not exist on GitHub. Create it, then run `make release`
-  (v0.14.0). `lab` was unreachable, so check `git ls-remote lab` for a `dev` branch. Put
+- **pugio:** `lab` is still unreachable, so check `git ls-remote lab` for a `dev` branch. Put
   `keystore.properties` on the host before `make ship`.
 - **fsed:** push `main` to the team remote when ready. Remove the merged worktree
   `~/work/fsed-odin-docs-feedback-wt` with `git worktree remove --force` (`--force` only because
@@ -743,6 +743,6 @@ repo sets `CINCH_INSTALL_DIR`.
 - **lthy (optional):** the untracked `.claude/settings.local.json` still allows the old
   `merge-dev`, `release-cut` and `push` targets.
 
-**Resume at:** nothing in this plan. It can be archived (`cinch plan archive 33`) once pugio's
-first push and the deploys are done, or now if the owner counts those as routine. Next work:
-the cinch `install.sh` fix above, then plan 34's planning pass.
+**Resume at:** nothing in this plan. It can be archived (`cinch plan archive 33`) once the deploys
+are done, or now if the owner counts those as routine. Next work: the `install.sh` fix plan's
+T1, then plan 34's planning pass.
