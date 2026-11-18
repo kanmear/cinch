@@ -549,7 +549,7 @@ commit; the owner lands it with § 5.2.
 **Verify:** § 5.1 step 7; `make build-release`
 
 #### T21: fsed-odin-docs (partial, D9)
-**Status:** [ ]
+**Status:** [x] — done 2026-11-18 on fsed's `chore/harness-v2`, uncommitted; the owner commits and merges it (team flow)
 **Depends on:** T11
 **Files:**
 - Root `Makefile`: `down` (kill `odin-upsr-dev`, `stop-db`, Centrifugo), the dev fallback with
@@ -657,77 +657,74 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Doc-versus-code drift in convention docs** (plan 31 § 2, plan 10). Untouched.
 
 ## Handoff
-**Last completed:** T20 (pugio, `~/code/pugio`). A Sonnet builder did the work, and this session
-verified it on 2026-11-18. At the owner's request it landed locally with § 5.2:
-- Before the branch, two squashes landed on `dev`:
-  - `2445794 merge: chore/cinch-render-0.18` re-rendered `docs-philosophy.md`. `generated` was
-    red on `dev` under cinch 0.18.0, as in budgetron, and it blocked the next squash.
-  - `151b546 merge: ui/lock-cover-look` was merged at the owner's call. It completes P10 T4 and
-    bumped the version to 0.13.1.
-- `c665415` is the branch commit (54 files, off `dev` at `151b546`). `main` then moved to `dev`,
-  and `2008825 merge: chore/harness-v2` was squashed onto it. Every hook passed, the merge-test
-  included. `chore/` doesn't bump, so the version stays 0.14.0.
-- Nothing is pushed or tagged. `dev` is still there.
-- Deleted branches: both `worktree-agent-*` (ancestors of `dev`), `ui/lock-cover-look` and
-  `chore/cinch-render-0.18`.
+**Last completed:** T21 (fsed-odin-docs, `~/work/fsed-odin-docs`, partial per D9). A Sonnet
+builder did the work, and this session verified it on 2026-11-18. It is uncommitted on
+`chore/harness-v2` off `main`. The owner chose option A on all three open points: the registers
+move rather than fold into a roadmap, the meeting index goes to `business/`, and the cinch
+wrapper targets stay.
 
 **What changed:**
-- **Triage (plan 32a § pugio).**
-  - `v1-roadmap.md` became `.docs/roadmap.md` through `cinch mv`. It records harness v2 as Context
-    decision 11 and the remote flip in decision 9, and has two `## Deferred` rows from the plan 9
-    handoff.
-  - `manual-checks.md` is new. It has one section per area, linking `testing.md`; P9 has no
-    `testing.md` section, so its steps are written out. The two `fix/` plans' checks are in
-    § Review fixes, named per fix.
-  - p0–p7, p9, p10 and `review-decisions.md` are archived as `complete — <note>`.
-  - Deleted: `TEMPLATE-plan.md`, `fix/review-findings.md` and `fix/second-review.md`.
-  - `p8-daily.md` stays `in-progress`, and the session start lists only it.
-- **Template.**
-  - `apply` ran with `STACK=android NAME=pugio`, then `sync`. A second `sync` is a no-op.
-  - pugio's own `stack-conventions.md`, `domain/overview.md`, `architecture.md` and
-    `testing.md` stay. Their `make diff` entries are intended drift.
-- **`cinch.yml`** has the v2 shape: `require.cinch >=0.17.0`, `plans.lifecycle: enforce`,
-  `commit.squash.main`, `merge: reject`, `protect: [main]`, pre-commit `make check` (scoped to the
-  android paths) and the merge-test. The bump arguments are `'app/*' 'gradle/*' build.gradle.kts
-  settings.gradle.kts gradle.properties`, which is wider than the template default and matches
-  the pre-commit `when` list.
-- **Version.** `version.properties` is `0.14.0`; it was 0.13.1. The `hotfix` key is gone, and
-  `app/build.gradle.kts` lost the hotfix letters. `versionCode` keeps the `patch*100` factor, so
-  140000 installs over 130100.
-- **Makefile.** It is the android render with the D3 verbs. `dev` builds, installs and starts the
-  app, `run` is an alias, and `deploy` says "use make ship".
-  - Kept: `startup`, `push-config`, `test-device`, `build-release`, `install-release`, `logs`
-    and `lint`. `startup`, `test-device` and `install-release` use `WITH_DEVICE`.
-  - **Deviation:** `down` only kills the tmux session. It doesn't `am force-stop` like the
-    template, because force-stopping the launcher disables its accessibility service (gestures
-    and the lock cover). The template's android `down` may want the same fix.
-  - `make test` now also compiles the androidTest sources.
-- **Docs.** `AGENTS.md` takes the tiered shape, without the stale "once P2" line, and `CLAUDE.md`
-  is `@AGENTS.md`. `git-conventions.md` is the trunk-flow doc plus an android Version section.
-  `conventions.md` § Git is the grammar plus GIT-001.
-- **Remotes (D8):** `origin` is GitHub and `lab` is `lab:git/pugio.git`.
+- **Render.** `docs-philosophy.md` was re-rendered. `generated` was red under cinch 0.18.0.
+- **Triage (plan 32a § fsed).**
+  - `plans.lifecycle: enforce` is in `cinch.yml`.
+  - 31 plans are archived as complete and 4 as cut (17, 18, release-tooling, square-colors),
+    exactly as § fsed listed them.
+  - Seven plans stay `in-progress` and mobile-office-tasks stays `planned`, in the bold form.
+  - 19, 20 and rule-coverage-audit said `Status: done`; they now say `complete`.
+  - `cinch mv` moved `deferred-scope.md` and `assigned-field-scope.md` to `.agent/`,
+    `meeting-2026-10-29.md` to `.agent/business/` and `tech_spec.md` to `.agent/`.
+  - `manual-checks.md` § 14 holds the four owed checks: the `mobile` pointer bump, the
+    multi-task modal, the rewind modal and the EN/ru smoke.
+  - Backticked prose paths to archived plans were rewritten by hand in 17 docs, because
+    `cinch mv` only rewrites links.
+- **`cinch.yml`:** `commit.merge` is the `commit.pattern` type/scope alternation followed by `:
+  merge .+`, set deliberately. All 30 existing merge subjects match.
+- **Makefile.**
+  - `.DEFAULT_GOAL := help`, and help lists the contract verbs first.
+  - `install` checks for cinch, runs `submodule-init` only when a submodule has no `.git`, then
+    runs `cinch init`. That condition is a deviation: `submodule-init` checks out `main` in each
+    submodule, so running it every time would move mid-work submodules.
+  - `dev` keeps the session `odin-upsr-dev` and uses the D3 shape: join an existing session,
+    otherwise create it detached and `switch-client` or attach; with no TTY or no tmux it runs
+    `-j2` in the foreground. It re-enters make through `SELF :=`, so `make -n dev` starts
+    nothing.
+  - `down` sends C-c to each pane, kills the session, then runs `stop-db`. That target is
+    `docker-compose down`, so it stops Centrifugo too. `down` exits 0 when nothing runs.
+  - `setup-hooks`, `render`, `check-harness` and `ignores` stay.
+- **Doc drift:**
+  - `AGENTS.md`: the root Makefile is described as the cross-service layer, `make install` is
+    the clone step, and the `onboard.md` line is accurate.
+  - `git-conventions.md`: `make install` is the clone and hook step, and the tag ranges are
+    current (backend and frontend up to 1.4.0, mobile up to 1.3.0).
+  - `README.md`: it leads with `make install` and has the `>=0.15.0` floor.
+  - `conventions.md`, `manual-checks.md` and `local-databases.md` mention `install` and `down`.
 
-**Verified here:**
-- `cinch check` is green: links, 62 rules, index, plans (12), generated, core and hooks.
-- `make check` is green.
-- `make test` passes all 503 tests.
-- `make version` prints 0.14.0.
-- `make help` lists the D3 verbs.
-- The session start shows only `p8-daily.md`.
-- The landing commit's hooks passed.
+**Verified here:** `cinch check` is green (links, 186 rules, index, 43 plans, generated, core and
+hooks). Every commit-pattern match was checked against `git log --merges`. `backend/Makefile`
+confirms `stop-db` = `docker-compose down`, and the binary is installed. The submodule tag
+ranges were checked against `git tag`.
 
 **The builder also checked:**
-- `make build-release` builds 0.14.0 (versionCode 140000). It is signed with the **debug** key,
-  because there's no `keystore.properties` on this host.
-- `make -n dev|merge|release|ship` all plan sensibly, and `make down` exits 0.
-- A second `sync` changes nothing.
-- `version.sh patch` on a scratch copy gives 0.14.1.
+- `make check` passes (frontend, backend and cinch).
+- `make` with no arguments prints help.
+- `make install` on the initialised tree is a no-op apart from `cinch init`.
+- `make down` with nothing running exits 0.
+- Against stub processes in a scratch copy, `dev` from outside tmux made a 2-pane session with
+  the top pane active (with `pane-base-index 1`), `down` killed it, and `dev` from inside tmux
+  didn't split the current window.
 
-**Not verified:** `make dev` and any other device target (no device), a real
-`make merge`/`release`/`ship`, the post-commit bump against pugio's paths, and the push after the
-remote flip.
+**Not verified:** a real `make dev` (Air, bun and Docker), C-c stopping Air, `switch-client` with
+a live client, and `make down` against running containers.
 
 **Owner still to do:**
+- **fsed (T21):** review and commit on `chore/harness-v2` (proposed:
+  `chore [harness]: plan lifecycle, make install/down, doc drift (harness v2 partial)`).
+  `git add -A .agent` so the moves stage as renames. Don't stage the dirty `mobile` pointer.
+  Then merge onto `main` the team's way (`chore: merge chore/harness-v2`) and push when ready.
+  - Live plan `chat-photos` still says "merge pending", though `feat: merge feature/chat-photos`
+    landed. Its device and browser checks are open, so it stays `in-progress`; fix the text.
+  - The merged `docs/client-feedback-page` worktree (`~/work/fsed-odin-docs-feedback-wt`) can go.
+  - Try `make dev` and `make down` once on the real stack.
 - **pugio (T20):** finish § 5.2 on `main`.
   - `make release` tags v0.14.0 and pushes `main` to GitHub, the first push of pugio.
   - `git branch -D dev`. § 1.2 records pugio as never pushed, so no remote `dev` should exist; lab
@@ -774,8 +771,7 @@ remote flip.
 5. **cinch:** roadmap § "Open from plan 31" still says the Forum CLI waits on Forum F0/F1. Both are
    done, and the CLI remainder is in forum's § Deferred, so that item can go.
 
-**Resume at:** T21 (fsed-odin-docs, partial, D9) or T22 (light repos); both only need Part B.
-T21 is a team repo: no D1, D2 or D7.
+**Resume at:** T22 (light repos: talk-workbench and deltadocs_landing); it only needs Part B.
 
 **Notes:**
 - **Template gap, from T19:** the flutter stack always seeds `stack-conventions.md`, which
