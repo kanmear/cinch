@@ -55,11 +55,11 @@ Checklist (tick when merged):
 | cinch | `.docs` | [x] (T5: nothing to render) | [ ] |
 | harness-template | `common/.docs` | n/a | [x] (T6, `eea6f58`) |
 | budgetron | `.docs` | [x] | [ ] |
-| forum | `.docs` | [x] | [ ] |
+| forum | `.docs` | [x] | [x] (plan 33 T14, `ac20601`) |
 | verus | `.docs` | [x] | [ ] |
 | pugio | `.docs` | [x] | [ ] |
-| limen | `.docs` | [x] | [ ] |
-| lthy (`lucky_to_have_you`) | `.agent` | [x] | [ ] |
+| limen | `.docs` | [x] | [x] (plan 33 T13, `74f7f43`) |
+| lthy (`lucky_to_have_you`) | `.agent` → `.docs` | [x] | [x] (plan 33 T16, `784dbd8`) |
 | ortho (`ortho-store`) | `.agent` | [x] | [ ] |
 | dd (`project_deltadocs`) | `.agent` | [x] | [ ] |
 | fsed-odin-docs (`~/work`) | `.agent` | [x] | [ ] |
