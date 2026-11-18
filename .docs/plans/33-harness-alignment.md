@@ -515,7 +515,7 @@ commit; the owner lands it with § 5.2.
 **Verify:** § 5.1 step 7
 
 #### T17: ortho (stack `go-svelte` + Postgres block)
-**Status:** [ ]
+**Status:** [x] — landed locally 2026-11-18 (`7c00247 merge: chore/harness-v2`); `make release` (v0.13.0) is the owner's
 **Depends on:** T12
 **Files:** per § 5.1 with the rename.
 - Commit the dirty roadmap first (32a).
@@ -680,80 +680,89 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T16 (lthy). A Sonnet builder did the work, and this session verified it on
-2026-11-18. At the owner's request it landed locally with § 5.2:
-- `d01e284` is the branch commit. `main` then moved to `dev`, and `784dbd8 merge: chore/harness-v2`
-  was squashed onto it.
-- Every hook passed, the merge test included. `chore/` doesn't bump, so the version stays 0.63.0.
-- Nothing is pushed or tagged; `dev`, `origin/dev` and `lab/dev` are still there.
+**Last completed:** T17 (ortho, `~/code/ortho-store`). A Sonnet builder did the work, and this
+session verified it on 2026-11-18. At the owner's request it landed locally with § 5.2:
+- `e4eca6b` is the branch commit. `main` then moved to `dev`, and `7c00247 merge:
+  chore/harness-v2` was squashed onto it.
+- Every hook passed, the merge test included (with `make dev-db` up). `chore/` doesn't bump, so the
+  version stays 0.13.0.
+- Nothing is pushed or tagged; `dev` is still there. `origin` is
+  `git@github.com:kanmear/ortho-store.git`, a private repo that is still empty.
 
-**Rename and plan 32a triage (lthy):**
-- `git mv .agent .docs` and `paths.docs: .docs`. Every `.agent` hit outside the docs root is fixed:
-  `.dockerignore`, AGENTS.md, `live.md`, `scripts/icons.sh`, the Makefile and `cinch.yml`.
-  Archived plans keep their old text.
-- `v1-roadmap.md` → `.docs/roadmap.md`. m1–m8 got `**Status:** complete`.
-- `hidden-items-layout`, `lists` and `m10-go-backend` are archived. Their pending checks are in
-  the new `.docs/manual-checks.md`.
-- `m9-deploy` is the only live plan, with its status in the bold form.
-- `manifest.yml` is folded into `architecture.md` (services, ports and env table) and
-  `conventions.md` ("Plan task vocabulary", as in forum), then deleted.
-
-**The port:**
-- **Makefile:** built from the go-svelte render.
-  - Extras: `check-error-codes` (inside `check`), `icons`, `seed`, `reset-dev-data`,
-    `fresh-dev-data`, `preview`, the backups, `deploy-setup`, `prod-create-owner`,
-    `prod-reset-password` and `prod-logs`.
-  - From the template: `rollback`, `restore-drill`, `logs` and `prune`. `ship` = restore-drill,
-    then release, then deploy.
-  - The retired verbs are gone, and `scripts/archive-plans.sh` with its merge-dev call.
-- **New parameter `DEPLOY_NAME ?= lthy`:** `NAME` is `us`, the binary and the data file, but lab's
-  paths and the backup directories are `lthy` (`~/apps/lthy`, `~/git/lthy.git`, `lthy-*`).
-  `MIGRATIONS_DIR` and `VERIFY_SUBCOMMAND` are empty. The backup manifest has no `user_version`,
-  and lthy has no verify command, so `rollback` skips the schema comparison and `restore-drill`
-  only boots the image on the snapshot.
-- **Version:** `VERSION` 0.63.0 is the highest old version, frontend 0.62, plus one minor.
-  `backend/version` and `constants/version.ts` are forum's, with the module `us_backend`. The
-  eight integer files and `update-version.js` are deleted. The Dockerfile stamps both builds.
-- **Ports:** block 4100, with the backend on 4100 and vite on 4101 (`strictPort`). The vite proxy
-  reads `APP_PORT` instead of `GO_PORT`, and `.env.example` has `ORIGIN=http://localhost:4101`.
-  Compose and lab's 3100 are unchanged.
-- **`cinch.yml`:** the template's keys. Pre-commit is a single `make check` (about 8s) plus
-  merge-test. Forum kept per-area entries; this one follows verus. The bump arguments are
-  `'backend/*' 'frontend/src/*'`, the old `when` rule. Both `field-log` entries stay (plan 19).
-- **Docs:** AGENTS.md, `git-conventions.md` and `conventions.md` take the v2 shape. CLAUDE.md
-  becomes `@AGENTS.md`; its old content was only a model line, which the global CLAUDE.md
-  covers.
-- **Seeded files removed:** `frontend/bunfig.toml`, `eslint.config.js` and `tests/support/*`. lthy
-  has no eslint, and the preload would change `bun test`. `make diff` lists them as "only in
-  template".
-- **`make diff` drift left on purpose (22 files):**
-  - the Makefile extras and parameters;
-  - the `field-log` entries;
-  - `.dockerignore`'s extra `bin`;
-  - lthy's prettier configs;
-  - `VERSION`;
-  - the domain docs.
+**What changed:**
+- **Rename and triage.** `.agent` → `.docs`, `paths.docs: .docs`.
+  - The dirty roadmap rode along and became `.docs/roadmap.md` through `cinch mv`. Its Deferred
+    section keeps only the DaisyUI entry; this pass resolved the other four.
+  - Nine complete plans plus `foundation.md` are archived as `**Status:** complete — …`.
+  - `fix/crm-claim-verification.md` is deleted.
+  - The new `manual-checks.md` lists four click-throughs the handoffs owed: password reset,
+    stale orders, honest checkout, CRM claim.
+  - `manifest.yml` is folded into `architecture.md` and `conventions.md`, then deleted.
+- **Template.**
+  - `apply` and `sync` ran, and the drift was ported by hand.
+  - `cinch.yml` has the v2 keys, `require.cinch >=0.17.0`, and the bump arguments
+    `'backend/*' 'frontend/src/*'`. Both `field-log` entries stay (plan 19).
+  - `check-squash-merge-msg.sh`, `update-version.js` and the integer version files are deleted.
+- **Version.** `VERSION` is 0.13.0; it was backend 0.11.0 and frontend 0.12.0. The backend module
+  is `ortho_backend` with `version.Version` stamped by `-ldflags`. The SPA reads
+  `__APP_VERSION__` through the vite `define`. Both Dockerfiles take `ARG APP_VERSION`.
+- **Ports.** Block 4130: backend 4130, vite 4131 (`strictPort`), Postgres 4132, e2e 4133/4134.
+  The builder also edited the owner's gitignored `backend/.env` and `frontend/.env` to the new
+  ports. Any other checkout's existing `.env` needs the same edit.
+- **Makefile.** The go-svelte render with the Postgres block uncommented.
+  - Extras: `check-placeholders`, `check-error-codes` (inside `check`), `test-e2e`,
+    `install-e2e`, `install-frontend`/`install-backend` (for CI), `migrate-*`, `create-staff`,
+    `add-test-data`, `clean-and-add-test`, `dev-db`/`stop-db`/`drop-db`. Air stays.
+  - `backend/Makefile` and `frontend/Makefile` are deleted. The root carries every target, and
+    TOOL-001 now forbids `cd` into a service.
+  - `backend/docker-compose.yml` became the root `docker-compose.dev-db.yml`, postgres only. It
+    keeps `name: ortho_backend` so the dev volume survives. The root `docker-compose.yml` stays
+    as the deploy shape.
+- **No deploy yet.** `deploy`, `logs`, `rollback`, `restore-drill`, `preview`, the backups and
+  `create-owner` are dropped. `ship` is `release` plus a note that there is no deploy target.
+  When a host exists (lab 3400), add `deploy` and `logs` from the template.
+- **`down` differs from the template.** In tmux, a plain `kill-session` left Air and the backend
+  holding 4130. `down` now sends TERM to each pane's process, waits up to 5 s, then kills the
+  session.
+- **CI.** It triggers on `main` and PRs, and installs cinch v0.18.0 through cinch's pinned
+  `install.sh`. It runs `cinch check`, `make check`, `make test-*` and `make test-e2e`.
+- **Dropped seeds:** `frontend/bunfig.toml`, `tests/support/*` and the root `.dockerignore`
+  (images are built per service). ortho's own eslint config stays.
+- **`make diff` drift left on purpose (21 files):** the Makefile extras and missing deploy
+  block, the `field-log` entries, the domain and area docs, `.prettierignore`, `eslint.config.js`,
+  `VERSION`, and the three dropped seeds.
 
 **Verified here:**
-- `make check`, `make test` (Go and 162 frontend tests) and `cinch check` (links, rules, index,
-  plans, generated, core, hooks) are green, and `make version` prints 0.63.0.
-- `make help` lists the D3 verbs first.
-- `docker build .` succeeds. The image boots with only `ORIGIN` set and answers `/healthz` with
-  200.
+- `make check` is green (about 24 s; it is now the whole pre-commit).
+- `cinch check` is green (links, rules, index, plans, generated, core, hooks).
+- `make test` is green with `make dev-db` up: 119 vitest tests, and the Go packages `email`,
+  `handlers`, `middleware` and `models`. Without the database, `test-backend` fails with "Try
+  'make dev-db' first". That was true before the port too, but the squash's merge-test now runs
+  `make test`, so start `make dev-db` before `make merge`.
+- The retired-names grep is clean outside `plans/archive`. One leftover `.agent/api/` in
+  `backend/conventions.md` was fixed here.
 
 **The builder also checked:**
-- `make -n dev|down|release|ship|deploy|merge` plan sensibly.
-- `bin/us` carries `0.63.0`, and so does the SPA bundle.
-- A second `sync` changes nothing.
-- The retired-names grep is clean outside `plans/archive`. The only exceptions are lab's own
-  8080 services and `config.go`'s `PORT` default.
-- `make dev` without a TTY ran the `-j2` fallback on 4100/4101.
+- `make test-e2e`: 5 passed on 4133/4134.
+- `make dev` without a TTY ran the `-j2` fallback on 4130/4131. Inside tmux it ran the detached
+  session `ortho-dev-4130`, and `make down` left no session, no listener and no container.
+- `make version` prints 0.13.0, and `make build` stamps it into `bin/ortho` and the bundle.
+- Both images build with the version.
+- A second `sync` is a no-op.
+- `make -n release|merge|ship` plan sensibly.
 
-**Not verified:** `make dev`/`make down` inside tmux, and `deploy`, `restore-drill` and
-`rollback` against lab.
+**Not verified:** `make dev` from a real TTY outside tmux (the attach path); a real
+merge, release or ship; CI (never run, since nothing is pushed); booting the compose stack.
 
 **Owner still to do:**
-1. **lthy (T16):** finish § 5.2 on `main`.
+1. **ortho (T17):** finish § 5.2 on `main`.
+   - `make release` is the first push to the empty GitHub repo, with tag v0.13.0. CI runs then;
+     check it.
+   - `git branch -D dev`. The 11 topic branches and `chore/harness-v2` all have their squash and
+     can go through `make prune`.
+   - Start `make dev-db` before any `make merge`, because the squash's merge-test runs
+     `make test`.
+2. **lthy (T16):** finish § 5.2 on `main`.
    - `make release`, which tags v0.63.0 and pushes `main` and the tag.
    - `gh repo edit --default-branch main`, if GitHub's default is `dev`.
    - `git push origin --delete dev && git branch -D dev`. `lab` also has a `dev` branch.
@@ -761,24 +770,21 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
    - Then `make prune`.
    - Optional: the untracked `.claude/settings.local.json` still allows `make merge-dev`,
      `release-cut` and `push`.
-2. **Verus:** on `main`, `make release`, which tags v0.15.0 and pushes `main` and the tag. Then
+3. **Verus:** on `main`, `make release`, which tags v0.15.0 and pushes `main` and the tag. Then
    `git push origin --delete dev && git branch -D dev`: `dev` holds nothing `main` lacks. Once lab
    is online, `make deploy`, the first deploy from `main` and with the new Dockerfile. Then
    `rmdir ~/code/verus-wt`, an empty directory with no repo, and `make prune`. The ~24 old dev-flow
    branches, `chore/harness-v2` included, all have their squash on `main` and can be deleted.
-3. **Forum (T14):** `make deploy` once lab is back. Then prune: `scripts/prune.sh --confirm`,
+4. **Forum (T14):** `make deploy` once lab is back. Then prune: `scripts/prune.sh --confirm`,
    plus about 55 older dev-flow branches by hand. Then `rmdir ~/code/forum-wt`.
-4. **cinch:** roadmap § "Open from plan 31" still says the Forum CLI waits on Forum F0/F1. Both are
+5. **cinch:** roadmap § "Open from plan 31" still says the Forum CLI waits on Forum F0/F1. Both are
    done, and the CLI remainder is in forum's § Deferred, so that item can go.
-5. **Limen (T13):** `scripts/prune.sh --confirm`; check the nine old branches without a `merge:`
+6. **Limen (T13):** `scripts/prune.sh --confirm`; check the nine old branches without a `merge:`
    commit before deleting them.
-6. **cinch, this branch:** `docs/plan-33-t13` carries the uncommitted T13–T16 handoff edits to
-   this plan and to plan 32a's checklist. Commit them and `make merge`.
 
-**Resume at:** T17 (ortho) or T18 (dd), the other `.agent` renames, or T19/T20. All of them depend
-only on T12. T16's choices are the precedent for a go-svelte `.agent` repo: `DEPLOY_NAME` where the
-deploy name differs from `NAME`, and dropping the seeded eslint/bunfig where the repo has no
-eslint.
+**Resume at:** T18 (dd), then T19 (budgetron) or T20 (pugio). All of them depend only on T12. T16
+and T17 are the precedents for a go-svelte `.agent` repo. dd is the closest to T17 (Postgres
+block, e2e, not deployed).
 
 **Notes:**
 - **Template defect, from T15:** the go stack's `Makefile` build and its `conventions.md` stamp
@@ -790,3 +796,8 @@ eslint.
 - The template stack branches are still unmerged (`feature/contract-guards` → … →
   `chore/plan-lifecycle`), and T5's remote is still deferred.
 - Template gap from T13: a repo-local layer for managed `.claude/settings.json`.
+- **Template gaps, from T17:**
+  - The go-svelte stack needs a variant for a Node frontend with Postgres: no `DB_PATH`,
+    `create-owner`, deploy block or `ENV_FILE`.
+  - `down` should send TERM to the panes before `kill-session`, or an Air or `go run` backend
+    survives.
