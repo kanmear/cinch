@@ -113,7 +113,7 @@ stay in the `check` recipe.
   ignores SIGHUP leaves no such process and no session. Skipped with a note when tmux is
   missing. `tests/down.sh`
 - [ ] down: `make down` with no session is silent and exits 0. `tests/down.sh`
-- [ ] version var: `make -n build` contains `-X main.version=` by default and
+- [x] version var: `make -n build` contains `-X main.version=` by default and
   `-X example/version.Version=` with `VERSION_VAR=example/version.Version`, in go, go-cli and
   go-svelte. `tests/apply.sh`
 - [ ] deploy name: `make -n deploy-setup` in go and go-svelte uses `NAME` by default and
@@ -155,7 +155,7 @@ check; `VERSION` → 3.
 **Verify:** `make check`, with tmux present and once with tmux absent from `PATH` (skip note)
 
 ### T2: `VERSION_VAR`
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T1
 **Files:** `stacks/{go,go-cli,go-svelte}/Makefile` (parameter block, every `-X`);
 `stacks/go/conventions.md` and the go-svelte backend conventions (the version paragraph names
@@ -308,3 +308,13 @@ note). The 5 s fallback was checked by hand with a pane that ignores SIGINT too 
 killed, sibling kept). harness-template has no `make merge` target, so T1 was committed on its
 topic branch and fast-forwarded onto `main`, as plan 33's template commits were. T2–T7 land the
 same way. Next is T2 (`VERSION_VAR`).
+
+**T2 done 2026-11-18**, landed on harness-template `main` as `748b20e` (not pushed).
+go, go-cli and go-svelte have `VERSION_VAR ?= main.version` in the parameter block, and every
+`-X` is `-X $(VERSION_VAR)=$(VERSION)`. The go and go-cli conventions name the variable, and the
+go-svelte backend conventions gain a § Version. goreleaser can't read make variables, so the
+go-cli `.goreleaser.yml` keeps `-X main.version` and its header says to change it together with
+`VERSION_VAR`. The README says the same of a repo's Dockerfile. New `tests/apply.sh`, called
+from `make check`, holds the version-var test (6 checks), with one section per task for T3–T5.
+`VERSION` stays 3. Verified: `make check` passes, and with go-svelte's `-X` reverted to
+`main.version` it fails in `tests/apply.sh`. Next is T3 (skip list and `DEPLOY_NAME`).
