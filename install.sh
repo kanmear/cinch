@@ -63,9 +63,9 @@ if [ -z "$install_dir" ]; then
     install_dir="/usr/local/bin"
   else
     install_dir="${HOME}/.local/bin"
-    mkdir -p "$install_dir"
   fi
 fi
+mkdir -p "$install_dir" 2>/dev/null || err "cannot create install directory: $install_dir"
 
 install -m 755 "${WORKDIR}/${BINARY}" "${install_dir}/${BINARY}" 2>/dev/null \
   || { cp "${WORKDIR}/${BINARY}" "${install_dir}/${BINARY}"; chmod 755 "${install_dir}/${BINARY}"; }

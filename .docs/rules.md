@@ -11,6 +11,7 @@ owns:
   - internal/cinch/plans.go
   - internal/cinch/move.go
   - internal/cinch/archive.go
+  - install.sh
 ---
 
 # Cinch rules
@@ -81,3 +82,9 @@ repository, so an unbound rule or a stray marker fails CI.
     a commit on a detached HEAD pass the guard. A `--no-verify` commit (the
     version bump's amend) isn't checked, by git's design. Without the key
     the guard does nothing.
+22. **CINCH-022** `install.sh` takes its target from `CINCH_VERSION` (a tag,
+    with or without the `v`; latest when unset) and `CINCH_INSTALL_DIR` (when
+    unset: `/usr/local/bin` if writable, else `~/.local/bin`). It creates the
+    install directory when it's missing, whichever way the directory was
+    chosen. Every `cinch upgrade` already released runs the `install.sh` on
+    `main`, so these two variables keep their meaning.
