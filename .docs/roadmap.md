@@ -38,6 +38,7 @@ tier three is small in isolation but compounds.
 | 31 | [Conventions sweep, 2026-11-01](plans/archive/31-conventions-sweep.md) | 3 — decide before investing | **complete** — decisions applied; its open steps are under [Open from plan 31](#open-from-plan-31) |
 | 32 | [Plan lifecycle](plans/32-plan-lifecycle.md) ([per-repo steps](plans/32-plan-lifecycle-alignment.md)) | — | **in-progress** — stays live until every repo is done |
 | 33 | [Harness alignment](plans/33-harness-alignment.md) | — | **in-progress** |
+| 34 | [Harness-template gaps from the rollout](plans/34-harness-template-gaps.md) | — | **planned** — gaps found in plan 33 Part C; needs the planning workflow |
 
 ## Reading order vs. build order
 
@@ -182,7 +183,5 @@ The plan file keeps the argument; the row keeps the condition.
 [Plan 31](plans/archive/31-conventions-sweep.md) is archived because its decisions are applied. Its
 open steps live here.
 
-- **Forum F0/F1.** Step 6 of plan 31's order: Forum F0 and F1, after which the Forum CLI plan
-  (`~/code/forum/.docs/plans/forum-cli.md`) reopens. It stays blocked until F1's API is designed.
 - **Release cut: superseded.** Plan 31's "cut the release so Part A reaches the other machines"
   step is replaced by [plan 33](plans/33-harness-alignment.md) D1 (trunk with tags, no release cut).
