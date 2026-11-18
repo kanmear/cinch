@@ -133,11 +133,11 @@ stay in the `check` recipe.
   the template's. Invalid JSON fails and leaves the file untouched. `tests/apply.sh`
 - [x] settings: `tests/managed.sh` passes when two stacks' settings differ only outside `hooks`
   and fails when `hooks` differs. `tests/managed.sh`
-- [ ] prune: a branch squashed onto `main` as `merge: <b>`, whose file `main` edited later, is
+- [x] prune: a branch squashed onto `main` as `merge: <b>`, whose file `main` edited later, is
   listed with `(merge <sha>)`. `tests/scripts.sh`
-- [ ] prune: a branch named by a `merge:` commit but with a newer commit of its own is not
+- [x] prune: a branch named by a `merge:` commit but with a newer commit of its own is not
   listed. `tests/scripts.sh`
-- [ ] prune: a branch with no `merge:` commit and a real diff is not listed, and `merge: <b>x`
+- [x] prune: a branch with no `merge:` commit and a real diff is not listed, and `merge: <b>x`
   does not match `<b>`. `tests/scripts.sh`
 
 ## Tasks
@@ -194,7 +194,7 @@ without `jq`; `--diff` compares `.hooks`); `tests/managed.sh`; `tests/apply.sh`;
 **Verify:** `make check`
 
 ### T6: prune counts `merge:` commits
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T1
 **Files:** `common/scripts/prune.sh` (second test, reason in the listing, header comment);
 `tests/scripts.sh`; README § Choices (`prune.sh` bullet).
@@ -426,3 +426,37 @@ fail and was reverted: a whole-file overwrite in place of the merge, and a byte 
 settings file in `managed.sh`. Proposed commit (harness-template):
 `feat [harness]: sync manages only the hooks key of settings.json (plan 34 T5)`, then
 fast-forward onto `main` as T1–T4. Next is T6 (prune counts `merge:` commits).
+
+**T6 done 2026-11-19**, landed on harness-template `main` as `5b35083` (not pushed).
+`prune.sh` tries the no-diff test first, then the merge-commit test: `main` has a commit
+whose whole subject is `merge: <b>` and the branch tip's committer time is not later than that
+commit's. One `git log refs/heads/main` pass collects the `merge:` commits. An `awk` compares the
+subject as a fixed string (the branch name comes in through `ENVIRON`), so `merge: <b>x` doesn't
+match `<b>`. With several `merge: <b>` commits, the newest decides. The listing prints
+`landed  <b>  (no diff)` or `landed  <b>  (merge <short-sha>)`, and `--confirm` is unchanged.
+One choice beyond the decision: branches are read with `%(refname:lstrip=2)`, not
+`refname:short`, so a tag of the same name can't turn the branch into `heads/<b>`. The header
+comment and README § Choices describe both tests.
+
+`tests/scripts.sh` has 121 checks. New `docs/` squashes leave VERSION at 0.2.4, and the test
+asserts that:
+- a squash that `main` edited later is listed with its merge sha and deleted by `--confirm`;
+- a branch squashed twice is listed with the newest merge sha;
+- a reused branch with a newer commit (`GIT_COMMITTER_DATE` +100 s) is neither listed nor deleted;
+- `docs/long` is not matched by `merge: docs/longx`;
+- `feature/x` shows `(no diff)`;
+- `fix/w` and `fix/conf` stay unlisted.
+
+Verified: `make check` passes. Each of these mutations makes it fail and was reverted: dropping
+the second test, dropping the time condition, a prefix match, oldest-wins, and changing the
+`(no diff)` text. A list-only run by hand, nothing deleted:
+
+| Repo | Local branches | Old script | New script | `(merge …)` |
+|---|---|---|---|---|
+| verus | 26 | 0 | 25 | 25 |
+| forum | 65 | 0 | 64 | 64 |
+
+The only branch left unlisted in each repo is `main`. verus matches the expected count of about
+26. The old script finds 0 now, not the 4 noted in Gaps item 7, so those 4 were probably pruned
+since. harness-template also still has the landed T3–T5 topic branches (`feature/skip-deploy-name`,
+`feature/go-svelte-pg`, `feature/sync-settings-hooks`). Next is T7 (README pass and template gaps).
