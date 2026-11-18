@@ -59,7 +59,7 @@ Checklist (tick when merged):
 | verus | `.docs` | [x] | [ ] |
 | pugio | `.docs` | [x] | [ ] |
 | lthy (`lucky_to_have_you`) | `.agent` → `.docs` | [x] | [x] (plan 33 T16, `784dbd8`) |
-| ortho (`ortho-store`) | `.agent` | [x] | [ ] |
+| ortho (`ortho-store`) | `.agent` → `.docs` | [x] | [x] (plan 33 T17, `7c00247`) |
 | dd (`project_deltadocs`) | `.agent` | [x] | [ ] |
 | fsed-odin-docs (`~/work`) | `.agent` | [x] | [ ] |
 
