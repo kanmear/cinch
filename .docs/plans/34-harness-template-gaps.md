@@ -130,10 +130,10 @@ stay in the `check` recipe.
   includes `dev-db` and `make -n down` includes `stop-db`. The Makefile has no `create-owner`,
   `DB_PATH` or `ENV_FILE`. `tests/apply.sh` and the existing contract loop
 - [x] base stack: a `base.txt` naming a missing stack makes `apply` fail. `tests/apply.sh`
-- [ ] settings: `sync` into a repo whose settings has an `env` key and an edited `hooks` key
+- [x] settings: `sync` into a repo whose settings has an `env` key and an edited `hooks` key
   restores `hooks` and keeps `env`. A second `sync` changes nothing. A repo without the file gets
   the template's. Invalid JSON fails and leaves the file untouched. `tests/apply.sh`
-- [ ] settings: `tests/managed.sh` passes when two stacks' settings differ only outside `hooks`
+- [x] settings: `tests/managed.sh` passes when two stacks' settings differ only outside `hooks`
   and fails when `hooks` differs. `tests/managed.sh`
 - [ ] prune: a branch squashed onto `main` as `merge: <b>`, whose file `main` edited later, is
   listed with `(merge <sha>)`. `tests/scripts.sh`
@@ -187,7 +187,7 @@ stack list; `tests/apply.sh`; README § Stacks and the apply usage line.
 **Verify:** `make check`
 
 ### T5: `sync` manages only `hooks` in settings
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T3 (`apply.sh` sync and diff code)
 **Files:** `apply.sh` (`--sync` special-cases `.claude/settings.json` through `jq`; refuse
 without `jq`; `--diff` compares `.hooks`); `tests/managed.sh`; `tests/apply.sh`; README
@@ -352,8 +352,7 @@ the skip list through apply, a second apply, diff, `--force` and sync. go-svelte
 `feat [harness]: repo skip list in .harness and DEPLOY_NAME in go stacks (plan 34 T3)`, then
 fast-forward onto `main` as T1–T2. Next is T4 (`go-svelte-pg`).
 
-**T4 built 2026-11-18** on harness-template branch `feature/go-svelte-pg`, not committed yet
-(T3 landed on `main` as `483d1cc`). `apply.sh` reads `stacks/<stack>/base.txt`: one stack name.
+**T4 done 2026-11-18**, landed on harness-template `main` as `3d5c58e` (not pushed). `apply.sh` reads `stacks/<stack>/base.txt`: one stack name.
 Render order is the stack, then its base, then common, and the first writer of a path wins.
 `vars.txt`, `skip.txt` and `managed.txt` fall back to the base's as whole files, not merged.
 `files.txt` is read against the stack's own directory, and `base.txt` is never copied.
@@ -409,3 +408,32 @@ Neither `make dev` nor `make down` has been run against a real docker daemon. Th
 T13 and T14. Proposed commit (harness-template):
 `feat [harness]: go-svelte-pg stack and stack inheritance through base.txt (plan 34 T4)`, then
 fast-forward onto `main` as T1–T3. Next is T5 (`sync` manages only `hooks` in settings).
+
+**T5 built 2026-11-18** on harness-template branch `feature/sync-settings-hooks`, not committed
+yet. `apply.sh --sync` replaces only `.hooks` of `.claude/settings.json`
+(`jq --slurpfile t <template> '.hooks = $t[0].hooks'`) and keeps every other key. A repo without
+the file gets the template's copy. Before writing any managed file, sync exits 2 when `jq` is
+missing or when the repo's file is not exactly one JSON object, so a bad file leaves no
+half-synced repo. `tests/managed.sh` compares `jq -cS .hooks` for the settings file and bytes for
+every other path. `make check` fails first thing without `jq`. README § Managed and seeded states
+the invariant and the `jq` requirement, and § make check gains a ninth guard ("Settings").
+Choices beyond the decision:
+- "Unchanged" is a semantic compare (`jq -S .` on both sides), so a hand-formatted or
+  key-reordered file with equal content is neither rewritten nor reported.
+- `jq` is needed only when the settings file is synced. A repo whose `skip=` lists it syncs
+  without `jq`.
+- Empty, `[]`, `null` and two concatenated values fail too, not only syntax errors. The
+  template's own settings must hold a `hooks` object.
+- `--diff` is unchanged. It skips managed paths, so it never reads the settings file and needs
+  no `jq`. Decision 6's "dependency of `diff`" and T5's "`--diff` compares `.hooks`" don't hold.
+  T7 can correct the wording.
+
+`tests/apply.sh` has 46 checks, up from 39: a sync that restores edited `hooks` and keeps `env`
+and `permissions`; a second sync, and a sync of a compact reordered copy, that change nothing;
+a repo without the file; five invalid files that fail with exit 2 and leave every managed file
+untouched; a PATH without `jq`; and `tests/managed.sh` passing when stacks differ only outside
+`hooks` and failing when `hooks` differs. Verified: `make check` passes. Each of these makes it
+fail and was reverted: a whole-file overwrite in place of the merge, and a byte compare of the
+settings file in `managed.sh`. Proposed commit (harness-template):
+`feat [harness]: sync manages only the hooks key of settings.json (plan 34 T5)`, then
+fast-forward onto `main` as T1–T4. Next is T6 (prune counts `merge:` commits).
