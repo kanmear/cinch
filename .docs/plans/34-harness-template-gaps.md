@@ -118,12 +118,12 @@ stay in the `check` recipe.
 - [x] version var: `make -n build` contains `-X main.version=` by default and
   `-X example/version.Version=` with `VERSION_VAR=example/version.Version`, in go, go-cli and
   go-svelte. `tests/apply.sh`
-- [ ] deploy name: `make -n deploy-setup` in go and go-svelte uses `NAME` by default and
+- [x] deploy name: `make -n deploy-setup` in go and go-svelte uses `NAME` by default and
   `DEPLOY_NAME` when set. `tests/apply.sh`
-- [ ] skip list: with `skip=` in the target's `.harness`, `apply` seeds none of those paths, a
+- [x] skip list: with `skip=` in the target's `.harness`, `apply` seeds none of those paths, a
   second `apply` still doesn't, and `diff` prints nothing, neither for the skipped paths nor for
   the `skip=` line. `tests/apply.sh`
-- [ ] skip list: a `skip=` path the stack doesn't seed is harmless (no error, no output).
+- [x] skip list: a `skip=` path the stack doesn't seed is harmless (no error, no output).
   `tests/apply.sh`
 - [ ] base stack: applying go-svelte-pg seeds go-svelte's frontend files and docs plus
   go-svelte-pg's Makefile. The contract guard and `cinch check` pass on it. `make -n dev`
@@ -167,7 +167,7 @@ check; `VERSION` → 3.
 **Verify:** `make check`
 
 ### T3: repo skip list and `DEPLOY_NAME`
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T2 (`tests/apply.sh`)
 **Files:** `apply.sh` (read `skip=` from the target's `.harness` in seed and diff mode; leave
 the `skip=` line out of the `.harness` diff); `stacks/{go,go-svelte}/Makefile` (`DEPLOY_NAME ?=
@@ -329,3 +329,25 @@ go-cli `.goreleaser.yml` keeps `-X main.version` and its header says to change i
 from `make check`, holds the version-var test (6 checks), with one section per task for T3–T5.
 `VERSION` stays 3. Verified: `make check` passes, and with go-svelte's `-X` reverted to
 `main.version` it fails in `tests/apply.sh`. Next is T3 (skip list and `DEPLOY_NAME`).
+
+**T3 built 2026-11-18** on harness-template branch `feature/skip-deploy-name`, not committed yet.
+`apply.sh` reads a `skip=` line from the target's `.harness`: target paths, space-separated,
+exact, split without globbing. `render_one` drops a listed destination path before staging, so
+`apply` neither seeds, prints nor counts it, and a common file of the same path can't take its
+place. `--sync` treats a listed managed path like a `skip.txt` one (counted as `skipped`).
+`--diff` leaves out the listed paths and the `skip=` line. Two additions beyond the decision:
+`--force` re-appends the repo's `skip=` line to the rewritten `.harness`, so a forced apply
+doesn't lose the list, and `sync` honours `skip=`, not only `apply` and `diff`. `skip=` is read
+from the target, so on a new repo it takes effect from the second `apply` (README says so). go and
+go-svelte have `DEPLOY_NAME ?= $(NAME)`, and every `~/apps/`, `~/git/`, `lab` remote and
+`backups/` path uses it. The container binary, `bin/`, `data/`, `-drill` and the dev session keep
+`NAME`, as in lthy. `tests/apply.sh` has 20 checks, up from 6: deploy-setup and backup-pull with
+and without `DEPLOY_NAME`, a grep that no deploy path in the applied Makefile names `NAME`, and
+the skip list through apply, a second apply, diff, `--force` and sync. go-svelte seeds no
+`.docs/stack-conventions.md`, so the remapped path in the skip test is
+`.docs/backend/conventions.md`. README § Apply, sync, diff, § After applying (new step 5) and
+§ make check (seven guards) say so. Verified: `make check` passes. Each of these makes it fail in
+`tests/apply.sh`: removing the `render_one` skip, reverting go-svelte's `deploy-setup` to
+`$(NAME)`, or dropping the `--force` re-append. Proposed commit (harness-template):
+`feat [harness]: repo skip list in .harness and DEPLOY_NAME in go stacks (plan 34 T3)`, then
+fast-forward onto `main` as T1–T2. Next is T4 (`go-svelte-pg`).
