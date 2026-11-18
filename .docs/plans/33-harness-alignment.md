@@ -524,7 +524,7 @@ commit; the owner lands it with § 5.2.
 **Verify:** § 5.1 step 7; `make test-e2e`
 
 #### T19: budgetron (stack `flutter`)
-**Status:** [ ]
+**Status:** [x] — landed locally 2026-11-18 (`8f748ce merge: chore/harness-v2`); `make release` (v0.15.0) is the owner's
 **Depends on:** T12
 **Files:** per § 5.1.
 - Keep the ObjectBox `setup-test`, `perf` and `coverage`.
@@ -657,82 +657,85 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Doc-versus-code drift in convention docs** (plan 31 § 2, plan 10). Untouched.
 
 ## Handoff
-**Last completed:** T18 (dd, `~/code/project_deltadocs`). A Sonnet builder did the work, and this
+**Last completed:** T19 (budgetron, `~/code/budgetron`). A Sonnet builder did the work, and this
 session verified it on 2026-11-18. At the owner's request it landed locally with § 5.2:
-- `c9e8e50` is the branch commit (142 files, off `dev` at `c9d2a47`). `main` then moved to
-  `dev`, and `50eecb2 merge: chore/harness-v2` was squashed onto it.
-- Every hook passed, the merge test included (with `make dev-db` up). `chore/` doesn't bump, so
-  the version stays 0.18.0.
-- Nothing is pushed or tagged; `dev` is still there.
+- `26866fa` is the branch commit (41 files, off `dev` at `00a15fc`). `main` then moved to
+  `dev`, and `8f748ce merge: chore/harness-v2` was squashed onto it.
+- Every hook passed, the merge-test's 1259 tests included. `chore/` doesn't bump, so the version
+  stays 0.15.0+13.
+- Nothing is pushed or tagged; `dev` is still there. No branch was deleted.
+- The retired `budgetron-recurring-payments` worktree is removed; it had no commits `dev` lacked.
 
-T17 (ortho) is the precedent, and dd differs from it only as listed below.
+T19 is the first `flutter` repo, so T16–T18 are no precedent for its stack.
 
 **What changed:**
-- **Rename and triage.**
-  - `.agent` → `.docs`, `paths.docs: .docs`. The functional hits (`.pi-lens.json`,
-    `.pi/extensions/auditor.ts`, `.claude/agents/auditor.md`, `check-git-setup.sh`) are fixed.
-  - The dirty `TODO.md` rode along and became `.docs/roadmap.md` through `git mv`, because
-    `cinch mv` rejects a source outside the docs root.
-    - Its `## Deferred` keeps six rows: page linking, image uploads, CI, the translation-key
-      script, Go↔TS codegen, and the 140 DB calls without a context. The builder wrote the
-      "why"/"reopen when" wording.
-    - The other plan 31 entries are resolved by this pass. That includes the
-      `check_error_codes.sh` regex, which now admits digits.
-  - `email-invites`, `project-admins` and `tab-editor-live-editing` are archived.
-  - The other three plans' statuses are normalised, `open` → `planned`.
-  - The new `manual-checks.md` owes two click-throughs: invite → welcome, and project admins.
-  - `manifest.yml` is folded into `architecture.md` and `conventions.md`, then deleted.
-  - `AGENTS.md` takes the tiered shape, and the appended cinch block goes. `CLAUDE.md` is
-    `@AGENTS.md`.
+- **Triage (plan 32a § budgetron).**
+  - `00-overview.md` became `.docs/roadmap.md` through `cinch mv`. git's rename detection pairs
+    it with `manual-checks.md` instead, because the release checklist moved there.
+  - Plans 01–16 are archived as `complete — <note>`, and `TEMPLATE-plan.md` is deleted.
+  - `manual-checks.md` is new and holds every owed device check, one section per area.
+  - The roadmap's `## Deferred` has six rows, each with a reopen condition:
+    - plan 5 T11 (the legacy columns);
+    - plan 7's budget-summary read path;
+    - plan 16's overflow at 320 px wide;
+    - plan 9 T7 (CI);
+    - plan 10 T7 (the old database);
+    - the signed-release check.
+  - README and AGENTS no longer point at `plans/00-overview.md`.
 - **Template.**
-  - `apply` ran with `STACK=go-svelte NAME=deltadocs`, then `sync`. A second `sync` is a no-op.
-  - pre-commit is now `make check` plus the merge-test, replacing the path-scoped
-    frontend/backend/error-codes entries.
-  - `check-squash-merge-msg.sh` and `update-version.js` are deleted.
-- **Version.** `VERSION` is 0.18.0; it was backend 0.15.1 and frontend 0.17.1.
-  - The new `backend/version` package is stamped by `-ldflags -X
-    deltadocs_backend/version.Version`. The SPA reads `__APP_VERSION__`. Both Dockerfiles take
-    `ARG APP_VERSION`.
-  - Beyond the plan: `GET /api/health` returns `"version"`, so the stamped package is used.
-- **Ports.** Block 4140: backend 4140, vite 4141 (`strictPort`), Postgres 4142, e2e 4143/4144.
-  - Playwright reads the e2e ports from `E2E_*` variables, passed by the Makefile.
-  - The builder edited the owner's gitignored `backend/.env` and `frontend/.env`. Any other
-    checkout needs the same edit.
-  - The deploy compose no longer publishes Postgres.
-- **Makefile.** ortho's go-svelte render with the Postgres block and the TERM-first `down`.
-  - `check` is read-only (`gofmt -l`), and `check-error-codes` is inside it.
-  - Both service Makefiles and `backend/docker-compose.yml` are deleted. The root
-    `docker-compose.dev-db.yml` keeps `name: backend`, so the dev volume survives.
-  - The extras are kept: seeds, `admin-reset-password`, `import-docs`, `sync-colors`,
-    `test-e2e[-deep]`, `install-*`, `clean-*`. `introspect-types` and `introspect-routes` are
-    added. `ship` is `release` plus a no-deploy note.
-- **No CI.** dd has no `.github/`, and CI is a Deferred row.
-- **Dropped seeds:** `frontend/bunfig.toml`, `frontend/tests/support/*`, the root `.dockerignore`.
-  `make diff` shows 21 drifted files, ortho's set.
+  - `apply` ran with `STACK=flutter NAME=budgetron`, then `sync`. A second `sync` is a no-op.
+  - The seeded `stack-conventions.md` and `domain/overview.md` are deleted. budgetron's roadmap
+    already recorded both as not seeded: its code style lives in `conventions.md`, and no product
+    philosophy is written.
+  - `scripts/update-version.sh` is deleted.
+- **`cinch.yml`** takes ortho's v2 shape:
+  - `require.cinch >=0.17.0`, `plans.lifecycle: enforce`, `commit.squash.main`,
+    `merge: reject` and `protect: [main]`;
+  - pre-commit runs `make check` and the merge-test;
+  - the bump arguments are `'lib/*' 'android/*' 'assets/*' pubspec.yaml`.
+- **Version.** `pubspec.yaml` is `0.15.0+13`; it was `0.14.0+12`. There's no `VERSION` file (D2).
+  The old tags are `v0.14.0+12`-style, and the next tag is `v0.15.0`.
+- **Makefile.** It is the flutter render with the D3 verbs. `dev` is `flutter run`, `run` is an
+  alias, and `deploy` says "use make ship".
+  - Kept: `setup-test` (`test` now depends on it), `perf`, `coverage`, `gen`, `l10n`, `analyze`,
+    `strings`, `build-release` and `install-release`.
+  - No ports (D4): there is no backend.
+- **Docs.** `AGENTS.md` takes the tiered shape, and `CLAUDE.md` is `@AGENTS.md`.
+  `git-conventions.md` is the trunk-flow doc plus a flutter Version section.
+  `conventions.md` § Git shrinks to the grammar plus GIT-001.
+- `.docs/workflows/docs-philosophy.md` is re-rendered. `generated` was already red on `dev` under
+  cinch 0.18.0.
 
 **Verified here:**
-- `cinch check` is green (links, rules with 93 rules, index, plans, generated, core, hooks).
+- `cinch check` is green: links, 56 rules, index, plans (16), generated, core and hooks.
 - `make check` is green.
-- `make test` is green with `make dev-db` up: 789 vitest tests, plus the Go packages `database`,
-  `handlers`, `middleware` and `models`.
-- `make version` prints 0.18.0.
-- The `.agent` grep is clean outside `plans/archive`.
+- `make test` passes all 1259 tests.
+- `make version` prints 0.15.0.
+- `make help` lists the D3 verbs.
+- A re-run of `sync` changes nothing.
+- `make -n merge` guards the branch.
 
 **The builder also checked:**
-- `make dev`/`make down` both without a TTY and in a detached tmux session; nothing was left on
-  4140–4144.
-- `make build` stamps 0.18.0 into the binary and the bundle.
-- `make -n release|merge|ship` plan sensibly.
+- `make build-release` signs with the release key (`apksigner`: `CN=Roman Makarov`), not the
+  debug key. The signing half of `manual-checks.md` § Before building is now done on the host.
+  The keystore backup and the device launch are still owed.
+- `make -n release|ship|dev|down` all plan sensibly, and `make down` exits 0.
+- `inject-agents.sh` shows no live plans.
+- `main` is an ancestor of `dev`.
+- `make diff`: 12 seeded files drift, all intended.
 
-**Known failure: `make test-e2e`** has 5 passed and 2 failed: `permissions/stranding` and
-`signatures/attestation`. Both time out on a disabled "Add member" button after the typeahead
-pick. They fail on `dev` too (the builder's throwaway `dev` worktree run), so they predate this
-change, possibly from the email-invites merge touching MembersTab. Not investigated.
-
-**Not verified:** `make dev` from a real TTY outside tmux; `make test-e2e-deep`; the Docker
-images and the compose stack; a real release or ship.
+**Not verified:** `make dev` (no device), a real `make merge`/`release`/`ship`, and the
+post-commit bump against budgetron's paths. The bump is the managed script with arguments from
+`cinch.yml`, so the first `feature/`/`fix/` squash after landing exercises it.
 
 **Owner still to do:**
+- **budgetron (T19):** finish § 5.2 on `main`.
+  - `make release` tags v0.15.0 and pushes `main`.
+  - `gh repo edit --default-branch main` if needed. GitHub's HEAD is already `main`, but
+    `origin/dev` exists, so delete `dev` locally and on `origin`.
+  - `make prune`. `feat/sms-import` has 9 commits `dev` lacks (plan 12); check that its squash landed
+    under another name before deleting it. `backup/pre-coauthor-strip`, `claude/*` and the
+    remote `native_api_w_pigeon` are by hand.
 0. **dd (T18):** finish § 5.2 on `main`. Start `make dev-db` before any `make merge` (the
    merge-test runs `make test`).
    - `make release` tags v0.18.0 and pushes `main`, then `gh repo edit --default-branch main` if
@@ -766,10 +769,12 @@ images and the compose stack; a real release or ship.
 5. **cinch:** roadmap § "Open from plan 31" still says the Forum CLI waits on Forum F0/F1. Both are
    done, and the CLI remainder is in forum's § Deferred, so that item can go.
 
-**Resume at:** T19 (budgetron) or T20 (pugio); both depend only on T12. T21 and T22 only need
-Part B. Neither T19 nor T20 is go-svelte, so T16–T18 are no precedent for their stacks.
+**Resume at:** T20 (pugio), which depends only on T12. First merge or park `ui/lock-cover-look`;
+that is the owner's call. T21 and T22 only need Part B.
 
 **Notes:**
+- **Template gap, from T19:** the flutter stack always seeds `stack-conventions.md`, which
+  duplicates a repo that keeps its code style in `conventions.md`.
 - **Template defect, from T15:** the go stack's `Makefile` build and its `conventions.md` stamp
   `-X main.version`, but verus and forum both use a `version` package. Fix it upstream, or give
   the stack a variable for the package path.
