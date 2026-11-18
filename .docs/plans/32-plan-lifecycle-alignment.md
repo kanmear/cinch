@@ -62,7 +62,7 @@ Checklist (tick when merged):
 | lthy (`lucky_to_have_you`) | `.agent` → `.docs` | [x] | [x] (plan 33 T16, `784dbd8`) |
 | ortho (`ortho-store`) | `.agent` → `.docs` | [x] | [x] (plan 33 T17, `7c00247`) |
 | dd (`project_deltadocs`) | `.agent` | [x] | [ ] |
-| fsed-odin-docs (`~/work`) | `.agent` | [x] | [ ] |
+| fsed-odin-docs (`~/work`) | `.agent` | [x] | [x] (plan 33 T21, uncommitted on `chore/harness-v2`) |
 
 Some repos are left out:
 - budgetron-recurring-payments and limen-bench are retired (Q5).
