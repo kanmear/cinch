@@ -1,6 +1,6 @@
 # 34. Harness-template gaps from the rollout
 
-**Status:** planned
+**Status:** in-progress
 
 The work happens in `~/code/harness-template` (`origin` is `kanmear/harness_template`, private),
 and its rules are in that repo's `README.md`. This plan lives here, like
@@ -146,7 +146,7 @@ T1–T7 are in `~/code/harness-template`, each on its own topic branch, landed w
 T8–T16 are one repo each.
 
 ### T1: `down` stops the dev processes
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** —
 **Files:** `stacks/*/Makefile` (`down`: C-c to every pane, wait up to 5 s, `kill-session`;
 android keeps its `force-stop`); new `tests/down.sh`, called from `make check`; README § make
@@ -288,5 +288,23 @@ including `feat/sms-import` (check its squash).
 
 ## Handoff
 
-Planned 2026-11-18: the seven gaps are decided (§ Decisions) and split into T1–T16. Next is T1
-in `~/code/harness-template`. Releases and pushes in the rollout repos are the owner's.
+Planned 2026-11-18: the seven gaps are decided (§ Decisions) and split into T1–T16. Releases and
+pushes in the rollout repos are the owner's.
+
+**T1 done 2026-11-18**, landed on harness-template `main` as `deda20d` (not pushed). Every
+stack's `down` sends C-c to each pane, waits up to 5 s for the session to end by itself, then
+kills it. android keeps its `force-stop`. `VERSION` is 3. New `tests/down.sh`, called from
+`make check`, runs on a private tmux server (`TMUX_TMPDIR`). The no-session case is silent in
+every stack. With a live two-pane session running SIGHUP-proof processes, `down` leaves neither
+the session nor the processes. With the old Makefiles the test fails.
+
+One addition beyond the decision: `down` names its session with tmux's exact `=` form. Without
+it, `has-session demo-dev-` (PORT_BASE unset) matches `demo-dev-5000` as a prefix. The new wait
+loop would then wait out the 5 s and kill the wrong session, and the old `down` had the same bug
+on its single call. `tests/down.sh` keeps such a sibling session and checks that it survives. The
+old `down` fails this case too. `dev` still uses the prefix form. Verified: `make check` passes
+with tmux present (20 checks in `tests/down.sh`) and with tmux absent from PATH (5 checks, skip
+note). The 5 s fallback was checked by hand with a pane that ignores SIGINT too (5.2 s, session
+killed, sibling kept). harness-template has no `make merge` target, so T1 was committed on its
+topic branch and fast-forwarded onto `main`, as plan 33's template commits were. T2–T7 land the
+same way. Next is T2 (`VERSION_VAR`).
