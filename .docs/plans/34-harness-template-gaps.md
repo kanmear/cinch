@@ -123,11 +123,11 @@ stay in the `check` recipe.
   the `skip=` line. `tests/apply.sh`
 - [x] skip list: a `skip=` path the stack doesn't seed is harmless (no error, no output).
   `tests/apply.sh`
-- [ ] base stack: applying go-svelte-pg seeds go-svelte's frontend files and docs plus
+- [x] base stack: applying go-svelte-pg seeds go-svelte's frontend files and docs plus
   go-svelte-pg's Makefile. The contract guard and `cinch check` pass on it. `make -n dev`
   includes `dev-db` and `make -n down` includes `stop-db`. The Makefile has no `create-owner`,
   `DB_PATH` or `ENV_FILE`. `tests/apply.sh` and the existing contract loop
-- [ ] base stack: a `base.txt` naming a missing stack makes `apply` fail. `tests/apply.sh`
+- [x] base stack: a `base.txt` naming a missing stack makes `apply` fail. `tests/apply.sh`
 - [ ] settings: `sync` into a repo whose settings has an `env` key and an edited `hooks` key
   restores `hooks` and keeps `env`. A second `sync` changes nothing. A repo without the file gets
   the template's. Invalid JSON fails and leaves the file untouched. `tests/apply.sh`
@@ -175,7 +175,7 @@ $(NAME)`, used in every deploy path); `tests/apply.sh`; README § Apply, sync, d
 **Verify:** `make check`
 
 ### T4: `go-svelte-pg` and stack inheritance
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T3 (the go-svelte Makefile it starts from has `DEPLOY_NAME`)
 **Files:** `apply.sh` (`base.txt`: copy the base, then overlay; metadata fallback; fail on a
 missing base); new `stacks/go-svelte-pg/` (`base.txt`, `Makefile`, `files.txt`), with the
@@ -340,3 +340,61 @@ the skip list through apply, a second apply, diff, `--force` and sync. go-svelte
 `$(NAME)`, or dropping the `--force` re-append. Proposed commit (harness-template):
 `feat [harness]: repo skip list in .harness and DEPLOY_NAME in go stacks (plan 34 T3)`, then
 fast-forward onto `main` as T1–T2. Next is T4 (`go-svelte-pg`).
+
+**T4 built 2026-11-18** on harness-template branch `feature/go-svelte-pg`, not committed yet
+(T3 landed on `main` as `483d1cc`). `apply.sh` reads `stacks/<stack>/base.txt`: one stack name.
+Render order is the stack, then its base, then common, and the first writer of a path wins.
+`vars.txt`, `skip.txt` and `managed.txt` fall back to the base's as whole files, not merged.
+`files.txt` is read against the stack's own directory, and `base.txt` is never copied.
+apply, sync and diff all exit 2 before writing anything when `base.txt` is empty, names more than
+one stack, names a missing stack or a bad name, names the stack itself, or names a base that has
+a `base.txt` of its own (one level only). `tests/managed.sh` uses the same fallback.
+
+The new `stacks/go-svelte-pg/` holds `base.txt` (`go-svelte`), `files.txt`, a `Makefile` and a
+`docker-compose.dev-db.yml` with `{{NAME}}` placeholders. The compose file goes beyond the
+plan's file list, because `dev-db` needs it. Its volume follows `<name>`, not ortho's or dd's
+pinned project names. Choices made while building:
+- `DB_PORT` is `PORT_BASE + 2`, as in go-svelte and `ports.md`.
+- `dev: require-port-base dev-db`.
+- `down: stop-dev stop-db`. go-svelte's T1 `down` body became `stop-dev`, so the session stops
+  before the database (ortho stops the database first).
+- `stop-db` keeps ortho's paused-container logic. Without docker, `make down` fails at `stop-db`,
+  as it does in ortho.
+- One shared stub recipe prints "not designed yet" and exits 2 for `deploy`, `logs`,
+  `deploy-setup`, `rollback`, `restore-drill`, `prod-backup` and `backup-pull`.
+- Dropped targets: `backup`, `create-owner`, `reset-password`, `prod-create-owner`,
+  `prod-reset-password`, `prod-logs` and `require-deploy`. Dropped parameters: every deploy
+  parameter, including `DEPLOY_NAME`, plus `DB_PATH` and `ENV_FILE`.
+- `ship` is release only, as in ortho. go-svelte's ship runs the SQLite restore drill and then
+  deploys.
+- `install` copies the `.env` examples.
+- `test-backend` creates `<name>_test`, runs with `-p 1`, and skips the create when
+  `TEST_DB_PREPARED=1`.
+- goose is v3.28.0.
+- `dev-backend` stays `go run . serve`, not Air.
+
+No go-svelte doc contradicts Postgres, so none changed. `backend-conventions.md` still leans on
+SQLite with a Postgres note, and go-svelte's Makefile still ends with its commented-out
+"Postgres (off by default)" block. T7 should delete that block or point it at go-svelte-pg.
+
+Tests:
+- `tests/apply.sh` has 39 checks. They cover the files inherited from the base, the stack's own
+  Makefile and compose file, the vars fallback, the absent `create-owner`, `DB_PATH` and
+  `ENV_FILE`, `dev` and `down` under `make -n`, the deploy and logs stubs exiting 2, and the six
+  broken `base.txt` cases plus a control. The broken cases run in a scratch copy of the template.
+- `tests/down.sh` runs every `down` with a `DB_COMPOSE` shim, so it never needs docker. It checks
+  that a stack with `stop-db` calls the shim with `down` and that one without it doesn't.
+
+The README covers § Stacks, the usage lines, § Layout and § make check. The new "Base stack"
+guard makes eight guards in § make check. The template Makefile's usage lists `go-svelte-pg`.
+
+Verified: `make check` passes. Each of these makes it fail and was reverted:
+- dropping the base render pass
+- letting a missing base pass
+- dropping `dev-db` from `dev`
+- dropping `stop-db` from `down`
+
+Neither `make dev` nor `make down` has been run against a real docker daemon. That happens in
+T13 and T14. Proposed commit (harness-template):
+`feat [harness]: go-svelte-pg stack and stack inheritance through base.txt (plan 34 T4)`, then
+fast-forward onto `main` as T1–T3. Next is T5 (`sync` manages only `hooks` in settings).
