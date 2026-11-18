@@ -555,7 +555,7 @@ commit; the owner lands it with § 5.2.
 **Verify:** § 5.1 step 7; `make build-release`
 
 #### T20: pugio (stack `android`)
-**Status:** [ ]
+**Status:** [x] — landed locally 2026-11-18 (`2008825 merge: chore/harness-v2`); `make release` (v0.14.0, the first push) is the owner's
 **Depends on:** T12
 **Files:** per § 5.1.
 - Merge or park `ui/lock-cover-look` first.
@@ -680,79 +680,84 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 - **Plan 19's `cinch-log.sh`:** removing it is tied to the field study's close, not to this plan.
 
 ## Handoff
-**Last completed:** T19 (budgetron, `~/code/budgetron`). A Sonnet builder did the work, and this
-session verified it on 2026-11-18. At the owner's request it landed locally with § 5.2:
-- `26866fa` is the branch commit (41 files, off `dev` at `00a15fc`). `main` then moved to
-  `dev`, and `8f748ce merge: chore/harness-v2` was squashed onto it.
-- Every hook passed, the merge-test's 1259 tests included. `chore/` doesn't bump, so the version
-  stays 0.15.0+13.
-- Nothing is pushed or tagged; `dev` is still there. No branch was deleted.
-- The retired `budgetron-recurring-payments` worktree is removed; it had no commits `dev` lacked.
-
-T19 is the first `flutter` repo, so T16–T18 are no precedent for its stack.
+**Last completed:** T20 (pugio, `~/code/pugio`). A Sonnet builder did the work, and this session
+verified it on 2026-11-18. At the owner's request it landed locally with § 5.2:
+- Before the branch, two squashes landed on `dev`:
+  - `2445794 merge: chore/cinch-render-0.18` re-rendered `docs-philosophy.md`. `generated` was
+    red on `dev` under cinch 0.18.0, as in budgetron, and it blocked the next squash.
+  - `151b546 merge: ui/lock-cover-look` was merged at the owner's call. It completes P10 T4 and
+    bumped the version to 0.13.1.
+- `c665415` is the branch commit (54 files, off `dev` at `151b546`). `main` then moved to `dev`,
+  and `2008825 merge: chore/harness-v2` was squashed onto it. Every hook passed, the merge-test
+  included. `chore/` doesn't bump, so the version stays 0.14.0.
+- Nothing is pushed or tagged. `dev` is still there.
+- Deleted branches: both `worktree-agent-*` (ancestors of `dev`), `ui/lock-cover-look` and
+  `chore/cinch-render-0.18`.
 
 **What changed:**
-- **Triage (plan 32a § budgetron).**
-  - `00-overview.md` became `.docs/roadmap.md` through `cinch mv`. git's rename detection pairs
-    it with `manual-checks.md` instead, because the release checklist moved there.
-  - Plans 01–16 are archived as `complete — <note>`, and `TEMPLATE-plan.md` is deleted.
-  - `manual-checks.md` is new and holds every owed device check, one section per area.
-  - The roadmap's `## Deferred` has six rows, each with a reopen condition:
-    - plan 5 T11 (the legacy columns);
-    - plan 7's budget-summary read path;
-    - plan 16's overflow at 320 px wide;
-    - plan 9 T7 (CI);
-    - plan 10 T7 (the old database);
-    - the signed-release check.
-  - README and AGENTS no longer point at `plans/00-overview.md`.
+- **Triage (plan 32a § pugio).**
+  - `v1-roadmap.md` became `.docs/roadmap.md` through `cinch mv`. It records harness v2 as Context
+    decision 11 and the remote flip in decision 9, and has two `## Deferred` rows from the plan 9
+    handoff.
+  - `manual-checks.md` is new. It has one section per area, linking `testing.md`; P9 has no
+    `testing.md` section, so its steps are written out. The two `fix/` plans' checks are in
+    § Review fixes, named per fix.
+  - p0–p7, p9, p10 and `review-decisions.md` are archived as `complete — <note>`.
+  - Deleted: `TEMPLATE-plan.md`, `fix/review-findings.md` and `fix/second-review.md`.
+  - `p8-daily.md` stays `in-progress`, and the session start lists only it.
 - **Template.**
-  - `apply` ran with `STACK=flutter NAME=budgetron`, then `sync`. A second `sync` is a no-op.
-  - The seeded `stack-conventions.md` and `domain/overview.md` are deleted. budgetron's roadmap
-    already recorded both as not seeded: its code style lives in `conventions.md`, and no product
-    philosophy is written.
-  - `scripts/update-version.sh` is deleted. `cinch-log.sh` and both `field-log` entries stay,
-    because plan 19 is open.
-- **`cinch.yml`** takes ortho's v2 shape:
-  - `require.cinch >=0.17.0`, `plans.lifecycle: enforce`, `commit.squash.main`,
-    `merge: reject` and `protect: [main]`;
-  - pre-commit runs `make check` and the merge-test;
-  - the bump arguments are `'lib/*' 'android/*' 'assets/*' pubspec.yaml`.
-- **Version.** `pubspec.yaml` is `0.15.0+13`; it was `0.14.0+12`. There's no `VERSION` file (D2).
-  The old tags are `v0.14.0+12`-style, and the next tag is `v0.15.0`.
-- **Makefile.** It is the flutter render with the D3 verbs. `dev` is `flutter run`, `run` is an
-  alias, and `deploy` says "use make ship".
-  - Kept: `setup-test` (`test` now depends on it), `perf`, `coverage`, `gen`, `l10n`, `analyze`,
-    `strings`, `build-release` and `install-release`.
-  - No ports (D4): there is no backend.
-- **Docs.** `AGENTS.md` takes the tiered shape, and `CLAUDE.md` is `@AGENTS.md`.
-  `git-conventions.md` is the trunk-flow doc plus a flutter Version section.
-  `conventions.md` § Git shrinks to the grammar plus GIT-001.
-- `.docs/workflows/docs-philosophy.md` is re-rendered. `generated` was already red on `dev` under
-  cinch 0.18.0.
+  - `apply` ran with `STACK=android NAME=pugio`, then `sync`. A second `sync` is a no-op.
+  - pugio's own `stack-conventions.md`, `domain/overview.md`, `architecture.md` and
+    `testing.md` stay. Their `make diff` entries are intended drift.
+  - `scripts/update-version.sh` is deleted. pugio never had `cinch-log.sh`.
+- **`cinch.yml`** has the v2 shape: `require.cinch >=0.17.0`, `plans.lifecycle: enforce`,
+  `commit.squash.main`, `merge: reject`, `protect: [main]`, pre-commit `make check` (scoped to the
+  android paths) and the merge-test. The bump arguments are `'app/*' 'gradle/*' build.gradle.kts
+  settings.gradle.kts gradle.properties`, which is wider than the template default and matches
+  the pre-commit `when` list.
+- **Version.** `version.properties` is `0.14.0`; it was 0.13.1. The `hotfix` key is gone, and
+  `app/build.gradle.kts` lost the hotfix letters. `versionCode` keeps the `patch*100` factor, so
+  140000 installs over 130100.
+- **Makefile.** It is the android render with the D3 verbs. `dev` builds, installs and starts the
+  app, `run` is an alias, and `deploy` says "use make ship".
+  - Kept: `startup`, `push-config`, `test-device`, `build-release`, `install-release`, `logs`
+    and `lint`. `startup`, `test-device` and `install-release` use `WITH_DEVICE`.
+  - **Deviation:** `down` only kills the tmux session. It doesn't `am force-stop` like the
+    template, because force-stopping the launcher disables its accessibility service (gestures
+    and the lock cover). The template's android `down` may want the same fix.
+  - `make test` now also compiles the androidTest sources.
+- **Docs.** `AGENTS.md` takes the tiered shape, without the stale "once P2" line, and `CLAUDE.md`
+  is `@AGENTS.md`. `git-conventions.md` is the trunk-flow doc plus an android Version section.
+  `conventions.md` § Git is the grammar plus GIT-001.
+- **Remotes (D8):** `origin` is GitHub and `lab` is `lab:git/pugio.git`.
 
 **Verified here:**
-- `cinch check` is green: links, 56 rules, index, plans (16), generated, core and hooks.
+- `cinch check` is green: links, 62 rules, index, plans (12), generated, core and hooks.
 - `make check` is green.
-- `make test` passes all 1259 tests.
-- `make version` prints 0.15.0.
+- `make test` passes all 503 tests.
+- `make version` prints 0.14.0.
 - `make help` lists the D3 verbs.
-- A re-run of `sync` changes nothing.
-- `make -n merge` guards the branch.
+- The session start shows only `p8-daily.md`.
+- The landing commit's hooks passed.
 
 **The builder also checked:**
-- `make build-release` signs with the release key (`apksigner`: `CN=Roman Makarov`), not the
-  debug key. The signing half of `manual-checks.md` § Before building is now done on the host.
-  The keystore backup and the device launch are still owed.
-- `make -n release|ship|dev|down` all plan sensibly, and `make down` exits 0.
-- `inject-agents.sh` shows no live plans.
-- `main` is an ancestor of `dev`.
-- `make diff`: 12 seeded files drift, all intended.
+- `make build-release` builds 0.14.0 (versionCode 140000). It is signed with the **debug** key,
+  because there's no `keystore.properties` on this host.
+- `make -n dev|merge|release|ship` all plan sensibly, and `make down` exits 0.
+- A second `sync` changes nothing.
+- `version.sh patch` on a scratch copy gives 0.14.1.
 
-**Not verified:** `make dev` (no device), a real `make merge`/`release`/`ship`, and the
-post-commit bump against budgetron's paths. The bump is the managed script with arguments from
-`cinch.yml`, so the first `feature/`/`fix/` squash after landing exercises it.
+**Not verified:** `make dev` and any other device target (no device), a real
+`make merge`/`release`/`ship`, the post-commit bump against pugio's paths, and the push after the
+remote flip.
 
 **Owner still to do:**
+- **pugio (T20):** finish § 5.2 on `main`.
+  - `make release` tags v0.14.0 and pushes `main` to GitHub, the first push of pugio.
+  - `git branch -D dev`. § 1.2 records pugio as never pushed, so no remote `dev` should exist; lab
+    was unreachable from this session, so check with `git ls-remote lab`.
+  - Put `keystore.properties` on the host before `make ship`.
+  - `make prune`. About 30 old topic branches have their squash on `main`.
 - **budgetron (T19):** finish § 5.2 on `main`.
   - `make release` tags v0.15.0 and pushes `main`.
   - `gh repo edit --default-branch main` if needed. GitHub's HEAD is already `main`, but
@@ -795,8 +800,8 @@ post-commit bump against budgetron's paths. The bump is the managed script with 
 6. **Limen (T13):** `scripts/prune.sh --confirm`; check the nine old branches without a `merge:`
    commit before deleting them.
 
-**Resume at:** T20 (pugio), which depends only on T12. First merge or park `ui/lock-cover-look`;
-that is the owner's call. T21 and T22 only need Part B.
+**Resume at:** T21 (fsed-odin-docs, partial, D9) or T22 (light repos); both only need Part B.
+T21 is a team repo: no D1, D2 or D7.
 
 **Notes:**
 - **Template gap, from T19:** the flutter stack always seeds `stack-conventions.md`, which

@@ -57,7 +57,7 @@ Checklist (tick when merged):
 | budgetron | `.docs` | [x] | [x] (plan 33 T19, `8f748ce`) |
 | forum | `.docs` | [x] | [x] (plan 33 T14, `ac20601`) |
 | verus | `.docs` | [x] | [ ] |
-| pugio | `.docs` | [x] | [ ] |
+| pugio | `.docs` | [x] | [x] (plan 33 T20, `2008825`) |
 | limen | `.docs` | [x] | [x] (plan 33 T13, `74f7f43`) |
 | lthy (`lucky_to_have_you`) | `.agent` → `.docs` | [x] | [x] (plan 33 T16, `784dbd8`) |
 | ortho (`ortho-store`) | `.agent` → `.docs` | [x] | [x] (plan 33 T17, `7c00247`) |
