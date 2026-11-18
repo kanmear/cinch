@@ -54,7 +54,7 @@ Checklist (tick when merged):
 |---|---|---|---|
 | cinch | `.docs` | [x] (T5: nothing to render) | [ ] |
 | harness-template | `common/.docs` | n/a | [x] (T6, `eea6f58`) |
-| budgetron | `.docs` | [x] | [ ] |
+| budgetron | `.docs` | [x] | [x] (plan 33 T19, `8f748ce`) |
 | forum | `.docs` | [x] | [x] (plan 33 T14, `ac20601`) |
 | verus | `.docs` | [x] | [ ] |
 | pugio | `.docs` | [x] | [ ] |
