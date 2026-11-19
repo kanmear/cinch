@@ -245,14 +245,14 @@ left from plan 33.
 **Verify:** see Rollout
 
 ### T10: forum (go-svelte)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps; its `VERSION_VAR` takes the template's form. About 59 branches.
 **Rules:** —
 **Verify:** see Rollout
 
 ### T11: verus (go)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps; `VERSION_VAR := verus/version.Version`, replacing the hard-coded `-X`
 (the Dockerfile keeps its own `-X`). About 26 branches.
@@ -562,3 +562,76 @@ session is silent and exits 0. Owner: `make down` on a live helper session in a 
 `chore [harness]: harness-template v3, VERSION_VAR, the new down and HERDR_ENV in settings.json (plan 34 T9)`.
 This handoff sits uncommitted on cinch's `chore/harness-v3`, whose T8 commit isn't landed yet.
 Next is T10 (forum).
+
+**T10 done 2026-11-19** on forum branch `chore/harness-v3`, not committed yet. `make sync`
+updated 9 managed files (the v3 stamp and the new `prune.sh`); `settings.json` was already equal.
+A second sync changed nothing. `.harness` says `template=3`. Ported by hand:
+- Makefile: the template's `down` (C-c to each pane, 5 s wait, `=` session name), its comment
+  and help line. forum's own `VERSION_VAR := forum_backend/version.Version`, which sat below the
+  parameter block, becomes the template's `VERSION_VAR ?=` in the block, with its comment. The
+  Dockerfile's `-X forum_backend/version.Version` already matches.
+- `DEPLOY_NAME ?= $(NAME)` in the parameter block, used in every server path (`~/apps/`,
+  `~/git/`, the `lab` remote) and backup directory name. That includes forum's extra
+  backup flow: `BACKUP_STAMP`, the stamp check, the `grep` patterns in `BACKUP_PULL_CMD`,
+  `DEPLOY_PULL_CMD` and `migrate-check`, `prod-restore` and the `prod-*` verbs. `/app/$(NAME)`,
+  `bin/`, `data/$(NAME).db` and the dev session keep `NAME`. `make -n deploy-setup` names
+  `forum` by default, and with `DEPLOY_NAME=x` names only `x`.
+- forum never had the commented Postgres block, so T7's deletion was a no-op here; only the
+  `DB_PORT` comment changed.
+- `.docs/backend/conventions.md` gains a § Version naming `VERSION_VAR`, as the template's
+  go-svelte backend conventions do. The Makefile carries the v3 stamp; the other seeded files
+  keep v2.
+
+`make diff` shows only forum's deliberate drift: its parameter values and extra targets
+(`install-agent`, `check-error-codes`, tokens, seed and reindex, `prod-restore`, `verify`,
+`migrate-check`), the richer `backup-pull`, no prettier or eslint gate (the template's
+`frontend/.prettierignore`, `.prettierrc` and `eslint.config.js` don't exist here), the realtime
+test's `app-navigation.ts`, `.dockerignore` adding `bin`, `cinch.yml`'s per-area and field-log
+entries, `VERSION`, and its own docs.
+
+Prune listed 64 branches, all `(merge …)`, and `--confirm` deleted them. No local branch is left
+but `main` and `chore/harness-v3`. The old `origin/*` remote branches are outside prune and stay
+for the owner.
+
+Verified: `make check`, `make test` and `cinch check` pass. `make build` stamps the version
+(`-X forum_backend/version.Version=0.41.0`, and the binary holds `0.41.0`). `make down` with no
+session is silent and exits 0. One `make test` run in the build session failed on
+`TestFreedesktopNotifierReplacesByIdAndStopsWaitingOnTheOldProcess` (`tests/client`,
+freedesktop_test.go:159); four reruns and the verify run passed, so it is a timing flake
+unrelated to this change, worth its own fix. Owner: `make down` on a live `make dev` session in a
+real terminal. Proposed commit (forum):
+`chore [harness]: harness-template v3, VERSION_VAR, DEPLOY_NAME and the new down (plan 34 T10)`.
+Next is T11 (verus).
+
+**T11 done 2026-11-19** on verus branch `chore/harness-v3`, not committed yet. `make sync`
+updated 9 managed files (the v3 stamp and the new `prune.sh`); `settings.json` was already equal.
+A second sync changed nothing. `.harness` says `template=3`. Ported by hand:
+- Makefile: the template's `down` (C-c to each pane, 5 s wait, `=` session name), its comment
+  and help line. `VERSION_VAR ?= verus/version.Version` in the parameter block, and both
+  hard-coded `-X verus/version.Version` (`build` and `dev`) use it. The Dockerfile keeps its own
+  `-X verus/version.Version`, which already matches; the parameter comment says to keep them in step.
+- `DEPLOY_NAME ?= $(NAME)` in the parameter block, used in every server path: `~/apps/` in
+  `PROD_BACKUP_CMD`, `deploy-setup`, `LAB_REBUILD_CMD` and `logs`, `~/git/`, and the `lab`
+  remote. verus has no `backup-pull`, so there is no `backups/<name>-*` path. `/app/$(NAME)`,
+  `bin/`, `data/$(NAME).db` and the dev session keep `NAME`. `make -n deploy-setup` names
+  `verus` by default, and with `DEPLOY_NAME=x` names only `x`.
+- `.docs/stack-conventions.md` § Version names `VERSION_VAR` and carries the v3 stamp, like the
+  Makefile; the other seeded files keep v2. `.docs/git-conventions.md` § Version says `make build`
+  and `make dev` stamp through `VERSION_VAR`.
+
+`make diff` shows only verus's deliberate drift: its parameter values (`PORT_BASE` 4120,
+`HOST_PORT` 3300, `COMPOSE_SERVICE` verus), the extras (`prompts-lock` and `prompts check` in
+`check`, `contract-pull`, `tunnel`, `prod-logs`), `START_CURSOR` in `dev`, no `rollback`,
+`restore-drill` or `backup-pull` (so no `MIGRATIONS_DIR` or `VERIFY_SUBCOMMAND`), `ship` as
+release then deploy, and its own docs, `VERSION` and `cinch.yml`.
+
+Prune listed 25 branches, all `(merge …)`, as T6's dry run did, and `--confirm` deleted them. No
+local branch is left but `main` and `chore/harness-v3`.
+
+Verified: `make check`, `make test` (12 packages ok) and `cinch check` pass. `make build` stamps
+the version (`-X verus/version.Version=0.15.0`, and the binary holds `0.15.0`). `make down` with
+no session is silent and exits 0. Owner: `make down` on a live helper session in a real terminal
+(verus's `dev` is foreground). Proposed commit (verus):
+`chore [harness]: harness-template v3, VERSION_VAR, DEPLOY_NAME and the new down (plan 34 T11)`.
+This handoff sits uncommitted on cinch's `docs/plan-34-t10`, whose T10 handoff commit isn't
+landed yet. Next is T12 (lthy).
