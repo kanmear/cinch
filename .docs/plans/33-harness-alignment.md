@@ -659,7 +659,7 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 ## Handoff
 **Last completed:** T5's remote and the landing steps, done in this session on 2026-11-18 at the
 owner's request. That request covers the releases and pushes that AGENTS.md normally leaves to
-the owner. Every task is `[x]`. The template gaps are now [plan 34](34-harness-template-gaps.md).
+the owner. Every task is `[x]`. The template gaps are now [plan 34](archive/34-harness-template-gaps.md).
 
 **What changed:**
 - **harness-template:** `make check` is green. `main` was fast-forwarded to `72967c9` and pushed
