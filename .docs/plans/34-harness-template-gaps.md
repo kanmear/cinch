@@ -249,7 +249,7 @@ terminal are the owner's, listed in the handoff.
 **Verify:** see Rollout
 
 ### T12: lthy (`~/code/lucky_to_have_you`, go-svelte)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps; `skip=` in `.harness` lists `frontend/eslint.config.js`,
 `frontend/bunfig.toml` and `frontend/tests/support/*` (each path); its hand-added `DEPLOY_NAME`
@@ -608,3 +608,48 @@ no session is silent and exits 0. Owner: `make down` on a live helper session in
 `chore [harness]: harness-template v3, VERSION_VAR, DEPLOY_NAME and the new down (plan 34 T11)`.
 This handoff sits uncommitted on cinch's `docs/plan-34-t10`, whose T10 handoff commit isn't
 landed yet. Next is T12 (lthy).
+
+**T12 done 2026-11-19** on lthy branch `chore/harness-v3`, not committed yet. `make sync`
+updated 9 managed files (the v3 stamp and the new `prune.sh`); `settings.json` was already equal.
+A second sync changed nothing. `.harness` says `template=3`. Ported by hand:
+- Makefile: the template's `down` (C-c to each pane, 5 s wait, `=` session name), its comment,
+  help line and the `dev` comment that says "stops". lthy's own `VERSION_VAR := us_backend/version.Version`,
+  which sat below the parameter block, becomes the template's `VERSION_VAR ?=` in the block, with
+  its comment. The Dockerfile's `-X us_backend/version.Version` already matches. The Makefile
+  header says v3.
+- `DEPLOY_NAME ?= lthy`, the hand-added block, now has the template's comment and placement,
+  plus one line saying why lthy sets it; the value stays `lthy` because the binary and `NAME` are
+  `us`. Every deploy path (`~/apps/`, `~/git/`,
+  the `lab` remote, `backups/`) already used it. `/app/$(NAME)`, `bin/`, `data/$(NAME).db` and
+  the dev session keep `NAME`. `make -n deploy-setup` names `lthy` by default, and with
+  `DEPLOY_NAME=x` names only `x` (no `lthy`); `make -n backup-pull` names `backups/lthy-*` and
+  `backups/x-*`.
+- lthy never had the commented Postgres block, so T7's deletion was a no-op; its own `DB_PORT`
+  comment ("lthy has none yet") stays, and it doesn't take the one-line pointer to go-svelte-pg
+  that the template's Makefile ends with.
+- `.docs/backend/conventions.md` gains a § Version naming `VERSION_VAR` (`us_backend/version.Version`,
+  `backend/version/version.go`), as the template's go-svelte backend conventions do. That doc
+  never carried a stamp, so nothing there to bump; the other seeded files keep v2.
+- `skip=` in `.harness` lists `frontend/eslint.config.js`, `frontend/bunfig.toml` and all four
+  files the stack seeds under `frontend/tests/support/`: `app-environment.ts`, `app-navigation.ts`,
+  `app-state.ts` and `svelte-plugin.ts` (the template's `files.txt` names only the plugin, but the
+  stack directory holds the other three). None of them exists in lthy. `make diff` shows nothing
+  for them or for the `skip=` line, and a `make sync` after adding it changed nothing and created none.
+
+`make diff` shows only lthy's deliberate drift (16 files): its parameter values (`PORT_BASE` 4100,
+`HOST_PORT` 3100, `PUBLIC_URL`, `DEPLOY_NAME` lthy, empty `MIGRATIONS_DIR` and `VERIFY_SUBCOMMAND`),
+the extras (`check-error-codes`, `icons`, `reset-dev-data`, `seed`, `fresh-dev-data`, `UPLOADS_DIR`),
+its help lines, `ship` as restore-drill, release, deploy, its own `.prettierrc` and `.prettierignore`
+(no tailwind plugin, width 110), `.dockerignore` adding `bin`, 
+`VERSION`, and its own docs.
+
+Prune listed 52 branches, all `(merge …)` (none `(no diff)`), and `--confirm` deleted them. No
+local branch is left but `main` and `chore/harness-v3`, so no leftovers.
+
+Verified: `make check` (svelte-check 0 errors, go vet, error codes in sync), `make test` (frontend
+and backend, every package ok) and `cinch check` pass. `make build` stamps the version
+(`-X us_backend/version.Version=0.63.0`, and the binary holds `0.63.0`). `make down` with no session
+is silent and exits 0. Owner: `make down` on a live `make dev` session in a real terminal.
+Proposed commit (lthy):
+`chore [harness]: harness-template v3, VERSION_VAR, DEPLOY_NAME, skip list and the new down (plan 34 T12)`.
+Next is T13 (ortho).
