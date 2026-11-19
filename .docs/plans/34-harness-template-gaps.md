@@ -277,7 +277,7 @@ About 10 branches.
 **Verify:** see Rollout; `make test-e2e`
 
 ### T14: dd (`~/code/project_deltadocs`, go-svelte → go-svelte-pg)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** as T13. The remote branches on `origin` stay out of scope.
 **Rules:** —
@@ -724,3 +724,63 @@ its volume. Owner: `make dev` and `make down` on a live session in a real termin
 against a real docker daemon (T4 left that open for go-svelte-pg). Proposed commit (ortho):
 `chore [harness]: go-svelte-pg stack, harness-template v3, VERSION_VAR and the new down (plan 34 T13)`.
 Next is T14 (dd).
+
+**T14 done 2026-11-19** on dd branch `chore/harness-v3`, not committed yet. `.harness` says
+`stack=go-svelte-pg` and `template=3`, set before the sync. `make sync` updated 9 managed files
+(the v3 stamp and the new `prune.sh`). `settings.json` was already equal, and a second sync changed
+nothing. The hand port matches T13's in ortho:
+- Makefile: the TERM-based `down` goes. The template's `stop-dev` takes its place, and
+  `down: stop-dev stop-db`. `dev-db` moves into `dev`'s prerequisites, and the trailing
+  `down: stop-db` and `dev: dev-db` lines go. The header names go-svelte-pg and v3.
+- `VERSION_VAR ?= deltadocs_backend/version.Version`, used by `build-backend`.
+  `backend/Dockerfile` keeps its own matching `-X` from `APP_VERSION`, and the parameter comment
+  says to keep the two in step.
+- `deploy` and `logs` are stubs that exit 2, listed in `make help`. As in ortho, the five
+  SQLite deploy stubs are left out, and `ship` keeps dd's wording ("not deployed").
+- `docker-compose.dev-db.yml` gets the v3 stamp. It keeps `name: backend`, so the old
+  `backend_postgres_data` volume stays in use, and keeps the `${DB_PORT:-4142}` fallback.
+- `.docs/backend/conventions.md` gains a § Version naming `VERSION_VAR`.
+  `.docs/git-conventions.md` § Version says `make build` stamps through it.
+- `GOOSE_VERSION` goes from v3.27.2 to the template's v3.28.0 (owner's pick).
+  `make migrate-status` and the backend tests pass with it.
+
+`make diff` shows only dd's deliberate drift, 22 files:
+- `PORT_BASE` 4140.
+- Air in `dev-backend`, and `PUBLIC_API_BASE_URL` in `dev-frontend`.
+- The split `install-*` and `build-*` targets, `install-e2e`, `test-e2e` and `test-e2e-deep`.
+- `check-error-codes`, and `bun run` for check, lint, test and format.
+- The seeding, `admin-reset-password`, `import-docs`, `sync-colors`, `introspect-*` and `clean-*`
+  targets.
+- No `preview` or `BUILD_NOTE`.
+- The two deploy stubs, and the `ship` wording.
+- `/usr/local/go/bin` in PATH.
+- The compose file's pinned name.
+- dd's own docs, `frontend/.prettierignore`, `frontend/eslint.config.js`, `AGENTS.md`, `VERSION`
+  and `cinch.yml`.
+
+`frontend/bunfig.toml`, `frontend/tests/support/*` and `.dockerignore` show as "only in template".
+dd has no `skip=` line, as with ortho.
+
+Prune listed 10 branches, all `(merge …)`, and `--confirm` deleted them. Two local branches remain
+because neither landed. Both are pre-trunk work from 2026-10-09, and the owner keeps them for now:
+- `chore/align-conventions`: 5 commits ahead of `main`.
+- `refactor/db-context`: holds those commits plus its own, 70 files.
+
+Remote branches on `origin` were not touched.
+
+Verified:
+- `make check` and `cinch check` pass.
+- `make test` passes with the dev database up: 789 frontend tests, and the backend packages ok.
+- `make test-e2e` gives 5 passed and 2 failed: `permissions/stranding.spec.ts:13` and
+  `signatures/attestation.spec.ts:16`. The same two fail on `main`.
+- `make build-backend` stamps `0.18.0` into the binary.
+- `make -n dev` runs `dev-db` first, and `make -n down` runs `stop-dev`, then `stop-db`.
+- `make deploy` and `make logs` exit 2.
+- `make down` with no session prints no session line. The `deltadocs_db` container, which had
+  been started for the tests, was cycled through `dev-db` and `down`. Its volume survived, and the
+  container is left stopped, as it was found.
+
+Owner: `make dev` and `make down` on a live session in a real terminal, against docker.
+Proposed commit (dd):
+`chore [harness]: go-svelte-pg stack, harness-template v3, VERSION_VAR and the new down (plan 34 T14)`.
+Next is T15 (budgetron).
