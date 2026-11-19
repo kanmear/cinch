@@ -83,7 +83,8 @@ Taken with the owner on 2026-11-18, through the feature-planning workflow.
    the template's copy. A target whose file isn't valid JSON makes `sync` fail without writing.
    `tests/managed.sh` compares `.hooks` for this path, not bytes. `jq` becomes a dependency of
    the template's `sync`, `diff` and `make check`, not of the repos (approved 2026-11-18).
-   limen moves `HERDR_ENV` back into the committed file.
+   limen moves `HERDR_ENV` back into the committed file. *As built (T5):* `diff` never reads
+   managed files, so it neither compares `.hooks` nor needs `jq`; only `sync` and `make check` do.
 7. **`prune.sh` gets a second way to count a branch as landed:** `main` has a commit whose
    subject is exactly `merge: <branch>`, and the branch tip's committer time is not later than
    that commit's. The second condition keeps a reused branch name from losing new work. The
@@ -205,7 +206,7 @@ without `jq`; `--diff` compares `.hooks`); `tests/managed.sh`; `tests/apply.sh`;
 verus and forum by hand, with counts noted in the handoff (verus expected about 26)
 
 ### T7: README pass and template gaps
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T1–T6
 **Files:** `README.md` (Layout lists `tests/down.sh`, `tests/apply.sh`, `stacks/go-svelte-pg`;
 the Gaps section loses what this plan closed). If anything changed in this plan's decisions while
@@ -471,3 +472,24 @@ The only branch left unlisted in each repo is `main`. verus matches the expected
 26. The old script finds 0 now, not the 4 noted in Gaps item 7, so those 4 were probably pruned
 since. harness-template also still has the landed T3–T5 topic branches (`feature/skip-deploy-name`,
 `feature/go-svelte-pg`, `feature/sync-settings-hooks`). Next is T7 (README pass and template gaps).
+
+**T7 done 2026-11-19**, landed on harness-template `main` as `af9d641` (not pushed).
+T1–T6 had already written their README sections, Layout included, and the README's Gaps never
+listed the seven items, so the pass came down to three stale spots:
+- go-svelte's Makefile loses the commented "Postgres (off by default)" block (64 lines, the
+  older `ENV_FILE` form). A one-line pointer to go-svelte-pg replaces it, and the `DB_PORT`
+  comment no longer names the block. README § Choices (the go-svelte-pg and Deploy bullets)
+  says so. forum and lthy will see the deletion in `make diff` during T10 and T12 and take it.
+- README § Gaps: the "no GitHub remote, branches stacked off `main`" bullet is gone (`origin`
+  exists and T1–T6 are on `main`). It now says the template has no `make merge` and pushing is
+  the owner's. The compose bullet notes go-svelte-pg's dev compose file. Two bullets are new:
+  go-svelte-pg has no deploy, and its `make dev` / `make down` haven't been run against docker.
+- Decision 6 gains an as-built note: `diff` needs no `jq`.
+
+The other choices T1–T6 made beyond the decisions (`=` session names, `--force` keeping
+`skip=`, `sync` honouring `skip=`, one-level `base.txt`) are in the README already.
+Verified: `make check` in harness-template passes; `cinch check` in cinch passes.
+
+`main` there is 7 commits ahead of `origin/main` (T1–T7); pushing is the owner's. Landed topic
+branches still in harness-template: `feature/skip-deploy-name`, `feature/go-svelte-pg`,
+`feature/sync-settings-hooks`, `feature/prune-merge-commits`, `docs/readme-pass-t7`. Next is T8 (cinch rollout).
