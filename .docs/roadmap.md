@@ -38,7 +38,7 @@ tier three is small in isolation but compounds.
 | 31 | [Conventions sweep, 2026-11-01](plans/archive/31-conventions-sweep.md) | 3 — decide before investing | **complete** — decisions applied; its open steps are under [Open from plan 31](#open-from-plan-31) |
 | 32 | [Plan lifecycle](plans/32-plan-lifecycle.md) ([per-repo steps](plans/32-plan-lifecycle-alignment.md)) | — | **in-progress** — stays live until every repo is done |
 | 33 | [Harness alignment](plans/33-harness-alignment.md) | — | **in-progress** |
-| 34 | [Harness-template gaps from the rollout](plans/34-harness-template-gaps.md) | — | **in-progress** — gaps found in plan 33 Part C; decided 2026-11-18 and split into T1–T16; T1–T6 done |
+| 34 | [Harness-template gaps from the rollout](plans/34-harness-template-gaps.md) | — | **in-progress** — gaps found in plan 33 Part C; decided 2026-11-18 and split into T1–T16; T1–T7 done |
 
 ## Reading order vs. build order
 
