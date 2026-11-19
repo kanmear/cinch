@@ -4,11 +4,11 @@
 
 The work happens in `~/code/harness-template` (`origin` is `kanmear/harness_template`, private),
 and its rules are in that repo's `README.md`. This plan lives here, like
-[33](../33-harness-alignment.md), because cinch is where the harness plans are kept.
+[33](33-harness-alignment.md), because cinch is where the harness plans are kept.
 
 ## Provenance
 
-[Plan 33](../33-harness-alignment.md) Part C moved twelve repos onto harness-template v2, one
+[Plan 33](33-harness-alignment.md) Part C moved twelve repos onto harness-template v2, one
 session per repo. Each session ported the seeded files by hand and recorded where the template
 did not fit the repo. Those notes are collected here. Every repo already carries its own
 workaround, so none of this blocks anything. The goal is that the next `apply` or `sync` needs

@@ -43,7 +43,7 @@ Three `commit:` keys in `cinch.yml`, all checked by the commit-msg hook:
 - `commit.protect: [main]`: a commit on `main` passes only mid squash merge (`SQUASH_MSG` exists).
   The first commit on an unborn `main` and a commit on a detached HEAD pass (CINCH-021).
 
-Both keys came with [plan 33](plans/33-harness-alignment.md), and this repo has them on: before
+Both keys came with [plan 33](plans/archive/33-harness-alignment.md), and this repo has them on: before
 the switch it kept `commit.merge: exempt` for the release cut and protected no branch. A
 `--no-ff` merge can't land now, so no bump is lost to a 2-parent commit.
 

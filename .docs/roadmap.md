@@ -46,7 +46,7 @@ tier three is small in isolation but compounds.
 | 30 | [Convention packs: portable conventions, layered and overridable](plans/archive/30-convention-packs.md) | 3 — decide before investing | **cut** 2026-11-01 — replaced by harness-template |
 | 31 | [Conventions sweep, 2026-11-01](plans/archive/31-conventions-sweep.md) | 3 — decide before investing | **complete** — decisions applied; its open steps are under [Open from plan 31](#open-from-plan-31) |
 | 32 | [Plan lifecycle](plans/32-plan-lifecycle.md) ([per-repo steps](plans/32-plan-lifecycle-alignment.md)) | — | **in-progress** — stays live until every repo is done |
-| 33 | [Harness alignment](plans/33-harness-alignment.md) | — | **in-progress** |
+| 33 | [Harness alignment](plans/archive/33-harness-alignment.md) | — | **complete** — template v2 rolled out to every repo; gaps fixed in [34](plans/archive/34-harness-template-gaps.md) |
 | 34 | [Harness-template gaps from the rollout](plans/archive/34-harness-template-gaps.md) | — | **complete** — gaps found in plan 33 Part C; decided 2026-11-18 and split into T1–T16, all done 2026-11-19; template v3 and the nine rollouts pushed |
 
 ## Reading order vs. build order
@@ -202,4 +202,4 @@ open steps live here.
   ([plan 25](plans/25-upkeep-ablation.md), 90 runs) wait for the owner's explicit go-ahead. The
   free Qwen recoverability runs may start any time.
 - **Release cut: superseded.** Plan 31's "cut the release so Part A reaches the other machines"
-  step is replaced by [plan 33](plans/33-harness-alignment.md) D1 (trunk with tags, no release cut).
+  step is replaced by [plan 33](plans/archive/33-harness-alignment.md) D1 (trunk with tags, no release cut).
