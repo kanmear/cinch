@@ -258,7 +258,7 @@ block becomes the template's.
 **Verify:** see Rollout
 
 ### T13: ortho (`~/code/ortho-store`, go-svelte → go-svelte-pg)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps with `stack=go-svelte-pg` in `.harness`; its TERM-based `down` goes.
 About 10 branches.
@@ -653,3 +653,47 @@ is silent and exits 0. Owner: `make down` on a live `make dev` session in a real
 Proposed commit (lthy):
 `chore [harness]: harness-template v3, VERSION_VAR, DEPLOY_NAME, skip list and the new down (plan 34 T12)`.
 Next is T13 (ortho).
+
+**T13 done 2026-11-19** on ortho branch `chore/harness-v3`, not committed yet. `.harness` says
+`stack=go-svelte-pg` and `template=3`, set before the sync. `make sync` updated 9 managed files
+(the v3 stamp and the new `prune.sh`); `settings.json` was already equal. A second sync changed
+nothing. go-svelte-pg falls back to go-svelte's `managed.txt`, so the stack switch changed no
+managed path. Ported by hand:
+- Makefile: the TERM-based `down` goes. The template's `stop-dev` (C-c to each pane, 5 s wait,
+  `=` session name) takes its place, and `down: stop-dev stop-db` stops the session before the
+  database (ortho stopped the database first). `dev-db` moves into `dev`'s prerequisites, as in
+  the template, and the trailing `dev: dev-db` line goes. The header names go-svelte-pg and v3.
+- `VERSION_VAR ?= ortho_backend/version.Version` in the parameter block, and `build-backend` uses
+  it. `backend/Dockerfile` keeps its own `-X ortho_backend/version.Version`, which matches; the
+  parameter comment says to keep them in step.
+- `deploy` and `logs` are now stubs that exit 2 and are listed in `make help`, so ortho has every
+  make-contract verb. It doesn't take the template's other five deploy stubs (`deploy-setup`,
+  `rollback`, `restore-drill`, `prod-backup`, `backup-pull`). Those are go-svelte's SQLite verbs,
+  and ortho never had them. `ship` keeps ortho's wording (not deployed, see `.docs/decisions.md`).
+- `docker-compose.dev-db.yml` gets the v3 stamp and keeps its pinned `name: ortho_backend` (the
+  old volume) and `${DB_PORT:-4132}` fallback.
+- `.docs/backend/conventions.md` gains a § Version naming `VERSION_VAR`, as forum and lthy did.
+  `.docs/git-conventions.md` § Version says `make build` stamps through `VERSION_VAR`. Neither
+  doc's stamp changes.
+
+`make diff` shows only ortho's deliberate drift, 22 files: `PORT_BASE` 4130, Air in
+`dev-backend` and the frontend's env in `dev-frontend`, the split `install-*` and `build-*`
+targets, `check-error-codes` and `check-placeholders`, `bun run` check, lint, test and format,
+`test-e2e` and `install-e2e`, the seeding and `create-staff` targets, no `preview` or
+`BUILD_NOTE`, the two deploy stubs above, the compose file's pinned project name, its own docs,
+`VERSION` and `cinch.yml`. The go-svelte frontend files ortho doesn't have (`bunfig.toml`,
+`tests/support/*`, `.dockerignore`) show as "only in template". ortho has no `skip=` line, as
+T13 didn't ask for one; lthy-style skips would quiet them.
+
+Prune listed 11 branches (10 `(merge …)`, `fix/ci-install-dir` `(no diff)`), and `--confirm`
+deleted them. No local branch is left but `main` and `chore/harness-v3`.
+
+Verified: `make check`, `make test` (21 frontend files, 119 tests; backend packages ok),
+`cinch check` and `make test-e2e` (5 passed) pass. `make build-backend` stamps the version (the
+binary holds `0.13.0`). `make -n dev` runs `dev-db` first, and `make -n down` runs `stop-dev`, then
+`stop-db`. `make deploy` exits 2 with its message. `make down` with no session printed no session
+line. It did stop the `ortho_db` container, which was running; `make dev-db` brought it back with
+its volume. Owner: `make dev` and `make down` on a live session in a real terminal, this time
+against a real docker daemon (T4 left that open for go-svelte-pg). Proposed commit (ortho):
+`chore [harness]: go-svelte-pg stack, harness-template v3, VERSION_VAR and the new down (plan 34 T13)`.
+Next is T14 (dd).
