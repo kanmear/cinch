@@ -1,14 +1,14 @@
 # 34. Harness-template gaps from the rollout
 
-**Status:** in-progress
+**Status:** complete
 
 The work happens in `~/code/harness-template` (`origin` is `kanmear/harness_template`, private),
 and its rules are in that repo's `README.md`. This plan lives here, like
-[33](33-harness-alignment.md), because cinch is where the harness plans are kept.
+[33](../33-harness-alignment.md), because cinch is where the harness plans are kept.
 
 ## Provenance
 
-[Plan 33](33-harness-alignment.md) Part C moved twelve repos onto harness-template v2, one
+[Plan 33](../33-harness-alignment.md) Part C moved twelve repos onto harness-template v2, one
 session per repo. Each session ported the seeded files by hand and recorded where the template
 did not fit the repo. Those notes are collected here. Every repo already carries its own
 workaround, so none of this blocks anything. The goal is that the next `apply` or `sync` needs
@@ -112,10 +112,10 @@ All tests are in `~/code/harness-template` and run under `make check`. New apply
 assertions go into a new `tests/apply.sh`, which `make check` calls. The existing assertions
 stay in the `check` recipe.
 
-- [ ] down: in every stack, `make down` on a live tmux session whose pane runs a child that
+- [x] down: in every stack, `make down` on a live tmux session whose pane runs a child that
   ignores SIGHUP leaves no such process and no session. Skipped with a note when tmux is
   missing. `tests/down.sh`
-- [ ] down: `make down` with no session is silent and exits 0. `tests/down.sh`
+- [x] down: `make down` with no session is silent and exits 0. `tests/down.sh`
 - [x] version var: `make -n build` contains `-X main.version=` by default and
   `-X example/version.Version=` with `VERSION_VAR=example/version.Version`, in go, go-cli and
   go-svelte. `tests/apply.sh`
@@ -284,7 +284,7 @@ About 10 branches.
 **Verify:** see Rollout; `make test-e2e` (2 specs fail on `main` already, plan 33 handoff)
 
 ### T15: budgetron (flutter)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps; `skip=.docs/stack-conventions.md` in `.harness`. About 16 branches,
 including `feat/sms-import` (check its squash).
@@ -292,7 +292,7 @@ including `feat/sms-import` (check its squash).
 **Verify:** see Rollout
 
 ### T16: pugio (android)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps. About 28 branches.
 **Rules:** —
@@ -784,3 +784,100 @@ Owner: `make dev` and `make down` on a live session in a real terminal, against 
 Proposed commit (dd):
 `chore [harness]: go-svelte-pg stack, harness-template v3, VERSION_VAR and the new down (plan 34 T14)`.
 Next is T15 (budgetron).
+
+**T15 done 2026-11-19** on budgetron branch `chore/harness-v3`, not committed yet. `make sync`
+updated 9 managed files (the v3 stamp and the new `prune.sh`; flutter's own `scripts/version.sh`
+only took the stamp). `settings.json` was already equal, and a second sync changed nothing.
+`.harness` says `template=3` and `skip=.docs/stack-conventions.md`. budgetron keeps its code
+style in `.docs/conventions.md`, and with the skip line `make diff` no longer shows the stack
+conventions as "only in template". Ported by hand:
+- Makefile: the template's `down` (C-c to each pane, 5 s wait, `=` session name), its comment,
+  the `DEV_SESSION` comment ("stops") and the help line. The header says v3. flutter has no
+  `VERSION_VAR` or `DEPLOY_NAME`, so nothing else to port. budgetron had no `down` workaround.
+- The seeded docs keep their v2 stamp, because nothing in them changed in v3. README's `make
+  down` line ("stop a tmux helper session") already fits.
+
+`make diff` shows only budgetron's deliberate drift, 11 files: the ObjectBox parameters and
+`setup-test`, `test` with `-x perf`, the `perf` and `coverage` targets and their help lines,
+the `lib/objectbox.g.dart` analyzer exclude, and its own docs, `AGENTS.md` and `cinch.yml`.
+`.docs/domain/overview.md` shows as "only in template". The roadmap says it's not written yet.
+
+Prune listed 13 branches, all `(merge …)`, and `--confirm` deleted them. Four are left for the
+owner:
+- `feat/sms-import` landed. Each of its 9 commits has a commit on `main` with the same subject,
+  timestamp and tree (`2f1ee59` to `5ee2d71`). The co-author strip rewrote them, so prune can't
+  match them. Safe to `git branch -D`.
+- `docs/installments-home-ui-plan` was stacked under `feature/installments-home-ui`, which
+  landed as `f43f18e`, and its plan is archived on `main`. Safe to `git branch -D`.
+- `backup/pre-coauthor-strip` is the same commit as `feat/sms-import`. It's the backup from
+  before the rewrite, kept on purpose like cinch's `backup/pre-rewrite`.
+- `claude/practical-cannon-e5p7hj` holds one commit from 2026-10-06, a first SMS-import
+  prototype from a cloud session (`61ed2d2`, 24 files). Plan 12 rebuilt the feature and replaced
+  it (`lib/logic/sms/sms_parser.dart` and others on `main`). Probably safe to drop.
+
+Verified:
+- `make check` passes: format, gen-l10n, analyze with no issues, and `strings: ok`.
+- `make test` passes: 1259 tests.
+- `cinch check` passes.
+- `make down` with no session is silent and exits 0.
+- On a private tmux server, `make down` stopped a live `budgetron-dev` session whose pane runs
+  a SIGHUP-proof process. The session and the process are gone, and the sibling
+  `budgetron-dev-x` session survived.
+
+Owner: `make down` on a live helper session in a real terminal (budgetron's `dev` is a
+foreground `flutter run`). Proposed commit (budgetron):
+`chore [harness]: harness-template v3, skip list and the new down (plan 34 T15)`.
+Next is T16 (pugio).
+
+**T16 done 2026-11-19** on pugio branch `chore/harness-v3`, not committed yet. `make sync`
+updated 10 managed files: the v3 stamp, and the new `prune.sh`. `settings.json` was already
+equal, and a second sync changed nothing. `.harness` says `template=3`. Ported by hand in the
+Makefile:
+- The template's `down`: C-c to each pane, the 5 s wait, and the `=` session name.
+- The `DEV_SESSION` comment ("stops"), the help line and the v3 header.
+
+pugio keeps its deliberate exception: `down` doesn't force-stop the app. Pugio is the phone's
+home screen, and a force-stop switches its accessibility service off. The comment above `down`
+still says so, and `.docs/roadmap.md` already records it. android has no `VERSION_VAR` or
+`DEPLOY_NAME`, and pugio had no workaround to delete. The seeded docs keep their v2 stamp.
+
+`make diff` shows only pugio's deliberate drift, 10 files:
+- Makefile: `APP_ID`, `A11Y_SERVICE`, the `startup` and `push-config` targets with their help
+  lines, and the `down` without force-stop.
+- pugio's own docs, `AGENTS.md` and `cinch.yml`.
+
+Nothing shows as "only in template".
+
+Prune listed 27 branches, all `(merge …)`, and `--confirm` deleted them. One is left for the
+owner:
+- `feature/p9-config-keys` landed. `fix/wallpaper-surface` was stacked on it, and that squash
+  (`386b7e5`) holds all 9 of its commits: from the branch tip to `386b7e5` only the fix's 6 files
+  differ. No `merge:` commit names the branch, so prune can't match it. Safe to `git branch -D`.
+
+Verified:
+- `make check` passes: ktlint and Android lint.
+- `make test` passes. Gradle had the results cached (no source changed), so the run was all
+  up-to-date.
+- `cinch check` passes.
+- `make down` with no session is silent and exits 0.
+- On a private tmux server, `make down` stopped a live two-pane `pugio-dev` session whose panes
+  run SIGHUP-proof processes. The session and both processes are gone, and the sibling
+  `pugio-dev-x` session survived.
+
+Owner: `make down` on a live helper session in a real terminal (pugio's `dev` is a foreground
+`installDebug` and `am start`). Proposed commit (pugio):
+`chore [harness]: harness-template v3 and the new down (plan 34 T16)`.
+
+**Resume at:** nothing in this plan. All of T1–T16 is done. Left for the owner:
+- Push harness-template `main` (`af9d641`, VERSION 3).
+- Commit, land and push the rollout branches.
+- Run each repo's `make dev` and `make down` in a real terminal (listed per task above).
+- Delete the leftover branches named in T14–T16.
+
+The plan can then be marked `complete` and archived (`cinch plan archive 34`). Plan 33 waits on
+the same kind of owner step.
+
+**Closed 2026-11-19.** The owner dropped the real-terminal `make dev` and `make down` checks.
+They'll run them in time and report anything that breaks. pugio and budgetron were committed and
+landed with `make merge`. harness-template `main` and the `main` of every rollout repo were
+pushed. No tag was pushed and nothing was released. The plan is complete and archived.
