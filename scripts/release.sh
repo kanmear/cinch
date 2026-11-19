@@ -1,5 +1,5 @@
 #!/bin/sh
-# harness-template v2
+# harness-template v3
 # scripts/release.sh [remote]: tag v<version> on main and push main and the tag. Managed by the
 # harness template, never edited in a repo. The remote defaults to origin.
 #

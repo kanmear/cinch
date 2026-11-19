@@ -1,5 +1,5 @@
 #!/bin/sh
-# harness-template v2
+# harness-template v3
 # Runs one step of a make target quietly: the command's output goes to a log
 # file and the terminal gets a single ✓/✗ line with the elapsed time.
 #

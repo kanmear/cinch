@@ -1,5 +1,5 @@
 #!/bin/bash
-# harness-template v2
+# harness-template v3
 # SessionStart hook: print a quick orientation snapshot -- the current branch and the status of any
 # active plan files -- so a session knows where it is without being told. AGENTS.md is not injected
 # here: CLAUDE.md is `@AGENTS.md`, so Claude Code already loads it. The final confirmation line is
