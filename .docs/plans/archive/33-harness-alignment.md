@@ -1,21 +1,21 @@
 # 33. Harness alignment: trunk flow, one version, one make contract, template v2
 
-**Status:** in-progress
+**Status:** complete
 
 Written 2026-11-17 from a read-only sweep of every repo in `~/code`, `~/work/fsed-odin-docs`
 and `~/.local/share/gladius` (five parallel passes, load-bearing claims re-checked by hand).
 The owner asked for aligned make commands (`make down` kills the dev tmux session, `make dev`
 opens tmux when it needs several shells), aligned versioning, merging, releasing and deploying,
 and `.docs` as the docs root in every personal repo. The decisions in § 2 were confirmed in that
-session. A fresh session can work from this file, [plan 32](32-plan-lifecycle.md) and
-[its alignment steps](32-plan-lifecycle-alignment.md).
+session. A fresh session can work from this file, [plan 32](../32-plan-lifecycle.md) and
+[its alignment steps](../32-plan-lifecycle-alignment.md).
 
 ## 1. What the sweep found
 
 ### 1.1 The template is a template in name only
 
 - `~/code/harness-template` has no commits, no remote and isn't the `~/.config` submodule
-  [plan 31](archive/31-conventions-sweep.md) § 6 promised.
+  [plan 31](31-conventions-sweep.md) § 6 promised.
 - It is applied once and never again ("seeded once, then the repo's own"). Three repos were
   seeded (budgetron, pugio); the six older ones never got it: forum and verus (its own
   source trees), lthy, ortho, dd, cinch.
@@ -256,7 +256,7 @@ pairing flips.
   - CINCH-016 (merge commits): extended by CINCH-020.
   - CINCH-006 and CINCH-012 (pre-commit reads the staged tree): the guards run in commit-msg,
     so they don't apply.
-- **New, proposed text** (numbered and written into [rules.md](../rules.md) in T1):
+- **New, proposed text** (numbered and written into [rules.md](../../rules.md) in T1):
   - CINCH-020 (proposed): `commit.merge: reject` fails every commit made while
     `$GIT_DIR/MERGE_HEAD` exists, naming `make merge` as the way to land a branch. `exempt` and
     a pattern behave as CINCH-016 says.
@@ -659,7 +659,7 @@ promise, so it gets its own plan. Not decided here; Part B keeps the committed r
 ## Handoff
 **Last completed:** T5's remote and the landing steps, done in this session on 2026-11-18 at the
 owner's request. That request covers the releases and pushes that AGENTS.md normally leaves to
-the owner. Every task is `[x]`. The template gaps are now [plan 34](archive/34-harness-template-gaps.md).
+the owner. Every task is `[x]`. The template gaps are now [plan 34](34-harness-template-gaps.md).
 
 **What changed:**
 - **harness-template:** `make check` is green. `main` was fast-forwarded to `72967c9` and pushed
@@ -721,3 +721,7 @@ ortho's `ci.yml` has to create the directory itself.
 **Resume at:** nothing in this plan. It can be archived (`cinch plan archive 33`) once the deploys
 are done, or now if the owner counts those as routine. Next work: the `install.sh` fix plan's
 T1, then plan 34's planning pass.
+
+**Closed 2026-11-19.** The owner archived the plan, and the remaining deploys count as routine.
+The owner-side items listed above stay with the owner. The template gaps the rollout found were
+fixed in [plan 34](34-harness-template-gaps.md).

@@ -12,7 +12,7 @@ How to use it: start a session in the repo and point it at this file: "align thi
 triage list, you confirm it, and the session does the moves and proposes a commit message. Tick
 the repo off here when it's merged.
 
-**Changed 2026-11-17 by [plan 33](33-harness-alignment.md):** § 0 stays as written and comes
+**Changed 2026-11-17 by [plan 33](archive/33-harness-alignment.md):** § 0 stays as written and comes
 first. The per-repo triage (§ 1 and § 2, step 3 below) no longer runs on its own. It is step 3
 of plan 33's per-repo pass (§ 5.1 there), after the harness-template v2 work, so each repo is
 visited once. In that pass:
