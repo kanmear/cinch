@@ -1,5 +1,5 @@
 #!/bin/bash
-# harness-template v2
+# harness-template v3
 # SessionStart hook: make sure the repo's git hooks are active, and warn when the session starts on
 # `main`, which it must not commit to. Cloud sessions start from a fresh clone, where
 # `core.hooksPath` is unset, and are often assigned `main` as their working branch, which conflicts

@@ -1,5 +1,5 @@
 #!/bin/sh
-# harness-template v2
+# harness-template v3
 # scripts/pre-commit-merge-test.sh [command [args...]]: pre-commit step that runs the tests only
 # when the commit lands a squash-merge. `git merge --squash` leaves $GIT_DIR/SQUASH_MSG until the
 # commit is made; ordinary commits get the static gate only. A plain merge (MERGE_HEAD) is not a

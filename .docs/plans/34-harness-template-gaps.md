@@ -229,14 +229,14 @@ Each rollout task does the same steps in its repo, on a `chore/harness-v3` branc
 terminal are the owner's, listed in the handoff.
 
 ### T8: cinch (go-cli)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps; `VERSION_VAR` in the Makefile.
 **Rules:** —
 **Verify:** see Rollout
 
 ### T9: limen (go-cli)
-**Status:** [ ]
+**Status:** [x]
 **Depends on:** T7
 **Files:** rollout steps; `HERDR_ENV` moves from `.claude/settings.local.json` into
 `.claude/settings.json`; `.docs/architecture.md` (the `HERDR_ENV` row) says so. About 36 branches
@@ -493,3 +493,72 @@ Verified: `make check` in harness-template passes; `cinch check` in cinch passes
 `main` there is 7 commits ahead of `origin/main` (T1–T7); pushing is the owner's. Landed topic
 branches still in harness-template: `feature/skip-deploy-name`, `feature/go-svelte-pg`,
 `feature/sync-settings-hooks`, `feature/prune-merge-commits`, `docs/readme-pass-t7`. Next is T8 (cinch rollout).
+
+**T8 done 2026-11-19** on cinch branch `chore/harness-v3`, not committed yet. `make sync` updated
+9 managed files (the v3 stamp everywhere, and the new `prune.sh`); `settings.json` was already
+equal. A second sync changed nothing. `.harness` says `template=3`. Ported by hand:
+- Makefile: the template's `down` (C-c to each pane, 5 s wait, `=` session name) and help line.
+  `VERSION_VAR ?= main.Version` in the parameter block, since cinch's variable is the exported
+  `var Version`, and `LDFLAGS` uses it. `cost-curve` keeps `-X main.Version` for its baseline
+  build, because that builds a fixed older tree whose variable doesn't follow `VERSION_VAR`.
+- `.docs/stack-conventions.md` § Release names `VERSION_VAR` (`main.Version` here).
+  `.goreleaser.yml` gets a one-line comment that its `-X` must match `VERSION_VAR`.
+- The Makefile and stack conventions carry the v3 stamp. The other seeded files keep v2,
+  because nothing in them changed in v3.
+
+cinch had no workaround of its own for either gap. `make diff` shows only cinch's deliberate
+drift: the bench and `install-bin` extras, `ARGS ?= help`, the `/hidden` skips in `check`,
+`main.Version`, cinch's goreleaser release block, and its own docs.
+
+Prune listed 47 branches (3 `(no diff)`, 44 `(merge …)`), and `--confirm` deleted them. Three
+are left for the owner:
+- `docs/plan-33-t6-managed-sync` and `docs/plan-33-t7-managed-scripts`: these were stacked,
+  and both are ancestors of `docs/plan-33-t8-make-contract`, which landed as `e9a692b`. No
+  `merge:` commit names them, so prune can't see them. Safe to `git branch -D`.
+- `backup/pre-rewrite`: kept on purpose.
+
+Verified: `make check`, `make test` and `cinch check` pass. `make build` stamps the version
+(`bin/cinch version` prints 0.18.0). `make down` with no session is silent. Owner: `make down`
+on a live session in a real terminal (cinch's `dev` is foreground, so this only matters for a
+helper session). The hooks exec the installed `cinch`, and nothing here changes it. Proposed
+commit (cinch): `chore [harness]: harness-template v3, VERSION_VAR and the new down (plan 34 T8)`.
+Next is T9 (limen).
+
+**T9 done 2026-11-19** on limen branch `chore/harness-v3`, not committed yet. `make sync`
+updated 9 managed files (the v3 stamp and the new `prune.sh`); `settings.json` was already equal.
+A second sync changed nothing. `.harness` says `template=3`. Ported by hand:
+- Makefile: the template's `down` (C-c to each pane, 5 s wait, `=` session name), its comment
+  and help line. `VERSION_VAR ?= github.com/kanmear/limen/version.Version` in the parameter
+  block (limen stamps its `version` package, not `main`), and `LDFLAGS` uses it. limen has no
+  `.goreleaser.yml`, so there is no second `-X` to keep in step; the parameter comment says so.
+- `.docs/stack-conventions.md` § Release names `VERSION_VAR`. The Makefile and stack conventions
+  carry the v3 stamp; the other seeded files keep v2.
+- `HERDR_ENV=0` moved into the `env` block of `.claude/settings.json`, and the gitignored
+  `.claude/settings.local.json` (it held only that) is deleted. `.docs/architecture.md`'s
+  `HERDR_ENV` row says the setting is committed and survives a sync, since sync manages only
+  `hooks`. A third sync after the move left `env` in place.
+
+limen had no workaround of its own for either gap. `make diff` shows only limen's deliberate
+drift: no goreleaser (`.goreleaser.yml` and the release workflow only in the template),
+`BIN_DIR` on PATH, `PORT_BASE` and `fakellama`, `ship` building into `~/.local/bin`, the
+`version`-package `VERSION_VAR`, and its own docs, `VERSION` and `cinch.yml`.
+
+Prune listed 25 of 37 branches, all `(merge …)`, and `--confirm` deleted them. Eleven are left
+for the owner:
+- Stacked and never named by a `merge:` commit: `feature/l0-scaffold`, `-llm`, `-tool`,
+  `-session` and `-agent`, each an ancestor of the next (L0 landed as `merge: feature/l0-print`,
+  `ab0ddd1`); `feature/l1-settings`, an ancestor of `docs/l2-plan`; `docs/l2-plan`,
+  `docs/l3-plan` and `docs/native-search-plan` (L1–L3 and the native tools landed under other
+  branch names). Likely safe to `git branch -D`, but check that each is in what landed.
+- Probably unlanded work: `feature/ux-conveniences` has one commit (`c6eaae1`, `/compact` takes
+  a focus, CORE-017) made 20 minutes after its `merge:` commit `2ccf6a4`; `main` has no
+  `focus` in `agent/compact.go` or `tui/commands.go`. `ui/calm-colours` has one commit (quieter
+  thinking label, tool targets and inline code) with no `merge:` commit. Land or drop each.
+
+Verified: `make check`, `make test` (no failures) and `cinch check` pass. `make build` into a
+scratch `BIN_DIR` stamps the version (`limen version` prints `limen 0.7.0`). `make down` with no
+session is silent and exits 0. Owner: `make down` on a live helper session in a real terminal
+(limen's `dev` is foreground). Proposed commit (limen):
+`chore [harness]: harness-template v3, VERSION_VAR, the new down and HERDR_ENV in settings.json (plan 34 T9)`.
+This handoff sits uncommitted on cinch's `chore/harness-v3`, whose T8 commit isn't landed yet.
+Next is T10 (forum).

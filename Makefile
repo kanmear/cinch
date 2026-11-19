@@ -1,4 +1,4 @@
-# harness-template v2
+# harness-template v3
 # go-cli stack of the harness template (one Go command-line tool: main.go at the repo root, no
 # server, released as binaries by goreleaser). Seeded once, then the repo's own.
 # Repo extras beyond the template's contract: install-bin and the bench targets
@@ -13,6 +13,10 @@ BIN_DIR ?= bin
 # There are no ports, DEPLOY_HOST or ENV_FILE here: a CLI is delivered as a tagged release that
 # goreleaser builds in CI. Add PORT_BASE and a require-free-ports guard (see the go stack) only if
 # the repo grows a server or a fake service that `make dev` has to start.
+# The Go variable `-X` stamps the version into. The template's default is `var version` in
+# package main; cinch's is the exported `var Version` in main.go. `.goreleaser.yml` hard-codes the
+# same variable in its `-X` (goreleaser cannot read make variables); change both together.
+VERSION_VAR ?= main.Version
 # ===== end parameters =====
 
 .DEFAULT_GOAL := help
@@ -30,13 +34,14 @@ CINCH ?= cinch
 # see scripts/step.sh. Used by the git-flow targets.
 STEP := ./scripts/step.sh
 
-# The repo's one version (scripts/version.sh), stamped into the binary as main.Version
-# (`var Version = "dev"` in main.go; goreleaser stamps the same variable in CI).
+# The repo's one version (scripts/version.sh), stamped into the binary as $(VERSION_VAR)
+# (`var Version = "dev"` in main.go; goreleaser stamps the same variable in CI, so
+# .goreleaser.yml names it too).
 VERSION := $(shell ./scripts/version.sh show 2>/dev/null)
-LDFLAGS := -X main.Version=$(VERSION)
+LDFLAGS := -X $(VERSION_VAR)=$(VERSION)
 
 # tmux session a repo-local dev helper may start (a fake server, a log tail); `make down`
-# kills it. `make dev` itself is one foreground process.
+# stops it. `make dev` itself is one foreground process.
 DEV_SESSION := $(NAME)-dev
 
 require-cinch:
@@ -46,7 +51,7 @@ help:
 	@echo "=== $(NAME) ==="
 	@echo "  make install       - go mod download, .env from .env.example if there is one, cinch init (idempotent)"
 	@echo "  make dev           - Run the CLI in the foreground (go run . \$$(ARGS)), same as make run"
-	@echo "  make down          - Kill the dev tmux session if there is one"
+	@echo "  make down          - Stop the dev tmux session's processes and kill it, if there is one"
 	@echo "  make check         - Static and read-only: go vet, gofmt"
 	@echo "  make test          - The Go test suite (TESTFLAGS='-run X -count=50' passes flags to go test)"
 	@echo "  make format        - gofmt -w"
@@ -85,10 +90,17 @@ run:
 # The CLI is one foreground process: dev is run.
 dev: run
 
-# Kills the dev session, silent when there is none.
+# Stops the dev session, silent when there is none.
+# C-c goes to every pane first: SIGINT reaches the pane's whole foreground process group, so
+# `go run`'s child binary or Air's backend stops too, where the SIGHUP of `kill-session` alone
+# leaves it running and holding its port. The session ends by itself once its panes exit; after
+# 5 s it is killed anyway. `=` makes tmux match the session name exactly, not as a prefix.
 down:
-	@if command -v tmux >/dev/null 2>&1 && tmux has-session -t '$(DEV_SESSION)' 2>/dev/null; then \
-		tmux kill-session -t '$(DEV_SESSION)' && echo "Killed tmux session '$(DEV_SESSION)'"; \
+	@if command -v tmux >/dev/null 2>&1 && tmux has-session -t '=$(DEV_SESSION)' 2>/dev/null; then \
+		for p in $$(tmux list-panes -s -t '=$(DEV_SESSION)' -F '#{pane_id}'); do tmux send-keys -t "$$p" C-c; done; \
+		i=0; while [ $$i -lt 50 ] && tmux has-session -t '=$(DEV_SESSION)' 2>/dev/null; do sleep 0.1; i=$$((i + 1)); done; \
+		tmux kill-session -t '=$(DEV_SESSION)' 2>/dev/null; \
+		echo "Stopped tmux session '$(DEV_SESSION)'"; \
 	fi
 
 # Static and read-only: no tests, no file rewrites. Both steps skip the gitignored private

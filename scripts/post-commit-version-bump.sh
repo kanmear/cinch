@@ -1,5 +1,5 @@
 #!/bin/sh
-# harness-template v2
+# harness-template v3
 # scripts/post-commit-version-bump.sh <pattern>...: after a squash-merge lands on main, bump the
 # version and fold the change into that commit with an amend. Managed by the harness template,
 # never edited in a repo: the version-relevant paths arrive as arguments.

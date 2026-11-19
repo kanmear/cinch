@@ -11,6 +11,7 @@ builds:
     main: .
     binary: cinch
     ldflags:
+      # Must name the Makefile's VERSION_VAR (goreleaser cannot read make variables).
       - -s -w -X main.Version={{.Version}}
     env:
       - CGO_ENABLED=0

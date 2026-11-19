@@ -1,5 +1,5 @@
 # Go CLI Conventions
-<!-- harness-template v2 -->
+<!-- harness-template v3 -->
 
 How a Go command-line tool is written and released. Read this before touching Go code. The shape
 comes from cinch (a published tool: a thin `main.go`, features under `internal/`, goreleaser) and
@@ -70,9 +70,12 @@ Stdlib `testing`, no assertion library. `make test` runs everything (`TESTFLAGS`
 ## Release
 
 The version is the root `VERSION` file (`x.y.z`), kept by `scripts/version.sh`; there is no
-generated Go file. Both builds stamp it into `main.Version`:
+generated Go file. Both builds stamp it into the variable `VERSION_VAR` names (a Makefile
+parameter, `main.Version` here, the exported `var Version` in `main.go`; the template's default is
+`main.version`). goreleaser cannot read make variables, so `.goreleaser.yml` hard-codes the same
+variable in its `-X`: change both together.
 
-- `make build` runs `go build -ldflags "-s -w -X main.Version=$(VERSION)"` into `BIN_DIR`.
+- `make build` runs `go build -ldflags "-s -w -X $(VERSION_VAR)=$(VERSION)"` into `BIN_DIR`.
 - `make ship` is `make release`: it tags `v<version>` on `main` and pushes `main` and the tag. The
   tag push runs `.github/workflows/release.yml`, which runs goreleaser (`.goreleaser.yml`): static
   binaries (`CGO_ENABLED=0`) for linux, darwin and windows, archives named

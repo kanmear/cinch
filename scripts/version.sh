@@ -1,5 +1,5 @@
 #!/bin/sh
-# harness-template v2
+# harness-template v3
 # scripts/version.sh <show|major|minor|patch|file>: the repo's version, kept in a root
 # VERSION file holding `x.y.z` (one line). Managed by the harness template, never edited in a repo.
 #

@@ -1,4 +1,4 @@
 # harness-template: `make sync` and `make diff` in the template repo read this file.
 stack=go-cli
 name=cinch
-template=2
+template=3
