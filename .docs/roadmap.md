@@ -31,8 +31,8 @@ tier three is small in isolation but compounds.
 | 16 | [`cinch init` writes the AGENTS.md pointer](plans/archive/16-init-agents-pointer.md) | 2 — make green mean something | **complete** (`5121e4e`) |
 | 17 | [Cut the workflow pack; render removes stale generated files](plans/archive/17-trim-workflow-pack.md) | 3 — decide before investing | **complete** (`09ef586`) |
 | 18 | [`paths.exclude`, then dogfood — the hand-off plan](plans/archive/18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **complete** (`9830825`) — implements item 8 |
-| 26 | [The index snapshot's two paths give one answer](plans/archive/26-snapshot-parity.md) | 1 — trust the checker | **complete** (`a937164`) |
-| 27 | [Budgetron field report, 2026-10-11](plans/archive/27-budgetron-field-report.md) | 4 — evidence | **complete** (`1edf5a2`–`0ade181`) |
+| 26 | [The index snapshot's two paths give one answer](plans/archive/26-snapshot-parity.md) | 1 — trust the checker | **complete** (`34f78e1`) |
+| 27 | [Budgetron field report, 2026-10-11](plans/archive/27-budgetron-field-report.md) | 4 — evidence | **complete** (`4936732`–`348a57a`) |
 | 28 | [Absorb the squash-message and version-bump scripts](plans/archive/28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | **complete** — Part A shipped 2026-11-02 (`commit.squash`, `commit.merge`); Part B is in [Deferred](#deferred) |
 | 30 | [Convention packs: portable conventions, layered and overridable](plans/archive/30-convention-packs.md) | 3 — decide before investing | **cut** 2026-11-01 — replaced by harness-template |
 | 31 | [Conventions sweep, 2026-11-01](plans/archive/31-conventions-sweep.md) | 3 — decide before investing | **complete** — decisions applied; its open steps are under [Open from plan 31](#open-from-plan-31) |

@@ -1,6 +1,6 @@
 # 26. The index snapshot's two paths give one answer
 
-**Status:** complete — shipped in `a937164`
+**Status:** complete — shipped in `34f78e1`
 
 **Tier 1 — trust the checker.** Bound by **CINCH-006** in `.docs/rules.md`. Follows
 [14](14-pre-commit-checks-index.md); ships on `fix/snapshot-flagged-entries`.
@@ -85,4 +85,4 @@ snapshot.**
 
 ## Status
 
-Shipped in `a937164` (`fix/snapshot-flagged-entries`). Kept for provenance.
+Shipped in `34f78e1` (`fix/snapshot-flagged-entries`). Kept for provenance.

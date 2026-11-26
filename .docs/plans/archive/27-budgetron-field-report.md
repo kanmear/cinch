@@ -1,6 +1,6 @@
 # 27. Budgetron field report, 2026-10-11
 
-**Status:** complete — all six items shipped in 0.10.3–0.13.0 (`1edf5a2`–`0ade181`)
+**Status:** complete — all six items shipped in 0.10.3–0.13.0 (`4936732`–`348a57a`)
 
 ## Provenance
 

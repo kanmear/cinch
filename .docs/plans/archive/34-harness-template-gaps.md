@@ -499,7 +499,7 @@ cinch had no workaround of its own for either gap.
 Prune listed 47 branches (3 `(no diff)`, 44 `(merge …)`), and `--confirm` deleted them. Three
 are left for the owner:
 - `docs/plan-33-t6-managed-sync` and `docs/plan-33-t7-managed-scripts`: these were stacked,
-  and both are ancestors of `docs/plan-33-t8-make-contract`, which landed as `e9a692b`. No
+  and both are ancestors of `docs/plan-33-t8-make-contract`, which landed as `fe122e3`. No
   `merge:` commit names them, so prune can't see them. Safe to `git branch -D`.
 - `backup/pre-rewrite`: kept on purpose.
 
