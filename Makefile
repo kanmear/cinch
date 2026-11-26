@@ -99,8 +99,8 @@ down:
 		echo "Stopped tmux session '$(DEV_SESSION)'"; \
 	fi
 
-# Static and read-only: no tests, no file rewrites. gofmt takes only tracked .go files. Add repo-local static
-# checks as extra lines here.
+# Static and read-only: no tests, no file rewrites. gofmt takes only tracked .go files. Add
+# repo-local static checks as extra lines here.
 check:
 	go vet ./...
 	@unformatted=$$(gofmt -l $$(git ls-files '*.go')); \

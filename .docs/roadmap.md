@@ -54,6 +54,8 @@ precondition for the next tier's evidence being trustworthy:
 - **Tier 3** are the items where doing the work before deciding would be premature investment.
   Each one is a measurement or a design decision that changes the shape of a later
   implementation, not a straightforward bug fix.
+- **Tier 4** measures whether tiers 1–3 matter: field data from consumer repos. It's evidence,
+  not features.
 
 ## Provenance tags
 

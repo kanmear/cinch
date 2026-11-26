@@ -3,8 +3,8 @@
 
 ## Commands
 
-`make check` is the static, read-only gate (go vet, gofmt) and runs no tests. `TESTFLAGS` passes
-flags to `go test`: `make test TESTFLAGS='-run TestName -count=50'`.
+`make test` runs every suite: `go test -count=1` over every package. `make check` is the static, read-only gate (go vet, gofmt) and runs no
+tests. `TESTFLAGS` passes flags to `go test`: `make test TESTFLAGS='-run TestName -count=50'`.
 
 | Suite | Where | Target | Tier |
 |---|---|---|---|

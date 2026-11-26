@@ -489,4 +489,3 @@ triage tasks have no ordering constraint. Start with the repos that have the mos
 **Resume at:** [32-plan-lifecycle-alignment.md](32-plan-lifecycle-alignment.md) § 0. The owner
 merges, installs, and runs the upgrade pass in every repo in one sitting, then triages each repo
 when convenient.
-**Notes:**
