@@ -1,6 +1,6 @@
 # 3. Close the rule-grammar holes, then seed defects to find the rest
 
-**Status:** complete — Part A and the seeded battery shipped in `284bf40`
+**Status:** complete — Part A and the seeded battery shipped in `961066f`
 
 **Tier 1 — trust the checker. Cost estimate: days.**
 

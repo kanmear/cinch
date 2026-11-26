@@ -1,6 +1,6 @@
 # 2. `cinch upgrade`
 
-**Status:** complete — shipped in `cf3edcf`
+**Status:** complete — shipped in `4d8dbb2`
 
 **Tier 1 — trust the checker. Cost estimate: an afternoon.**
 

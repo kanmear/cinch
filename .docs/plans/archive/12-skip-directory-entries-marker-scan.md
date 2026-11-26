@@ -1,6 +1,6 @@
 # 12. Skip directory entries (submodule gitlinks) in the primary marker scan
 
-**Status:** complete — shipped in `92b99d4`
+**Status:** complete — shipped in `09b72ed`
 
 **Tier 1 — trust the checker. Cost estimate: ~10 lines + a test.**
 

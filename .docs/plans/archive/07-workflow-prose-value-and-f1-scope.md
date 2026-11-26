@@ -1,6 +1,6 @@
 # 7. Workflow prose value and F1's scope
 
-**Status:** complete — cheap half done by the workflow-template trim (`09ef586`); expensive half moved to the roadmap's Deferred
+**Status:** complete — cheap half done by the workflow-template trim (`102c460`); expensive half moved to the roadmap's Deferred
 
 **Tier 3 — decide before investing. Cost estimate: cheap half is small; expensive half is
 unscoped until the open question below resolves.**
@@ -88,7 +88,7 @@ value becomes the existing render-time error) or make the instruction conditiona
 rather than assumed. This doesn't require the longitudinal study; it's tightening what already
 ships to actually get the render-time guarantee F1 wants, for the specific gap F1 named.
 
-**Resolution (effectively done, `09ef586`).** The workflow-template trim removed the
+**Resolution (effectively done, `102c460`).** The workflow-template trim removed the
 `manifest.yml`, taxonomy, `development.commands` and `dev-task-primitive` references from the
 shipped prose, leaving `{{paths.docs}}` as the only substituted variable.
 `TestWorkflowsNameNoUncreatedConfig` fails if any of those strings returns, and

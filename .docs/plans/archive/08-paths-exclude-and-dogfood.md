@@ -1,6 +1,6 @@
 # 8. `paths.exclude`, then dogfood
 
-**Status:** complete — shipped in `9830825` (see plan 18)
+**Status:** complete — shipped in `d7c711f` (see plan 18)
 
 **Tier 3 — decide before investing. Cost estimate: ~20 lines.**
 

@@ -1,6 +1,6 @@
 # 14. Pre-commit checks what's staged, not the working tree
 
-**Status:** complete — shipped in `1af2986` (`fix/pre-commit-checks-index`)
+**Status:** complete — shipped in `33e0aa2` (`fix/pre-commit-checks-index`)
 
 Kept for provenance. Bound
 by **CINCH-006** in `.docs/rules.md`. Depended on 13 (both touch `check.go`).

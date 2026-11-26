@@ -1,6 +1,6 @@
 # 18. `paths.exclude`, then run cinch on cinch — the hand-off plan
 
-**Status:** complete — shipped in `9830825` (`feature/paths-exclude-dogfood`)
+**Status:** complete — shipped in `d7c711f` (`feature/paths-exclude-dogfood`)
 
 Kept for provenance. The
 implementation hand-off for item 8 (`08-paths-exclude-and-dogfood.md`), which holds the

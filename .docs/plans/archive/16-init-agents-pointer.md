@@ -1,6 +1,6 @@
 # 16. `cinch init` writes the AGENTS.md pointer
 
-**Status:** complete — shipped in `5121e4e` (`feature/init-agents-pointer`)
+**Status:** complete — shipped in `1421f76` (`feature/init-agents-pointer`)
 
 Kept for provenance.
 Depended on nothing.

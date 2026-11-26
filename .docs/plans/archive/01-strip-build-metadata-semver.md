@@ -1,6 +1,6 @@
 # 1. Strip build metadata before parsing semver
 
-**Status:** complete — shipped in `a35cbe1`
+**Status:** complete — shipped in `87dd68f`
 
 **Tier 1 — trust the checker. Kept here for provenance and
 because item 2 (`cinch upgrade`) exists partly *because* this bug was expensive to hit

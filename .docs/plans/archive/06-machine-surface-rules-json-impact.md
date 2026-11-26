@@ -1,6 +1,6 @@
 # 6. The machine surface: `rules --json` + `owns:` → `cinch impact`
 
-**Status:** complete — shipped in `f7f94ac`
+**Status:** complete — shipped in `a13f27f`
 
 **Tier 2 — make green mean something. Cost estimate: days.**
 

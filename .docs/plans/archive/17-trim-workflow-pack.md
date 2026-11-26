@@ -1,6 +1,6 @@
 # 17. Cut the workflow pack to ~650 lines; render removes stale generated files
 
-**Status:** complete — shipped in `09ef586` (`refactor/trim-workflow-pack`)
+**Status:** complete — shipped in `102c460` (`refactor/trim-workflow-pack`)
 
 Kept for provenance. Also
 the commit that effectively closed item 7's cheap half — see

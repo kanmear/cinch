@@ -44,7 +44,7 @@ run. In every repo `dev` contains `main` (`dev..main` = 0, checked 2026-11-17).
 ### 1.3 Conventions are documented, not enforced
 
 - **GIT-001** (no direct commits on `dev`/`main`): broken in forum (`aec9352`), verus (`4423a1c`,
-  `362495d`), cinch (`63509d2`), budgetron (`e3920e9`, `6ce4e4e`, `5a97c88`). cinch checks the
+  `362495d`), cinch (`11c19c2`), budgetron (`e3920e9`, `6ce4e4e`, `5a97c88`). cinch checks the
   subject's shape, never the branch.
 - **Squash only**: verus merged three feature branches with `--no-ff` (`54c380f`, `73f85c2`,
   `2957a47`, 3 parents each, no `version/` change), so three minor bumps were lost. The template's
@@ -441,7 +441,7 @@ paths read `.docs` once step 2 has run). The session prepares the branch and pro
 commit; the owner lands it with § 5.2.
 
 #### T12: cinch (stack `go-cli`; dogfood first)
-**Status:** [x] — landed 2026-11-17 (`c3571be merge: chore/harness-v2`), released as v0.18.0
+**Status:** [x] — landed 2026-11-17 (`07895aa merge: chore/harness-v2`), released as v0.18.0
 **Depends on:** T4, T11
 **Files:** per § 5.1.
 - `VERSION` replaces `internal/version/*` (ldflags already in the Makefile).

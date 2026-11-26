@@ -1,6 +1,6 @@
 # 15. `cinch impact`: one line per doc, not one per rule
 
-**Status:** complete — shipped in `ed08e9e` (`fix/impact-attribute-by-doc`)
+**Status:** complete — shipped in `3662c99` (`fix/impact-attribute-by-doc`)
 
 Kept for provenance.
 Depended on nothing.

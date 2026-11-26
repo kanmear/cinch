@@ -1,6 +1,6 @@
 # Build order — overview
 
-Source: the combined roadmap (external field-report audit of cinch @ `c98c729`, twelve
+Source: the combined roadmap (external field-report audit of cinch @ `194572b`, twelve
 findings F1–F12, plus an A/B benchmark and layer ablation — 84+ agent runs measuring
 `.agent/`-style corpora against a control on a real consumer, `project_deltadocs`).
 Published artifact: `Cinch Build Order` (https://claude.ai/code/artifact/481a31ab-987e-4b3d-8c73-ad6eaab4023a).
@@ -14,25 +14,25 @@ tier three is small in isolation but compounds.
 
 | # | Item | Tier | Status |
 |---|---|---|---|
-| 1 | [Strip build metadata before parsing semver](plans/archive/01-strip-build-metadata-semver.md) | 1 — trust the checker | **complete** (`a35cbe1`) |
-| 2 | [`cinch upgrade`](plans/archive/02-cinch-upgrade.md) | 1 — trust the checker | **complete** (`cf3edcf`) |
-| 3 | [Close rule-grammar holes, then seed defects](plans/archive/03-rule-grammar-holes-and-seed-defects.md) | 1 — trust the checker | **complete** — Part A and the seeded battery shipped (`284bf40`) |
-| 5 | [Navigability as one check class](plans/archive/05-navigability-check-class.md) | 2 — make green mean something | **complete** — H1 half shipped (`2925bf4`); the reachability half was dropped, see the item's resolution and the comment in `TestSeededDefectLinksTargetUnreachableFromRoot` |
-| 6 | [The machine surface: `rules --json` + `owns:` → `cinch impact`](plans/archive/06-machine-surface-rules-json-impact.md) | 2 — make green mean something | **complete** (`f7f94ac`) |
-| 7 | [Workflow prose value and F1's scope](plans/archive/07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | **complete** — cheap half done by the workflow-template trim (`09ef586`); expensive half is in [Deferred](#deferred) |
-| 8 | [`paths.exclude`, then dogfood](plans/archive/08-paths-exclude-and-dogfood.md) | 3 — decide before investing | **complete** (`9830825`) |
+| 1 | [Strip build metadata before parsing semver](plans/archive/01-strip-build-metadata-semver.md) | 1 — trust the checker | **complete** (`87dd68f`) |
+| 2 | [`cinch upgrade`](plans/archive/02-cinch-upgrade.md) | 1 — trust the checker | **complete** (`4d8dbb2`) |
+| 3 | [Close rule-grammar holes, then seed defects](plans/archive/03-rule-grammar-holes-and-seed-defects.md) | 1 — trust the checker | **complete** — Part A and the seeded battery shipped (`961066f`) |
+| 5 | [Navigability as one check class](plans/archive/05-navigability-check-class.md) | 2 — make green mean something | **complete** — H1 half shipped (`5ea680a`); the reachability half was dropped, see the item's resolution and the comment in `TestSeededDefectLinksTargetUnreachableFromRoot` |
+| 6 | [The machine surface: `rules --json` + `owns:` → `cinch impact`](plans/archive/06-machine-surface-rules-json-impact.md) | 2 — make green mean something | **complete** (`a13f27f`) |
+| 7 | [Workflow prose value and F1's scope](plans/archive/07-workflow-prose-value-and-f1-scope.md) | 3 — decide before investing | **complete** — cheap half done by the workflow-template trim (`102c460`); expensive half is in [Deferred](#deferred) |
+| 8 | [`paths.exclude`, then dogfood](plans/archive/08-paths-exclude-and-dogfood.md) | 3 — decide before investing | **complete** (`d7c711f`) |
 | 9 | [Calibrate every heuristic against real history](plans/archive/09-calibrate-heuristics-against-history.md) | 3 — decide before investing | **cut** — see [Deferred](#deferred) |
 | 10 | [`kind:` — normative versus descriptive](plans/archive/10-kind-normative-vs-descriptive.md) | 3 — decide before investing | **cut** — see [Deferred](#deferred) |
-| 11 | [`rules.roots` and hook-baseline overrides](plans/archive/11-sibling-code-roots.md) | 1 — trust the checker | **complete** (`7e5c70d`) |
-| 12 | [Skip directory entries (submodule gitlinks) in the primary marker scan](plans/archive/12-skip-directory-entries-marker-scan.md) | 1 — trust the checker | **complete** (`92b99d4`) |
-| 13 | [Housekeeping: link parser, one prompt, stable output order, docs resync](plans/archive/13-housekeeping.md) | 1 — trust the checker | **complete** (`1bcd33c`) |
-| 14 | [Pre-commit checks what's staged, not the working tree](plans/archive/14-pre-commit-checks-index.md) | 1 — trust the checker | **complete** (`1af2986`) |
-| 15 | [`cinch impact`: one line per doc, not one per rule](plans/archive/15-impact-one-line-per-doc.md) | 2 — make green mean something | **complete** (`ed08e9e`) |
-| 16 | [`cinch init` writes the AGENTS.md pointer](plans/archive/16-init-agents-pointer.md) | 2 — make green mean something | **complete** (`5121e4e`) |
-| 17 | [Cut the workflow pack; render removes stale generated files](plans/archive/17-trim-workflow-pack.md) | 3 — decide before investing | **complete** (`09ef586`) |
-| 18 | [`paths.exclude`, then dogfood — the hand-off plan](plans/archive/18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **complete** (`9830825`) — implements item 8 |
-| 26 | [The index snapshot's two paths give one answer](plans/archive/26-snapshot-parity.md) | 1 — trust the checker | **complete** (`34f78e1`) |
-| 27 | [Budgetron field report, 2026-10-11](plans/archive/27-budgetron-field-report.md) | 4 — evidence | **complete** (`4936732`–`348a57a`) |
+| 11 | [`rules.roots` and hook-baseline overrides](plans/archive/11-sibling-code-roots.md) | 1 — trust the checker | **complete** (`cc9b16a`) |
+| 12 | [Skip directory entries (submodule gitlinks) in the primary marker scan](plans/archive/12-skip-directory-entries-marker-scan.md) | 1 — trust the checker | **complete** (`09b72ed`) |
+| 13 | [Housekeeping: link parser, one prompt, stable output order, docs resync](plans/archive/13-housekeeping.md) | 1 — trust the checker | **complete** (`416de37`) |
+| 14 | [Pre-commit checks what's staged, not the working tree](plans/archive/14-pre-commit-checks-index.md) | 1 — trust the checker | **complete** (`33e0aa2`) |
+| 15 | [`cinch impact`: one line per doc, not one per rule](plans/archive/15-impact-one-line-per-doc.md) | 2 — make green mean something | **complete** (`3662c99`) |
+| 16 | [`cinch init` writes the AGENTS.md pointer](plans/archive/16-init-agents-pointer.md) | 2 — make green mean something | **complete** (`1421f76`) |
+| 17 | [Cut the workflow pack; render removes stale generated files](plans/archive/17-trim-workflow-pack.md) | 3 — decide before investing | **complete** (`102c460`) |
+| 18 | [`paths.exclude`, then dogfood — the hand-off plan](plans/archive/18-paths-exclude-dogfood-plan.md) | 3 — decide before investing | **complete** (`d7c711f`) — implements item 8 |
+| 26 | [The index snapshot's two paths give one answer](plans/archive/26-snapshot-parity.md) | 1 — trust the checker | **complete** (`d663491`) |
+| 27 | [Budgetron field report, 2026-10-11](plans/archive/27-budgetron-field-report.md) | 4 — evidence | **complete** (`2f465dc`–`ba88879`) |
 | 28 | [Absorb the squash-message and version-bump scripts](plans/archive/28-absorb-shared-hook-scripts.md) | 1 (part A), 3 (part B) | **complete** — Part A shipped 2026-11-02 (`commit.squash`, `commit.merge`); Part B is in [Deferred](#deferred) |
 | 30 | [Convention packs: portable conventions, layered and overridable](plans/archive/30-convention-packs.md) | 3 — decide before investing | **cut** 2026-11-01 — replaced by harness-template |
 | 31 | [Conventions sweep, 2026-11-01](plans/archive/31-conventions-sweep.md) | 3 — decide before investing | **complete** — decisions applied; its open steps are under [Open from plan 31](#open-from-plan-31) |
@@ -111,15 +111,15 @@ names the commit that holds the code, so restoring is a `git show` away if the s
 condition is ever met.
 
 - **`cinch context`** — the session-start report: branch, plans under `plans/` with
-  their `Status:` lines, the workflow trigger table, staged paths. Added `276aedd`,
-  status vocabulary added `e50064f`, cut `ec3e8cc` (empty commit body). Three of its
+  their `Status:` lines, the workflow trigger table, staged paths. Added `f45d64f`,
+  status vocabulary added `cde6284`, cut `d74b89a` (empty commit body). Three of its
   four sections are covered by `cinch workflows`, `git branch`, and `git status`; the
   fourth needs `manifest.go`'s `List()` restored to order a handful of files. It also
-  degrades here, since `58e7457` dropped the self-host files and none of the plans in
+  degrades here, since `18a77c3` dropped the self-host files and none of the plans in
   this directory carry a `Status:` line. **Reopen only if** item 8 lands and cinch
   self-hosts again *and* a consumer's `plans/` grows past roughly a dozen files with
   subdirectory grouping — until then `ls` is enough. The first half is now met
-  (`9830825`: cinch self-hosts via its own `cinch.yml`, with `paths.exclude` and
+  (`d7c711f`: cinch self-hosts via its own `cinch.yml`, with `paths.exclude` and
   `cinch check` in CI); the `plans/` half is not. The condition names a consumer's
   `plans/`, and this repo's own `.docs/plans/` is 13 flat files with no subdirectory
   grouping. Note that
@@ -128,13 +128,13 @@ condition is ever met.
   not a commitment.
 - **`cinch move-docs NEW-PATH`** — moved the docs root, rewrote `paths.docs`, and
   re-rendered as one atomic operation, so the manifest could never point at a path the
-  directory hadn't followed. Added `a45a5ad`, cut `ec3e8cc`. The failure it prevented
+  directory hadn't followed. Added `294da4d`, cut `d74b89a`. The failure it prevented
   is still caught: `checkGenerated`'s cross-root scan compares against the roots
   `cinch.yml` implied at HEAD, which is the detection half and landed in the same
   commit. What went was the one-shot migration command, exercised roughly once per
   consumer per lifetime. **Reopen only if** a consumer actually corrupts a docs root
   by hand-editing `paths.docs`, which the generated check would now name.
-- **The `coupling` check** — transition-scoped rule-text coupling. Cut `712daba`, which
+- **The `coupling` check** — transition-scoped rule-text coupling. Cut `cdc05d8`, which
   does state its reasoning: it duplicated what an immersed human review already catches,
   could not tell a punctuation reword from a semantic one, and so blocked legitimate
   changes. The silent-failure class it was aimed at is covered by the identity check
@@ -174,7 +174,7 @@ The plan file keeps the argument; the row keeps the condition.
 
 | Cut | Why | Reopen when |
 |---|---|---|
-| Plan 07's expensive half: a general check of the workflow templates' assumptions ([plan 07](plans/archive/07-workflow-prose-value-and-f1-scope.md)) | The cheap half landed with the template trim (`09ef586`), but its guard is a denylist of known-bad strings plus workflow cross-reference resolution (`TestWorkflowsNameNoUncreatedConfig`, `TestWorkflowReferencesResolve`), not a check for hardcoded structural assumptions, and no seeded-defect case went into the battery. The ablation measured only read-time value, so the expensive half is unscoped and multi-week | A longitudinal study (N feature tasks with the workflow prose present versus absent, grading the corpus that accumulates) has run and shows the prose changes corpus quality, or a rendered workflow is seen sending an agent to a file or path the project doesn't have |
+| Plan 07's expensive half: a general check of the workflow templates' assumptions ([plan 07](plans/archive/07-workflow-prose-value-and-f1-scope.md)) | The cheap half landed with the template trim (`102c460`), but its guard is a denylist of known-bad strings plus workflow cross-reference resolution (`TestWorkflowsNameNoUncreatedConfig`, `TestWorkflowReferencesResolve`), not a check for hardcoded structural assumptions, and no seeded-defect case went into the battery. The ablation measured only read-time value, so the expensive half is unscoped and multi-week | A longitudinal study (N feature tasks with the workflow prose present versus absent, grading the corpus that accumulates) has run and shows the prose changes corpus quality, or a rendered workflow is seen sending an agent to a file or path the project doesn't have |
 | Plan 09: calibrate heuristics against history ([plan 09](plans/archive/09-calibrate-heuristics-against-history.md)) | A methodology gate, not a feature: no staleness, single-binding or ownership-conflict heuristic exists in `internal/cinch/`, so there is nothing to replay | A probabilistic check (staleness, single-binding warning, ownership conflict) is proposed as a live `cinch check` finding. Replay it against `main` and write the false-positive rate and the go/no-go bar down before wiring it in |
 | Plan 10: `kind:` normative versus descriptive ([plan 10](plans/archive/10-kind-normative-vs-descriptive.md)) | A design question with placement (per rule or per doc), state space and retroactive scope all undecided; it builds on the machine surface (06) and on item 9's calibration discipline | cinch needs to check rule kinds differently |
 | Plan 28 Part B: the version bump as a hook step ([plan 28](plans/archive/28-absorb-shared-hook-scripts.md)) | The bump stays a script with its table as a case block; moving it into YAML leaves the per-repo version writers in place anyway | A consumer's bump script diverges from the shared table in a way that mis-bumps a release, or a fourth version storage format appears |

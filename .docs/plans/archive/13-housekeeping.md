@@ -1,6 +1,6 @@
 # 13. Housekeeping: link parser, one prompt, stable output order, docs resync
 
-**Status:** complete — shipped in `1bcd33c` (`chore/housekeeping`)
+**Status:** complete — shipped in `416de37` (`chore/housekeeping`)
 
 Kept for provenance. Written as a
 self-contained hand-off plan; depended on nothing.

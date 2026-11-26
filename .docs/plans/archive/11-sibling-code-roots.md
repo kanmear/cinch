@@ -1,6 +1,6 @@
 # 11. `rules.roots` and hook-baseline overrides
 
-**Status:** complete — shipped in `7e5c70d`
+**Status:** complete — shipped in `cc9b16a`
 
 **Tier 1 — trust the checker. Cost estimate: ~150 lines (rules.go/manifest.go/check.go +
 tests), landed in one session.**

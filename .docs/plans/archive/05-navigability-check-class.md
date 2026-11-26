@@ -1,6 +1,6 @@
 # 5. Navigability as one check class
 
-**Status:** complete — H1 half shipped in `2925bf4`; the reachability half was dropped
+**Status:** complete — H1 half shipped in `5ea680a`; the reachability half was dropped
 
 **Tier 2 — make green mean something. Cost estimate: ~30 lines.**
 
